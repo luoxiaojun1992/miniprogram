@@ -19,7 +19,6 @@
 ## 目录结构规范
 project/
 ├── cmd/server/main.go          # 唯一入口
-├── cmd/migrate/main.go         # 迁移工具入口（可选）
 ├── internal/
 │   ├── app/provider.go         # 组件初始化（必须按顺序）
 │   ├── controller/             # HTTP Handler，仅处理请求响应
@@ -44,11 +43,10 @@ project/
 1. InitConfig()      // Viper 加载
 2. InitLogger()      // Logrus 初始化
 3. InitDatabase()    // Gorm 连接池
-4. InitMigrate()     // golang-migrate 执行（代码内调用）
-5. InitRepositories() // 数据层
-6. InitServices()    // 业务层
-7. InitControllers() // 控制层
-8. InitRouter()      // Gin 路由注册
+4. InitRepositories() // 数据层
+5. InitServices()    // 业务层
+6. InitControllers() // 控制层
+7. InitRouter()      // Gin 路由注册
 
 ## 编码规范
 
