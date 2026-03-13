@@ -15,12 +15,13 @@ import (
 
 type studyRecordService struct {
 	studyRecordRepo repository.StudyRecordRepository
+	courseUnitRepo  repository.CourseUnitRepository
 	log             *logrus.Logger
 }
 
 // NewStudyRecordService creates a new StudyRecordService.
-func NewStudyRecordService(studyRecordRepo repository.StudyRecordRepository, log *logrus.Logger) StudyRecordService {
-	return &studyRecordService{studyRecordRepo: studyRecordRepo, log: log}
+func NewStudyRecordService(studyRecordRepo repository.StudyRecordRepository, courseUnitRepo repository.CourseUnitRepository, log *logrus.Logger) StudyRecordService {
+	return &studyRecordService{studyRecordRepo: studyRecordRepo, courseUnitRepo: courseUnitRepo, log: log}
 }
 
 func (s *studyRecordService) List(ctx context.Context, userID uint64, page, pageSize int) ([]*entity.UserStudyRecord, int64, error) {
@@ -28,8 +29,16 @@ func (s *studyRecordService) List(ctx context.Context, userID uint64, page, page
 }
 
 func (s *studyRecordService) Update(ctx context.Context, userID uint64, req *dto.UpdateStudyRecordRequest) error {
+	unit, err := s.courseUnitRepo.GetByID(ctx, req.UnitID)
+	if err != nil {
+		return err
+	}
+	if unit == nil {
+		return errors.NewNotFound("课程单元不存在", nil)
+	}
 	record := &entity.UserStudyRecord{
 		UserID:   userID,
+		CourseID: unit.CourseID,
 		UnitID:   req.UnitID,
 		Progress: req.Progress,
 		Status:   req.Status,

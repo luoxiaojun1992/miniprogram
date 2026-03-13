@@ -23,7 +23,7 @@ func TestStudyRecordService_List(t *testing.T) {
 			return records, 1, nil
 		},
 	}
-	svc := NewStudyRecordService(repo, logrus.New())
+	svc := NewStudyRecordService(repo, nil, logrus.New())
 	got, total, err := svc.List(context.Background(), 1, 1, 10)
 	require.NoError(t, err)
 	assert.Equal(t, int64(1), total)
@@ -31,12 +31,17 @@ func TestStudyRecordService_List(t *testing.T) {
 }
 
 func TestStudyRecordService_Update(t *testing.T) {
+	unitRepo := &testutil.MockCourseUnitRepository{
+		GetByIDFn: func(_ context.Context, id uint64) (*entity.CourseUnit, error) {
+			return &entity.CourseUnit{ID: id, CourseID: 10}, nil
+		},
+	}
 	repo := &testutil.MockStudyRecordRepository{
 		UpsertFn: func(_ context.Context, record *entity.UserStudyRecord) error {
 			return nil
 		},
 	}
-	svc := NewStudyRecordService(repo, logrus.New())
+	svc := NewStudyRecordService(repo, unitRepo, logrus.New())
 	err := svc.Update(context.Background(), 1, &dto.UpdateStudyRecordRequest{
 		UnitID: 1, Progress: 50, Status: 1,
 	})

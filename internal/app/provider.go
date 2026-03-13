@@ -175,7 +175,7 @@ func (p *Provider) initServices() {
 	p.CourseSvc = service.NewCourseService(
 		p.CourseRepo, p.CourseUnitRepo, p.ContentPermissionRepo, p.Log,
 	)
-	p.StudyRecordSvc = service.NewStudyRecordService(p.StudyRecordRepo, p.Log)
+	p.StudyRecordSvc = service.NewStudyRecordService(p.StudyRecordRepo, p.CourseUnitRepo, p.Log)
 	p.CollectionSvc = service.NewCollectionService(p.CollectionRepo, p.Log)
 	p.LikeSvc = service.NewLikeService(p.LikeRepo, p.ArticleRepo, p.CourseRepo, p.Log)
 	p.CommentSvc = service.NewCommentService(p.CommentRepo, p.Log)

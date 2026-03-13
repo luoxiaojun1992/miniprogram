@@ -1,0 +1,69 @@
+# Docker Compose for running the k6 API test suite against a live backend.
+#
+# Usage:
+#   docker compose -f docker-compose.api-test.yml up \
+#       --exit-code-from k6 --abort-on-container-exit
+#
+# The k6 container exits with code 0 on success, non-zero on failure.
+# MySQL data is ephemeral (no named volume) so the schema is always fresh.
+
+version: "3.8"
+
+services:
+
+  # ---------------------------------------------------------------------------
+  # MySQL – schema is initialised from migration SQL + test seed data.
+  # No persistent volume: each run starts with a clean database.
+  # ---------------------------------------------------------------------------
+  mysql:
+    image: mysql:8.0
+    environment:
+      MYSQL_ROOT_PASSWORD: secret
+      MYSQL_DATABASE: miniapp
+    volumes:
+      - ./migrations/000001_init_schema.up.sql:/docker-entrypoint-initdb.d/01_schema.sql:ro
+      - ./tests/api/seed.sql:/docker-entrypoint-initdb.d/02_seed.sql:ro
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "127.0.0.1", "-u", "root", "-psecret"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    networks:
+      - api-test-network
+
+  # ---------------------------------------------------------------------------
+  # Backend application
+  # ---------------------------------------------------------------------------
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile.api-test
+    environment:
+      CONFIG_PATH: /app/configs/api-test.yaml
+    volumes:
+      - ./tests/api/config.yaml:/app/configs/api-test.yaml:ro
+    depends_on:
+      mysql:
+        condition: service_healthy
+    networks:
+      - api-test-network
+
+  # ---------------------------------------------------------------------------
+  # k6 – runs the API test suite and exits with its result code.
+  # ---------------------------------------------------------------------------
+  k6:
+    image: grafana/k6:latest
+    volumes:
+      - ./tests/api:/scripts:ro
+    command: run /scripts/api_test.js
+    environment:
+      BASE_URL: "http://app:8080"
+    depends_on:
+      app:
+        condition: service_healthy
+    networks:
+      - api-test-network
+
+networks:
+  api-test-network:
+    driver: bridge

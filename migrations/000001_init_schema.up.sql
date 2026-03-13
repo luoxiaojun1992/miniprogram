@@ -20,7 +20,7 @@ CREATE TABLE IF NOT EXISTS `wechat_configs` (
     `app_id` VARCHAR(32) NOT NULL,
     `app_secret` VARCHAR(64) NOT NULL,
     `api_token` VARCHAR(255) COMMENT '微信API Token',
-    `jsapi_ticket` VARCHAR(512),
+    `js_api_ticket` VARCHAR(512),
     `ticket_expires_at` DATETIME,
     `access_token` VARCHAR(512),
     `token_expires_at` DATETIME,
@@ -46,8 +46,8 @@ INSERT INTO `log_configs` (`retention_days`) VALUES (90);
 -- 用户表
 CREATE TABLE IF NOT EXISTS `users` (
     `id` BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
-    `openid` VARCHAR(64) UNIQUE COMMENT '微信openid',
-    `unionid` VARCHAR(64) COMMENT '微信unionid',
+    `open_id` VARCHAR(64) UNIQUE COMMENT '微信openid',
+    `union_id` VARCHAR(64) COMMENT '微信unionid',
     `nickname` VARCHAR(64) COMMENT '用户昵称',
     `avatar_url` VARCHAR(255) COMMENT '头像URL',
     `user_type` TINYINT DEFAULT 1 COMMENT '1前台用户 2普通管理员 3系统管理员',
@@ -55,8 +55,10 @@ CREATE TABLE IF NOT EXISTS `users` (
     `freeze_end_time` DATETIME COMMENT '冻结结束时间',
     `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP,
     `updated_at` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    INDEX `idx_openid` (`openid`),
-    INDEX `idx_type_status` (`user_type`, `status`)
+    `deleted_at` DATETIME NULL COMMENT '软删除时间',
+    INDEX `idx_open_id` (`open_id`),
+    INDEX `idx_type_status` (`user_type`, `status`),
+    INDEX `idx_deleted_at` (`deleted_at`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='用户表';
 
 -- 管理员扩展表
