@@ -1,6 +1,8 @@
 package app
 
 import (
+	"strings"
+
 	"github.com/spf13/viper"
 )
 
@@ -69,6 +71,7 @@ type DebugConfig struct {
 func InitConfig(configPath string) (*Config, error) {
 	v := viper.New()
 	v.SetEnvPrefix("APP")
+	v.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))
 	v.AutomaticEnv()
 
 	// Defaults make Unmarshal work even when no config file is present.
