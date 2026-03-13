@@ -73,6 +73,7 @@ type Provider struct {
 	NotificationCtrl *controller.NotificationController
 	SystemCtrl       *controller.SystemController
 	UploadCtrl       *controller.UploadController
+	DebugCtrl        *controller.DebugController
 }
 
 // NewProvider initializes all components in order.
@@ -200,5 +201,8 @@ func (p *Provider) initControllers() {
 	p.SystemCtrl = controller.NewSystemController(p.WechatConfigSvc, p.AuditLogSvc, p.LogConfigSvc, p.Log)
 	p.UploadCtrl = controller.NewUploadController(
 		p.Config.Upload.Dir, p.Config.Upload.BaseURL, p.Log,
+	)
+	p.DebugCtrl = controller.NewDebugController(
+		p.UserRepo, p.Config.JWT.Secret, p.Config.JWT.Expiry, p.Log,
 	)
 }

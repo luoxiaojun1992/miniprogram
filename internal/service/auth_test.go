@@ -357,7 +357,7 @@ func TestAuthService_WechatLogin_TokenGenFail(t *testing.T) {
 }
 
 func TestAuthService_AdminLogin_TokenGenFail(t *testing.T) {
-	existingAdmin := &entity.AdminUser{UserID: 1, PasswordHash: "$2a$10$wDrqJAkGBLzfDAD5vZ8WheHlStYdYVbxlMkAl6K5RY7KAXEV/1.O6"} // hash of "pass1234"
+	existingAdmin := &entity.AdminUser{UserID: 1, PasswordHash: "$2a$10$c/4KfcW0n4bIfX16oVMCsun9le80aZtEaQ/0/VjoAuX7h2ScpOYaa"} // hash of "pass1234"
 	existingUser := &entity.User{ID: 1, UserType: 2, Status: 1}
 	adminRepo := &testutil.MockAdminUserRepository{
 		GetByEmailFn: func(_ context.Context, email string) (*entity.AdminUser, error) { return existingAdmin, nil },

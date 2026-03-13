@@ -156,5 +156,11 @@ func InitRouter(p *Provider) *gin.Engine {
 		admin.PUT("/log-config", p.SystemCtrl.UpdateLogConfig)
 	}
 
+	// ==================== Debug (disabled by default) ====================
+	// This route MUST only be enabled in non-production environments.
+	if p.Config.Debug.EnableTestToken {
+		v1.POST("/debug/token", p.DebugCtrl.GenerateTestToken)
+	}
+
 	return r
 }

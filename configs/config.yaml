@@ -23,3 +23,6 @@ wechat:
 upload:
   dir: storage/uploads
   base_url: http://localhost:8080/static
+
+debug:
+  enable_test_token: false

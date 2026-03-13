@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"time"
 	"testing"
 
 	"github.com/sirupsen/logrus"
@@ -477,4 +478,91 @@ func TestUserService_DeleteTag_Success(t *testing.T) {
 	svc := newUserService(nil, nil, tagRepo, nil, nil)
 	err := svc.DeleteTag(context.Background(), 1, 5)
 	require.NoError(t, err)
+}
+
+// ==================== Missing user service error paths ====================
+
+func TestUserService_GetByID_DBError(t *testing.T) {
+	userRepo := &testutil.MockUserRepository{
+		GetByIDFn: func(_ context.Context, id uint64) (*entity.User, error) {
+			return nil, apperrors.NewInternal("db", nil)
+		},
+	}
+	svc := newUserService(userRepo, nil, nil, nil, nil)
+	_, err := svc.GetByID(context.Background(), 1)
+	require.Error(t, err)
+}
+
+func TestUserService_CreateAdminUser_PasswordTooLong(t *testing.T) {
+	// A 73-byte password triggers bcrypt.ErrPasswordTooLong
+	longPass := string(make([]byte, 73))
+	adminRepo := &testutil.MockAdminUserRepository{
+		GetByEmailFn: func(_ context.Context, email string) (*entity.AdminUser, error) {
+			return nil, nil
+		},
+	}
+	svc := newUserService(nil, adminRepo, nil, nil, nil)
+	_, err := svc.CreateAdminUser(context.Background(), &dto.CreateAdminUserRequest{
+		Email: "a@b.com", Password: longPass, Nickname: "N",
+	})
+	require.Error(t, err)
+}
+
+func TestUserService_UpdateUser_ChangeUserType(t *testing.T) {
+	// operator != user, req.UserType != 0 => user.UserType should be updated
+	user := &entity.User{ID: 1, UserType: 1}
+	userRepo := &testutil.MockUserRepository{
+		GetByIDFn: func(_ context.Context, id uint64) (*entity.User, error) { return user, nil },
+		UpdateFn:  func(_ context.Context, u *entity.User) error { return nil },
+	}
+	svc := newUserService(userRepo, nil, nil, nil, nil)
+	err := svc.UpdateUser(context.Background(), 1, &dto.UpdateUserRequest{UserType: 2}, 99)
+	require.NoError(t, err)
+	assert.Equal(t, int8(2), user.UserType)
+}
+
+func TestUserService_UpdateUser_SetFreezeEndTime(t *testing.T) {
+	now := time.Now()
+	user := &entity.User{ID: 1}
+	userRepo := &testutil.MockUserRepository{
+		GetByIDFn: func(_ context.Context, id uint64) (*entity.User, error) { return user, nil },
+		UpdateFn:  func(_ context.Context, u *entity.User) error { return nil },
+	}
+	svc := newUserService(userRepo, nil, nil, nil, nil)
+	err := svc.UpdateUser(context.Background(), 1, &dto.UpdateUserRequest{FreezeEndTime: &now}, 99)
+	require.NoError(t, err)
+	assert.Equal(t, &now, user.FreezeEndTime)
+}
+
+func TestUserService_DeleteUser_DeleteError(t *testing.T) {
+	user := &entity.User{ID: 1}
+	userRepo := &testutil.MockUserRepository{
+		GetByIDFn: func(_ context.Context, id uint64) (*entity.User, error) { return user, nil },
+		DeleteFn:  func(_ context.Context, id uint64) error { return apperrors.NewInternal("db", nil) },
+	}
+	svc := newUserService(userRepo, nil, nil, nil, nil)
+	err := svc.DeleteUser(context.Background(), 1)
+	require.Error(t, err)
+}
+
+func TestUserService_AssignRoles_GetByIDError(t *testing.T) {
+	userRepo := &testutil.MockUserRepository{
+		GetByIDFn: func(_ context.Context, id uint64) (*entity.User, error) {
+			return nil, apperrors.NewInternal("db", nil)
+		},
+	}
+	svc := newUserService(userRepo, nil, nil, nil, nil)
+	err := svc.AssignRoles(context.Background(), 1, &dto.AssignRolesRequest{RoleIDs: []uint{1}})
+	require.Error(t, err)
+}
+
+func TestUserService_AddTag_TagError(t *testing.T) {
+	tagRepo := &testutil.MockUserTagRepository{
+		GetByUserIDFn: func(_ context.Context, uid uint64) ([]*entity.UserTag, error) {
+			return nil, apperrors.NewInternal("db", nil)
+		},
+	}
+	svc := newUserService(nil, nil, tagRepo, nil, nil)
+	_, err := svc.AddTag(context.Background(), 1, &dto.AddTagRequest{TagName: "vip"})
+	require.Error(t, err)
 }

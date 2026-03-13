@@ -12,6 +12,7 @@ type Config struct {
 	Log      LogConfig      `mapstructure:"log"`
 	Wechat   WechatConfig   `mapstructure:"wechat"`
 	Upload   UploadConfig   `mapstructure:"upload"`
+	Debug    DebugConfig    `mapstructure:"debug"`
 }
 
 // ServerConfig holds server configuration.
@@ -50,6 +51,15 @@ type WechatConfig struct {
 type UploadConfig struct {
 	Dir     string `mapstructure:"dir"`
 	BaseURL string `mapstructure:"base_url"`
+}
+
+// DebugConfig holds debug/development configuration.
+// These settings MUST NOT be enabled in production.
+type DebugConfig struct {
+	// EnableTestToken enables the POST /v1/debug/token endpoint that issues
+	// JWT tokens without authentication — for local testing only.
+	// Default: false
+	EnableTestToken bool `mapstructure:"enable_test_token"`
 }
 
 // InitConfig loads configuration using Viper.
