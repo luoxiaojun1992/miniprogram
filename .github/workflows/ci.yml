@@ -26,5 +26,15 @@ jobs:
       - name: Download dependencies
         run: go mod download
 
-      - name: Run unit tests
-        run: go test -short ./...
+      - name: Run unit tests with coverage check
+        env:
+          COVERAGE_THRESHOLD: "80"
+        run: |
+          go test -short -coverprofile=coverage.out -covermode=atomic ./...
+          TOTAL=$(go tool cover -func=coverage.out | awk '/^total:/{gsub(/%/,""); print $3}')
+          echo "Coverage: ${TOTAL}%  (threshold: ${COVERAGE_THRESHOLD}%)"
+          if [ "$(echo "$TOTAL < $COVERAGE_THRESHOLD" | bc -l)" -eq 1 ]; then
+            echo "FAIL: coverage ${TOTAL}% is below the required threshold of ${COVERAGE_THRESHOLD}%"
+            exit 1
+          fi
+          echo "PASS: coverage ${TOTAL}% meets the threshold of ${COVERAGE_THRESHOLD}%"
