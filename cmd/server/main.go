@@ -14,9 +14,7 @@ import (
 
 func main() {
 	configPath := os.Getenv("CONFIG_PATH")
-	if configPath == "" {
-		configPath = "configs/config.yaml"
-	}
+	// configPath may be empty; configuration is then loaded from APP_* environment variables.
 
 	cfg, err := app.InitConfig(configPath)
 	if err != nil {

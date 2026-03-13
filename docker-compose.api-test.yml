@@ -37,11 +37,29 @@ services:
   app:
     build:
       context: .
-      dockerfile: Dockerfile.api-test
+      dockerfile: Dockerfile
     environment:
-      CONFIG_PATH: /app/configs/api-test.yaml
-    volumes:
-      - ./tests/api/config.yaml:/app/configs/api-test.yaml:ro
+      APP_SERVER_PORT: 8080
+      APP_SERVER_MODE: debug
+      APP_DATABASE_HOST: mysql
+      APP_DATABASE_PORT: 3306
+      APP_DATABASE_USER: root
+      APP_DATABASE_PASSWORD: secret
+      APP_DATABASE_NAME: miniapp
+      APP_JWT_SECRET: test-jwt-secret-for-api-tests
+      APP_JWT_EXPIRY: 7200
+      APP_LOG_LEVEL: debug
+      APP_WECHAT_APP_ID: test-wechat-app-id
+      APP_WECHAT_APP_SECRET: test-wechat-app-secret
+      APP_UPLOAD_DIR: storage/uploads
+      APP_UPLOAD_BASE_URL: http://localhost:8080/static
+      APP_DEBUG_ENABLE_TEST_TOKEN: "true"
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:8080/health"]
+      interval: 5s
+      timeout: 3s
+      start_period: 10s
+      retries: 12
     depends_on:
       mysql:
         condition: service_healthy

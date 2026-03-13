@@ -16,7 +16,6 @@ RUN addgroup -g 1000 -S appgroup && \
     adduser -u 1000 -S appuser -G appgroup
 WORKDIR /app
 COPY --from=builder /build/bin/server /app/server
-COPY --from=builder /build/configs /app/configs
 COPY --from=builder /build/migrations /app/migrations
 RUN chown -R appuser:appgroup /app
 USER appuser

@@ -63,14 +63,36 @@ type DebugConfig struct {
 }
 
 // InitConfig loads configuration using Viper.
+// If configPath is empty the configuration is read entirely from environment
+// variables (prefix APP_).  When configPath is provided the file is loaded
+// first and environment variables override individual keys.
 func InitConfig(configPath string) (*Config, error) {
 	v := viper.New()
-	v.SetConfigFile(configPath)
-	v.AutomaticEnv()
 	v.SetEnvPrefix("APP")
+	v.AutomaticEnv()
 
-	if err := v.ReadInConfig(); err != nil {
-		return nil, err
+	// Defaults make Unmarshal work even when no config file is present.
+	v.SetDefault("server.port", 8080)
+	v.SetDefault("server.mode", "release")
+	v.SetDefault("database.host", "localhost")
+	v.SetDefault("database.port", 3306)
+	v.SetDefault("database.user", "root")
+	v.SetDefault("database.password", "")
+	v.SetDefault("database.name", "miniapp")
+	v.SetDefault("jwt.secret", "")
+	v.SetDefault("jwt.expiry", 7200)
+	v.SetDefault("log.level", "info")
+	v.SetDefault("wechat.app_id", "")
+	v.SetDefault("wechat.app_secret", "")
+	v.SetDefault("upload.dir", "storage/uploads")
+	v.SetDefault("upload.base_url", "")
+	v.SetDefault("debug.enable_test_token", false)
+
+	if configPath != "" {
+		v.SetConfigFile(configPath)
+		if err := v.ReadInConfig(); err != nil {
+			return nil, err
+		}
 	}
 
 	var cfg Config
