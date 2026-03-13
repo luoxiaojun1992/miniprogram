@@ -1,0 +1,71 @@
+package app
+
+import (
+	"github.com/spf13/viper"
+)
+
+// Config holds the application configuration.
+type Config struct {
+	Server   ServerConfig   `mapstructure:"server"`
+	Database DatabaseConfig `mapstructure:"database"`
+	JWT      JWTConfig      `mapstructure:"jwt"`
+	Log      LogConfig      `mapstructure:"log"`
+	Wechat   WechatConfig   `mapstructure:"wechat"`
+	Upload   UploadConfig   `mapstructure:"upload"`
+}
+
+// ServerConfig holds server configuration.
+type ServerConfig struct {
+	Port int    `mapstructure:"port"`
+	Mode string `mapstructure:"mode"`
+}
+
+// DatabaseConfig holds database configuration.
+type DatabaseConfig struct {
+	Host     string `mapstructure:"host"`
+	Port     int    `mapstructure:"port"`
+	User     string `mapstructure:"user"`
+	Password string `mapstructure:"password"`
+	Name     string `mapstructure:"name"`
+}
+
+// JWTConfig holds JWT configuration.
+type JWTConfig struct {
+	Secret string `mapstructure:"secret"`
+	Expiry int    `mapstructure:"expiry"`
+}
+
+// LogConfig holds log configuration.
+type LogConfig struct {
+	Level string `mapstructure:"level"`
+}
+
+// WechatConfig holds wechat configuration.
+type WechatConfig struct {
+	AppID     string `mapstructure:"app_id"`
+	AppSecret string `mapstructure:"app_secret"`
+}
+
+// UploadConfig holds upload configuration.
+type UploadConfig struct {
+	Dir     string `mapstructure:"dir"`
+	BaseURL string `mapstructure:"base_url"`
+}
+
+// InitConfig loads configuration using Viper.
+func InitConfig(configPath string) (*Config, error) {
+	v := viper.New()
+	v.SetConfigFile(configPath)
+	v.AutomaticEnv()
+	v.SetEnvPrefix("APP")
+
+	if err := v.ReadInConfig(); err != nil {
+		return nil, err
+	}
+
+	var cfg Config
+	if err := v.Unmarshal(&cfg); err != nil {
+		return nil, err
+	}
+	return &cfg, nil
+}

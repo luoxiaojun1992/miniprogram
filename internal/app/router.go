@@ -1,0 +1,160 @@
+package app
+
+import (
+	"github.com/gin-gonic/gin"
+
+	"github.com/luoxiaojun1992/miniprogram/internal/middleware"
+)
+
+// InitRouter sets up the Gin router with all routes.
+func InitRouter(p *Provider) *gin.Engine {
+	gin.SetMode(p.Config.Server.Mode)
+	r := gin.New()
+
+	// Global middleware
+	r.Use(middleware.RecoveryMiddleware(p.Log))
+	r.Use(middleware.ErrorMiddleware(p.Log))
+	r.Use(middleware.CorsMiddleware())
+	r.Use(middleware.RequestIDMiddleware())
+	r.Use(middleware.LoggerMiddleware(p.Log))
+
+	// Health check
+	r.GET("/health", func(ctx *gin.Context) {
+		ctx.JSON(200, gin.H{"status": "ok"})
+	})
+
+	v1 := r.Group("/v1")
+
+	// ==================== Auth ====================
+	auth := v1.Group("/auth")
+	{
+		auth.POST("/wechat-login", p.AuthCtrl.WechatLogin)
+		auth.POST("/admin-login", p.AuthCtrl.AdminLogin)
+		auth.POST("/refresh", middleware.JWTAuthMiddleware(p.Config.JWT.Secret), p.AuthCtrl.RefreshToken)
+	}
+
+	// ==================== User (self) ====================
+	users := v1.Group("/users", middleware.JWTAuthMiddleware(p.Config.JWT.Secret))
+	{
+		users.GET("/profile", p.UserCtrl.GetProfile)
+		users.PUT("/profile", p.UserCtrl.UpdateProfile)
+		users.GET("/permissions", p.UserCtrl.GetPermissions)
+	}
+
+	// ==================== Public Content ====================
+	// Modules (public read)
+	v1.GET("/modules", p.ModuleCtrl.List)
+
+	// Articles (public list/detail with optional auth)
+	articles := v1.Group("/articles")
+	{
+		articles.GET("", middleware.OptionalJWTAuthMiddleware(p.Config.JWT.Secret), p.ArticleCtrl.List)
+		articles.GET("/:id", middleware.OptionalJWTAuthMiddleware(p.Config.JWT.Secret), p.ArticleCtrl.GetByID)
+	}
+
+	// Courses (public list with optional auth, detail requires auth)
+	courses := v1.Group("/courses")
+	{
+		courses.GET("", middleware.OptionalJWTAuthMiddleware(p.Config.JWT.Secret), p.CourseCtrl.List)
+		courses.GET("/:id", middleware.JWTAuthMiddleware(p.Config.JWT.Secret), p.CourseCtrl.GetByID)
+	}
+
+	// ==================== Interaction (requires auth) ====================
+	authRequired := v1.Group("", middleware.JWTAuthMiddleware(p.Config.JWT.Secret))
+	{
+		// Study records
+		authRequired.GET("/study-records", p.StudyRecordCtrl.List)
+		authRequired.POST("/study-records", p.StudyRecordCtrl.Update)
+
+		// Collections
+		authRequired.GET("/collections", p.CollectionCtrl.List)
+		authRequired.POST("/collections/:content_type/:content_id", p.CollectionCtrl.Add)
+		authRequired.DELETE("/collections/:content_type/:content_id", p.CollectionCtrl.Remove)
+
+		// Likes
+		authRequired.POST("/likes/:content_type/:content_id", p.LikeCtrl.Add)
+		authRequired.DELETE("/likes/:content_type/:content_id", p.LikeCtrl.Remove)
+
+		// Comments
+		authRequired.POST("/comments/:content_type/:content_id", p.CommentCtrl.Create)
+
+		// Notifications
+		authRequired.GET("/notifications", p.NotificationCtrl.List)
+		authRequired.PUT("/notifications/read-all", p.NotificationCtrl.MarkAllRead)
+		authRequired.PUT("/notifications/:id/read", p.NotificationCtrl.MarkRead)
+
+		// Upload
+		authRequired.POST("/upload/image", p.UploadCtrl.UploadImage)
+		authRequired.POST("/upload/video", p.UploadCtrl.UploadVideo)
+	}
+
+	// Comments (public read)
+	v1.GET("/comments/:content_type/:content_id", p.CommentCtrl.List)
+
+	// ==================== Admin ====================
+	admin := v1.Group("/admin", middleware.JWTAuthMiddleware(p.Config.JWT.Secret), middleware.RequireAdmin())
+	{
+		// Users
+		admin.GET("/users", p.UserCtrl.AdminListUsers)
+		admin.POST("/users", p.UserCtrl.AdminCreateUser)
+		admin.GET("/users/:id", p.UserCtrl.AdminGetUser)
+		admin.PUT("/users/:id", p.UserCtrl.AdminUpdateUser)
+		admin.DELETE("/users/:id", p.UserCtrl.AdminDeleteUser)
+		admin.PUT("/users/:id/roles", p.UserCtrl.AdminAssignRoles)
+		admin.POST("/users/:id/tags", p.UserCtrl.AdminAddUserTag)
+		admin.DELETE("/users/:id/tags", p.UserCtrl.AdminDeleteUserTag)
+
+		// Roles
+		admin.GET("/roles", p.RoleCtrl.List)
+		admin.POST("/roles", p.RoleCtrl.Create)
+		admin.GET("/roles/:id", p.RoleCtrl.GetByID)
+		admin.PUT("/roles/:id", p.RoleCtrl.Update)
+		admin.DELETE("/roles/:id", p.RoleCtrl.Delete)
+
+		// Permissions
+		admin.GET("/permissions", p.PermissionCtrl.GetTree)
+
+		// Modules
+		admin.POST("/modules", p.ModuleCtrl.Create)
+		admin.PUT("/modules/:id", p.ModuleCtrl.Update)
+		admin.DELETE("/modules/:id", p.ModuleCtrl.Delete)
+		admin.GET("/modules/:id/pages", p.ModuleCtrl.GetPages)
+		admin.POST("/modules/:id/pages", p.ModuleCtrl.CreatePage)
+		admin.PUT("/modules/:id/pages/:page_id", p.ModuleCtrl.UpdatePage)
+		admin.DELETE("/modules/:id/pages/:page_id", p.ModuleCtrl.DeletePage)
+
+		// Articles
+		admin.GET("/articles", p.ArticleCtrl.AdminList)
+		admin.POST("/articles", p.ArticleCtrl.AdminCreate)
+		admin.GET("/articles/:id", p.ArticleCtrl.AdminGetByID)
+		admin.PUT("/articles/:id", p.ArticleCtrl.AdminUpdate)
+		admin.DELETE("/articles/:id", p.ArticleCtrl.AdminDelete)
+		admin.POST("/articles/:id/publish", p.ArticleCtrl.AdminPublish)
+
+		// Courses
+		admin.GET("/courses", p.CourseCtrl.AdminList)
+		admin.POST("/courses", p.CourseCtrl.AdminCreate)
+		admin.GET("/courses/:id", p.CourseCtrl.AdminGetByID)
+		admin.PUT("/courses/:id", p.CourseCtrl.AdminUpdate)
+		admin.DELETE("/courses/:id", p.CourseCtrl.AdminDelete)
+		admin.POST("/courses/:id/publish", p.CourseCtrl.AdminPublish)
+		admin.GET("/courses/:id/units", p.CourseCtrl.AdminGetUnits)
+		admin.POST("/courses/:id/units", p.CourseCtrl.AdminCreateUnit)
+		admin.PUT("/courses/:id/units/:unit_id", p.CourseCtrl.AdminUpdateUnit)
+		admin.DELETE("/courses/:id/units/:unit_id", p.CourseCtrl.AdminDeleteUnit)
+
+		// Comments
+		admin.GET("/comments", p.CommentCtrl.AdminList)
+		admin.PUT("/comments/:id/audit", p.CommentCtrl.AdminAudit)
+		admin.DELETE("/comments/:id/audit", p.CommentCtrl.AdminDelete)
+
+		// System
+		admin.GET("/wechat-config", p.SystemCtrl.GetWechatConfig)
+		admin.PUT("/wechat-config", p.SystemCtrl.UpdateWechatConfig)
+		admin.GET("/audit-logs", p.SystemCtrl.ListAuditLogs)
+		admin.GET("/log-config", p.SystemCtrl.GetLogConfig)
+		admin.PUT("/log-config", p.SystemCtrl.UpdateLogConfig)
+	}
+
+	return r
+}
