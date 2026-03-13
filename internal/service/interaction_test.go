@@ -422,3 +422,122 @@ func TestLogConfigService_Update_GetError(t *testing.T) {
 	err := svc.Update(context.Background(), &dto.UpdateLogConfigRequest{})
 	require.Error(t, err)
 }
+
+// ==================== CommentService ====================
+
+func TestCommentService_List(t *testing.T) {
+	repo := &testutil.MockCommentRepository{
+		ListFn: func(_ context.Context, ct int8, cid uint64, p, ps int) ([]*entity.Comment, int64, error) {
+			return []*entity.Comment{{ID: 1}}, 1, nil
+		},
+	}
+	svc := NewCommentService(repo, logrus.New())
+	list, total, err := svc.List(context.Background(), 1, 10, 1, 20)
+	require.NoError(t, err)
+	assert.Equal(t, int64(1), total)
+	assert.Len(t, list, 1)
+}
+
+func TestCommentService_List_Err(t *testing.T) {
+	repo := &testutil.MockCommentRepository{
+		ListFn: func(_ context.Context, ct int8, cid uint64, p, ps int) ([]*entity.Comment, int64, error) {
+			return nil, 0, apperrors.NewInternal("db", nil)
+		},
+	}
+	svc := NewCommentService(repo, logrus.New())
+	_, _, err := svc.List(context.Background(), 1, 10, 1, 20)
+	require.Error(t, err)
+}
+
+func TestCommentService_Create_OK(t *testing.T) {
+	repo := &testutil.MockCommentRepository{
+		CreateFn: func(_ context.Context, c *entity.Comment) error { return nil },
+	}
+	svc := NewCommentService(repo, logrus.New())
+	c, err := svc.Create(context.Background(), 1, 1, 10, &dto.CreateCommentRequest{Content: "hello"})
+	require.NoError(t, err)
+	assert.Equal(t, "hello", c.Content)
+}
+
+func TestCommentService_Create_Err(t *testing.T) {
+	repo := &testutil.MockCommentRepository{
+		CreateFn: func(_ context.Context, c *entity.Comment) error { return apperrors.NewInternal("db", nil) },
+	}
+	svc := NewCommentService(repo, logrus.New())
+	_, err := svc.Create(context.Background(), 1, 1, 10, &dto.CreateCommentRequest{Content: "hello"})
+	require.Error(t, err)
+}
+
+func TestCommentService_AdminList_OK(t *testing.T) {
+	repo := &testutil.MockCommentRepository{
+		ListAdminFn: func(_ context.Context, p, ps int, st *int8) ([]*entity.Comment, int64, error) {
+			return []*entity.Comment{{ID: 1}}, 1, nil
+		},
+	}
+	svc := NewCommentService(repo, logrus.New())
+	list, total, err := svc.AdminList(context.Background(), 1, 20, nil)
+	require.NoError(t, err)
+	assert.Equal(t, int64(1), total)
+	assert.Len(t, list, 1)
+}
+
+func TestCommentService_Audit_OK(t *testing.T) {
+	st := int8(1)
+	repo := &testutil.MockCommentRepository{
+		GetByIDFn:      func(_ context.Context, id uint64) (*entity.Comment, error) { return &entity.Comment{ID: id}, nil },
+		UpdateStatusFn: func(_ context.Context, id uint64, status int8) error { return nil },
+	}
+	svc := NewCommentService(repo, logrus.New())
+	err := svc.Audit(context.Background(), 1, &dto.AuditCommentRequest{Status: st})
+	require.NoError(t, err)
+}
+
+func TestCommentService_Audit_GetByIDErr(t *testing.T) {
+	repo := &testutil.MockCommentRepository{
+		GetByIDFn: func(_ context.Context, id uint64) (*entity.Comment, error) {
+			return nil, apperrors.NewInternal("db", nil)
+		},
+	}
+	svc := NewCommentService(repo, logrus.New())
+	err := svc.Audit(context.Background(), 1, &dto.AuditCommentRequest{Status: 1})
+	require.Error(t, err)
+}
+
+func TestCommentService_Audit_NotFound(t *testing.T) {
+	repo := &testutil.MockCommentRepository{
+		GetByIDFn: func(_ context.Context, id uint64) (*entity.Comment, error) { return nil, nil },
+	}
+	svc := NewCommentService(repo, logrus.New())
+	err := svc.Audit(context.Background(), 1, &dto.AuditCommentRequest{Status: 1})
+	require.Error(t, err)
+}
+
+func TestCommentService_Delete_OK(t *testing.T) {
+	repo := &testutil.MockCommentRepository{
+		GetByIDFn: func(_ context.Context, id uint64) (*entity.Comment, error) { return &entity.Comment{ID: id}, nil },
+		DeleteFn:  func(_ context.Context, id uint64) error { return nil },
+	}
+	svc := NewCommentService(repo, logrus.New())
+	err := svc.Delete(context.Background(), 1)
+	require.NoError(t, err)
+}
+
+func TestCommentService_Delete_GetByIDErr(t *testing.T) {
+	repo := &testutil.MockCommentRepository{
+		GetByIDFn: func(_ context.Context, id uint64) (*entity.Comment, error) {
+			return nil, apperrors.NewInternal("db", nil)
+		},
+	}
+	svc := NewCommentService(repo, logrus.New())
+	err := svc.Delete(context.Background(), 1)
+	require.Error(t, err)
+}
+
+func TestCommentService_Delete_NotFound(t *testing.T) {
+	repo := &testutil.MockCommentRepository{
+		GetByIDFn: func(_ context.Context, id uint64) (*entity.Comment, error) { return nil, nil },
+	}
+	svc := NewCommentService(repo, logrus.New())
+	err := svc.Delete(context.Background(), 1)
+	require.Error(t, err)
+}

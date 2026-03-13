@@ -85,3 +85,41 @@ func ParseResponse(w *httptest.ResponseRecorder) map[string]interface{} {
 
 // ErrInternal is a convenience error for tests.
 var ErrInternal = errors.NewInternal("internal error", nil)
+
+// CreateMultipartFile creates a multipart form body containing a single file field.
+// It returns the body buffer and the Content-Type header value.
+func CreateMultipartFile(t testing.TB, fieldName, filename string, content []byte) (*bytes.Buffer, string) {
+	t.Helper()
+	var buf bytes.Buffer
+	w := multipart.NewWriter(&buf)
+	fw, err := w.CreateFormFile(fieldName, filename)
+	if err != nil {
+		t.Fatalf("CreateMultipartFile: create form file: %v", err)
+	}
+	if _, err = fw.Write(content); err != nil {
+		t.Fatalf("CreateMultipartFile: write content: %v", err)
+	}
+	w.Close()
+	return &buf, w.FormDataContentType()
+}
+
+// CreateMultipartFileWithFields creates a multipart form body with a file and extra string fields.
+func CreateMultipartFileWithFields(t testing.TB, fieldName, filename string, content []byte, fields map[string]string) (*bytes.Buffer, string) {
+	t.Helper()
+	var buf bytes.Buffer
+	w := multipart.NewWriter(&buf)
+	for k, v := range fields {
+		if err := w.WriteField(k, v); err != nil {
+			t.Fatalf("CreateMultipartFileWithFields: write field %q: %v", k, err)
+		}
+	}
+	fw, err := w.CreateFormFile(fieldName, filename)
+	if err != nil {
+		t.Fatalf("CreateMultipartFileWithFields: create form file: %v", err)
+	}
+	if _, err = fw.Write(content); err != nil {
+		t.Fatalf("CreateMultipartFileWithFields: write content: %v", err)
+	}
+	w.Close()
+	return &buf, w.FormDataContentType()
+}

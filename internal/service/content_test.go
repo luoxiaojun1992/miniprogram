@@ -833,3 +833,201 @@ func TestCourseService_DeleteUnit_NotFound(t *testing.T) {
 	err := svc.DeleteUnit(context.Background(), 1, 1)
 	require.Error(t, err)
 }
+
+// ==================== Missing module/article/course error paths ====================
+
+func TestModuleService_Create_Error(t *testing.T) {
+	repo := &testutil.MockModuleRepository{
+		CreateFn: func(_ context.Context, m *entity.Module) error {
+			return apperrors.NewInternal("db", nil)
+		},
+	}
+	svc := newModuleService(repo, nil)
+	_, err := svc.Create(context.Background(), &dto.CreateModuleRequest{Title: "T"})
+	require.Error(t, err)
+}
+
+func TestModuleService_Delete_DBError(t *testing.T) {
+	repo := &testutil.MockModuleRepository{
+		GetByIDFn: func(_ context.Context, id uint) (*entity.Module, error) {
+			return nil, apperrors.NewInternal("db", nil)
+		},
+	}
+	svc := newModuleService(repo, nil)
+	err := svc.Delete(context.Background(), 1)
+	require.Error(t, err)
+}
+
+func TestModuleService_CreatePage_Error(t *testing.T) {
+	pageRepo := &testutil.MockModulePageRepository{
+		CreateFn: func(_ context.Context, p *entity.ModulePage) error {
+			return apperrors.NewInternal("db", nil)
+		},
+	}
+	svc := newModuleService(&testutil.MockModuleRepository{}, pageRepo)
+	_, err := svc.CreatePage(context.Background(), 1, &dto.CreateModulePageRequest{Title: "T"})
+	require.Error(t, err)
+}
+
+func TestModuleService_DeletePage_DBError(t *testing.T) {
+	pageRepo := &testutil.MockModulePageRepository{
+		GetByIDFn: func(_ context.Context, id uint) (*entity.ModulePage, error) {
+			return nil, apperrors.NewInternal("db", nil)
+		},
+	}
+	svc := newModuleService(&testutil.MockModuleRepository{}, pageRepo)
+	err := svc.DeletePage(context.Background(), 1, 1)
+	require.Error(t, err)
+}
+
+func TestArticleService_Create_PermFail(t *testing.T) {
+	repo := &testutil.MockArticleRepository{
+		CreateFn: func(_ context.Context, a *entity.Article) error {
+			a.ID = 1
+			return nil
+		},
+	}
+	permRepo := &testutil.MockContentPermissionRepository{
+		SetContentPermsFn: func(_ context.Context, contentType int8, contentID uint64, roleIDs []uint) error {
+			return apperrors.NewInternal("perm db", nil)
+		},
+	}
+	svc := newArticleService(repo, permRepo)
+	// Permission failure should only warn, not fail Create
+	id, err := svc.Create(context.Background(), &dto.CreateArticleRequest{
+		Title: "Test", RolePermissions: []uint{1},
+	}, 1)
+	require.NoError(t, err)
+	assert.Equal(t, uint64(1), id)
+}
+
+func TestArticleService_AdminGetByID_DBError(t *testing.T) {
+	repo := &testutil.MockArticleRepository{
+		GetByIDFn: func(_ context.Context, id uint64) (*entity.Article, error) {
+			return nil, apperrors.NewInternal("db", nil)
+		},
+	}
+	svc := newArticleService(repo, nil)
+	_, err := svc.AdminGetByID(context.Background(), 1)
+	require.Error(t, err)
+}
+
+func TestArticleService_Update_GetByIDError(t *testing.T) {
+	repo := &testutil.MockArticleRepository{
+		GetByIDFn: func(_ context.Context, id uint64) (*entity.Article, error) {
+			return nil, apperrors.NewInternal("db", nil)
+		},
+	}
+	svc := newArticleService(repo, nil)
+	err := svc.Update(context.Background(), 1, &dto.UpdateArticleRequest{Title: "T"})
+	require.Error(t, err)
+}
+
+func TestArticleService_Delete_DBError(t *testing.T) {
+	repo := &testutil.MockArticleRepository{
+		GetByIDFn: func(_ context.Context, id uint64) (*entity.Article, error) {
+			return nil, apperrors.NewInternal("db", nil)
+		},
+	}
+	svc := newArticleService(repo, nil)
+	err := svc.Delete(context.Background(), 1)
+	require.Error(t, err)
+}
+
+func TestArticleService_Publish_DBError(t *testing.T) {
+	repo := &testutil.MockArticleRepository{
+		GetByIDFn: func(_ context.Context, id uint64) (*entity.Article, error) {
+			return nil, apperrors.NewInternal("db", nil)
+		},
+	}
+	svc := newArticleService(repo, nil)
+	err := svc.Publish(context.Background(), 1, &dto.PublishArticleRequest{Status: 1})
+	require.Error(t, err)
+}
+
+func TestCourseService_Create_PermFail(t *testing.T) {
+	repo := &testutil.MockCourseRepository{
+		CreateFn: func(_ context.Context, c *entity.Course) error {
+			c.ID = 1
+			return nil
+		},
+	}
+	permRepo := &testutil.MockContentPermissionRepository{
+		SetContentPermsFn: func(_ context.Context, contentType int8, contentID uint64, roleIDs []uint) error {
+			return apperrors.NewInternal("perm db", nil)
+		},
+	}
+	svc := newCourseService(repo, nil, permRepo)
+	// Permission failure should only warn, not fail Create
+	id, err := svc.Create(context.Background(), &dto.CreateCourseRequest{
+		Title: "Test", RolePermissions: []uint{1},
+	}, 1)
+	require.NoError(t, err)
+	assert.Equal(t, uint64(1), id)
+}
+
+func TestCourseService_AdminGetByID_DBError(t *testing.T) {
+	repo := &testutil.MockCourseRepository{
+		GetByIDFn: func(_ context.Context, id uint64) (*entity.Course, error) {
+			return nil, apperrors.NewInternal("db", nil)
+		},
+	}
+	svc := newCourseService(repo, nil, nil)
+	_, err := svc.AdminGetByID(context.Background(), 1)
+	require.Error(t, err)
+}
+
+func TestCourseService_Update_GetByIDError(t *testing.T) {
+	repo := &testutil.MockCourseRepository{
+		GetByIDFn: func(_ context.Context, id uint64) (*entity.Course, error) {
+			return nil, apperrors.NewInternal("db", nil)
+		},
+	}
+	svc := newCourseService(repo, nil, nil)
+	err := svc.Update(context.Background(), 1, &dto.UpdateCourseRequest{Title: "T"})
+	require.Error(t, err)
+}
+
+func TestCourseService_Delete_DBError(t *testing.T) {
+	repo := &testutil.MockCourseRepository{
+		GetByIDFn: func(_ context.Context, id uint64) (*entity.Course, error) {
+			return nil, apperrors.NewInternal("db", nil)
+		},
+	}
+	svc := newCourseService(repo, nil, nil)
+	err := svc.Delete(context.Background(), 1)
+	require.Error(t, err)
+}
+
+func TestCourseService_Publish_DBError(t *testing.T) {
+	repo := &testutil.MockCourseRepository{
+		GetByIDFn: func(_ context.Context, id uint64) (*entity.Course, error) {
+			return nil, apperrors.NewInternal("db", nil)
+		},
+	}
+	svc := newCourseService(repo, nil, nil)
+	err := svc.Publish(context.Background(), 1, &dto.PublishCourseRequest{Status: 1})
+	require.Error(t, err)
+}
+
+func TestCourseService_CreateUnit_Error(t *testing.T) {
+	unitRepo := &testutil.MockCourseUnitRepository{
+		CreateFn: func(_ context.Context, u *entity.CourseUnit) error {
+			return apperrors.NewInternal("db", nil)
+		},
+	}
+	svc := newCourseService(nil, unitRepo, nil)
+	_, err := svc.CreateUnit(context.Background(), 1, &dto.CreateCourseUnitRequest{Title: "T"})
+	require.Error(t, err)
+}
+
+func TestCourseService_DeleteUnit_DBError(t *testing.T) {
+	unitRepo := &testutil.MockCourseUnitRepository{
+		GetByIDFn: func(_ context.Context, id uint64) (*entity.CourseUnit, error) {
+			return nil, apperrors.NewInternal("db", nil)
+		},
+	}
+	svc := newCourseService(nil, unitRepo, nil)
+	err := svc.DeleteUnit(context.Background(), 1, 1)
+	require.Error(t, err)
+}

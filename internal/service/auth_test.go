@@ -1,6 +1,7 @@
 package service
 
 import (
+	"fmt"
 	"context"
 	"errors"
 	"testing"
@@ -314,6 +315,68 @@ func TestAuthService_RefreshToken_DBError(t *testing.T) {
 		},
 	}
 	svc := newAuthService(userRepo, &testutil.MockAdminUserRepository{}, &testutil.MockWechatClient{})
+	_, err := svc.RefreshToken(context.Background(), 1, 1)
+	require.Error(t, err)
+}
+
+// ==================== Token generation failure tests ====================
+
+// failingSignMethod always returns an error during signing.
+type failingSignMethod struct{}
+
+func (f failingSignMethod) Alg() string { return "FAIL" }
+func (f failingSignMethod) Sign(_ string, _ interface{}) ([]byte, error) {
+	return nil, fmt.Errorf("signing failed")
+}
+func (f failingSignMethod) Verify(_ string, _ []byte, _ interface{}) error { return nil }
+
+func failingAuthService(userRepo *testutil.MockUserRepository, adminRepo *testutil.MockAdminUserRepository, wc *testutil.MockWechatClient) *authService {
+	return &authService{
+		userRepo:      userRepo,
+		adminUserRepo: adminRepo,
+		wechatClient:  wc,
+		jwtSecret:     "secret",
+		jwtExpiry:     3600,
+		log:           logrus.New(),
+		signingMethod: failingSignMethod{},
+	}
+}
+
+func TestAuthService_WechatLogin_TokenGenFail(t *testing.T) {
+	existingUser := &entity.User{ID: 1, UserType: 1, Status: 1}
+	userRepo := &testutil.MockUserRepository{
+		GetByOpenIDFn: func(_ context.Context, openID string) (*entity.User, error) {
+			return existingUser, nil
+		},
+	}
+	svc := failingAuthService(userRepo, &testutil.MockAdminUserRepository{}, &testutil.MockWechatClient{
+		Code2SessionFn: func(_ context.Context, code string) (string, error) { return "openid", nil },
+	})
+	_, err := svc.WechatLogin(context.Background(), &dto.WechatLoginRequest{Code: "c"})
+	require.Error(t, err)
+}
+
+func TestAuthService_AdminLogin_TokenGenFail(t *testing.T) {
+	existingAdmin := &entity.AdminUser{UserID: 1, PasswordHash: "$2a$10$wDrqJAkGBLzfDAD5vZ8WheHlStYdYVbxlMkAl6K5RY7KAXEV/1.O6"} // hash of "pass1234"
+	existingUser := &entity.User{ID: 1, UserType: 2, Status: 1}
+	adminRepo := &testutil.MockAdminUserRepository{
+		GetByEmailFn: func(_ context.Context, email string) (*entity.AdminUser, error) { return existingAdmin, nil },
+	}
+	userRepo := &testutil.MockUserRepository{
+		GetByIDFn: func(_ context.Context, id uint64) (*entity.User, error) { return existingUser, nil },
+	}
+	svc := failingAuthService(userRepo, adminRepo, &testutil.MockWechatClient{})
+	_, err := svc.AdminLogin(context.Background(), &dto.AdminLoginRequest{Email: "admin@example.com", Password: "pass1234"})
+	require.Error(t, err)
+}
+
+func TestAuthService_RefreshToken_TokenGenFail(t *testing.T) {
+	userRepo := &testutil.MockUserRepository{
+		GetByIDFn: func(_ context.Context, id uint64) (*entity.User, error) {
+			return &entity.User{ID: 1, UserType: 1}, nil
+		},
+	}
+	svc := failingAuthService(userRepo, &testutil.MockAdminUserRepository{}, &testutil.MockWechatClient{})
 	_, err := svc.RefreshToken(context.Background(), 1, 1)
 	require.Error(t, err)
 }

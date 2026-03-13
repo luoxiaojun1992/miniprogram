@@ -24,6 +24,7 @@ type authService struct {
 	jwtSecret     string
 	jwtExpiry     int
 	log           *logrus.Logger
+	signingMethod jwt.SigningMethod // nil means use jwt.SigningMethodHS256 (default)
 }
 
 // NewAuthService creates a new AuthService.
@@ -148,6 +149,10 @@ func (s *authService) generateToken(userID uint64, userType int8) (string, error
 			Subject:   fmt.Sprintf("%d", userID),
 		},
 	}
-	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
+	method := s.signingMethod
+	if method == nil {
+		method = jwt.SigningMethodHS256
+	}
+	token := jwt.NewWithClaims(method, claims)
 	return token.SignedString([]byte(s.jwtSecret))
 }
