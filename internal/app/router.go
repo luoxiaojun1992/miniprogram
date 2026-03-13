@@ -146,7 +146,7 @@ func InitRouter(p *Provider) *gin.Engine {
 		// Comments
 		admin.GET("/comments", p.CommentCtrl.AdminList)
 		admin.PUT("/comments/:id/audit", p.CommentCtrl.AdminAudit)
-		admin.DELETE("/comments/:id/audit", p.CommentCtrl.AdminDelete)
+		admin.DELETE("/comments/:id", p.CommentCtrl.AdminDelete)
 
 		// System
 		admin.GET("/wechat-config", p.SystemCtrl.GetWechatConfig)
