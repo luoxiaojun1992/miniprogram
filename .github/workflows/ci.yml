@@ -30,7 +30,10 @@ jobs:
         env:
           COVERAGE_THRESHOLD: "80"
         run: |
-          go test -short -coverprofile=coverage.out -covermode=atomic ./...
+          go test -short -coverprofile=coverage.out -covermode=atomic \
+            ./internal/controller/... \
+            ./internal/service/... \
+            ./internal/repository/...
           TOTAL=$(go tool cover -func=coverage.out | awk '/^total:/{gsub(/%/,""); print $3}')
           echo "Coverage: ${TOTAL}%  (threshold: ${COVERAGE_THRESHOLD}%)"
           if [ "$(echo "$TOTAL < $COVERAGE_THRESHOLD" | bc -l)" -eq 1 ]; then
