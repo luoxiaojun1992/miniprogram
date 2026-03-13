@@ -1,0 +1,28 @@
+server:
+  port: 8080
+  mode: debug
+
+database:
+  host: localhost
+  port: 3306
+  user: root
+  password: secret
+  name: miniapp
+
+jwt:
+  secret: your-super-secret-jwt-key-change-in-production
+  expiry: 7200
+
+log:
+  level: debug
+
+wechat:
+  app_id: your-wechat-app-id
+  app_secret: your-wechat-app-secret
+
+upload:
+  dir: storage/uploads
+  base_url: http://localhost:8080/static
+
+debug:
+  enable_test_token: false

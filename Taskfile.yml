@@ -1,0 +1,79 @@
+version: "3"
+
+tasks:
+  dev:
+    desc: Run with hot reload (air)
+    cmds:
+      - air
+
+  build:
+    desc: Build binary
+    cmds:
+      - go build -o bin/server ./cmd/server
+
+  test:
+    desc: Run all tests
+    cmds:
+      - go test ./...
+
+  test-unit:
+    desc: Run unit tests only
+    cmds:
+      - go test -short ./...
+
+  test-coverage:
+    desc: Generate coverage report
+    cmds:
+      - go test -coverprofile=coverage.out ./...
+      - go tool cover -html=coverage.out -o coverage.html
+
+  lint:
+    desc: Run golangci-lint
+    cmds:
+      - golangci-lint run ./...
+
+  lint-fix:
+    desc: Auto-fix lint issues
+    cmds:
+      - gofmt -s -w .
+      - goimports -w .
+
+  format:
+    desc: Format code
+    cmds:
+      - gofmt -s -w .
+
+  mock-generate:
+    desc: Generate mocks
+    cmds:
+      - mockery
+
+  migrate-create:
+    desc: Create migration file
+    cmds:
+      - migrate create -ext sql -dir migrations -seq {{.CLI_ARGS}}
+
+  migrate-local:
+    desc: Run migrations locally
+    cmds:
+      - migrate -path migrations -database "mysql://root:secret@tcp(localhost:3306)/miniapp?multiStatements=true" up
+
+  docker-build:
+    desc: Build Docker image
+    cmds:
+      - docker build -t miniprogram:latest .
+
+  docker-run:
+    desc: Run Docker container
+    cmds:
+      - docker run -p 8080:8080 miniprogram:latest
+
+  docker-compose-up:
+    desc: Start full environment
+    cmds:
+      - docker-compose up -d
+
+  docker-compose-down:
+    desc: Stop environment
+    cmds:
+      - docker-compose down

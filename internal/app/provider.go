@@ -1,0 +1,208 @@
+package app
+
+import (
+	"fmt"
+
+	"github.com/sirupsen/logrus"
+	"gorm.io/driver/mysql"
+	"gorm.io/gorm"
+	gormlogger "gorm.io/gorm/logger"
+
+	"github.com/luoxiaojun1992/miniprogram/internal/controller"
+	"github.com/luoxiaojun1992/miniprogram/internal/pkg/wechat"
+	"github.com/luoxiaojun1992/miniprogram/internal/repository"
+	"github.com/luoxiaojun1992/miniprogram/internal/service"
+)
+
+// Provider holds all initialized components.
+type Provider struct {
+	Config *Config
+	Log    *logrus.Logger
+	DB     *gorm.DB
+
+	// Repositories
+	UserRepo              repository.UserRepository
+	AdminUserRepo         repository.AdminUserRepository
+	UserTagRepo           repository.UserTagRepository
+	RoleRepo              repository.RoleRepository
+	PermissionRepo        repository.PermissionRepository
+	ModuleRepo            repository.ModuleRepository
+	ModulePageRepo        repository.ModulePageRepository
+	ArticleRepo           repository.ArticleRepository
+	CourseRepo            repository.CourseRepository
+	CourseUnitRepo        repository.CourseUnitRepository
+	ContentPermissionRepo repository.ContentPermissionRepository
+	StudyRecordRepo       repository.StudyRecordRepository
+	CollectionRepo        repository.CollectionRepository
+	LikeRepo              repository.LikeRepository
+	CommentRepo           repository.CommentRepository
+	NotificationRepo      repository.NotificationRepository
+	WechatConfigRepo      repository.WechatConfigRepository
+	AuditLogRepo          repository.AuditLogRepository
+	LogConfigRepo         repository.LogConfigRepository
+
+	// Services
+	AuthSvc         service.AuthService
+	UserSvc         service.UserService
+	RoleSvc         service.RoleService
+	PermissionSvc   service.PermissionService
+	ModuleSvc       service.ModuleService
+	ArticleSvc      service.ArticleService
+	CourseSvc       service.CourseService
+	StudyRecordSvc  service.StudyRecordService
+	CollectionSvc   service.CollectionService
+	LikeSvc         service.LikeService
+	CommentSvc      service.CommentService
+	NotificationSvc service.NotificationService
+	WechatConfigSvc service.WechatConfigService
+	AuditLogSvc     service.AuditLogService
+	LogConfigSvc    service.LogConfigService
+
+	// Controllers
+	AuthCtrl         *controller.AuthController
+	UserCtrl         *controller.UserController
+	RoleCtrl         *controller.RoleController
+	PermissionCtrl   *controller.PermissionController
+	ModuleCtrl       *controller.ModuleController
+	ArticleCtrl      *controller.ArticleController
+	CourseCtrl       *controller.CourseController
+	StudyRecordCtrl  *controller.StudyRecordController
+	CollectionCtrl   *controller.CollectionController
+	LikeCtrl         *controller.LikeController
+	CommentCtrl      *controller.CommentController
+	NotificationCtrl *controller.NotificationController
+	SystemCtrl       *controller.SystemController
+	UploadCtrl       *controller.UploadController
+	DebugCtrl        *controller.DebugController
+}
+
+// NewProvider initializes all components in order.
+func NewProvider(cfg *Config) (*Provider, error) {
+	p := &Provider{Config: cfg}
+
+	// 1. Init Logger
+	p.Log = initLogger(cfg.Log.Level)
+
+	// 2. Init Database
+	db, err := initDatabase(cfg.Database)
+	if err != nil {
+		return nil, fmt.Errorf("init database: %w", err)
+	}
+	p.DB = db
+
+	// 3. Init Repositories
+	p.initRepositories()
+
+	// 4. Init Services
+	p.initServices()
+
+	// 5. Init Controllers
+	p.initControllers()
+
+	return p, nil
+}
+
+func initLogger(level string) *logrus.Logger {
+	log := logrus.New()
+	log.SetFormatter(&logrus.JSONFormatter{})
+	lvl, err := logrus.ParseLevel(level)
+	if err != nil {
+		lvl = logrus.InfoLevel
+	}
+	log.SetLevel(lvl)
+	return log
+}
+
+func initDatabase(cfg DatabaseConfig) (*gorm.DB, error) {
+	dsn := fmt.Sprintf(
+		"%s:%s@tcp(%s:%d)/%s?charset=utf8mb4&parseTime=True&loc=Local",
+		cfg.User, cfg.Password, cfg.Host, cfg.Port, cfg.Name,
+	)
+	db, err := gorm.Open(mysql.Open(dsn), &gorm.Config{
+		Logger: gormlogger.Default.LogMode(gormlogger.Warn),
+	})
+	if err != nil {
+		return nil, err
+	}
+	sqlDB, err := db.DB()
+	if err != nil {
+		return nil, err
+	}
+	sqlDB.SetMaxOpenConns(100)
+	sqlDB.SetMaxIdleConns(10)
+	return db, nil
+}
+
+func (p *Provider) initRepositories() {
+	p.UserRepo = repository.NewUserRepository(p.DB)
+	p.AdminUserRepo = repository.NewAdminUserRepository(p.DB)
+	p.UserTagRepo = repository.NewUserTagRepository(p.DB)
+	p.RoleRepo = repository.NewRoleRepository(p.DB)
+	p.PermissionRepo = repository.NewPermissionRepository(p.DB)
+	p.ModuleRepo = repository.NewModuleRepository(p.DB)
+	p.ModulePageRepo = repository.NewModulePageRepository(p.DB)
+	p.ArticleRepo = repository.NewArticleRepository(p.DB)
+	p.CourseRepo = repository.NewCourseRepository(p.DB)
+	p.CourseUnitRepo = repository.NewCourseUnitRepository(p.DB)
+	p.ContentPermissionRepo = repository.NewContentPermissionRepository(p.DB)
+	p.StudyRecordRepo = repository.NewStudyRecordRepository(p.DB)
+	p.CollectionRepo = repository.NewCollectionRepository(p.DB)
+	p.LikeRepo = repository.NewLikeRepository(p.DB)
+	p.CommentRepo = repository.NewCommentRepository(p.DB)
+	p.NotificationRepo = repository.NewNotificationRepository(p.DB)
+	p.WechatConfigRepo = repository.NewWechatConfigRepository(p.DB)
+	p.AuditLogRepo = repository.NewAuditLogRepository(p.DB)
+	p.LogConfigRepo = repository.NewLogConfigRepository(p.DB)
+}
+
+func (p *Provider) initServices() {
+	wechatClient := wechat.NewClient(p.Config.Wechat.AppID, p.Config.Wechat.AppSecret)
+
+	p.AuthSvc = service.NewAuthService(
+		p.UserRepo, p.AdminUserRepo, wechatClient,
+		p.Config.JWT.Secret, p.Config.JWT.Expiry, p.Log,
+	)
+	p.UserSvc = service.NewUserService(
+		p.UserRepo, p.AdminUserRepo, p.UserTagRepo,
+		p.RoleRepo, p.PermissionRepo, p.Log,
+	)
+	p.RoleSvc = service.NewRoleService(p.RoleRepo, p.Log)
+	p.PermissionSvc = service.NewPermissionService(p.PermissionRepo, p.Log)
+	p.ModuleSvc = service.NewModuleService(p.ModuleRepo, p.ModulePageRepo, p.Log)
+	p.ArticleSvc = service.NewArticleService(
+		p.ArticleRepo, p.ContentPermissionRepo, p.Log,
+	)
+	p.CourseSvc = service.NewCourseService(
+		p.CourseRepo, p.CourseUnitRepo, p.ContentPermissionRepo, p.Log,
+	)
+	p.StudyRecordSvc = service.NewStudyRecordService(p.StudyRecordRepo, p.CourseUnitRepo, p.Log)
+	p.CollectionSvc = service.NewCollectionService(p.CollectionRepo, p.Log)
+	p.LikeSvc = service.NewLikeService(p.LikeRepo, p.ArticleRepo, p.CourseRepo, p.Log)
+	p.CommentSvc = service.NewCommentService(p.CommentRepo, p.Log)
+	p.NotificationSvc = service.NewNotificationService(p.NotificationRepo, p.Log)
+	p.WechatConfigSvc = service.NewWechatConfigService(p.WechatConfigRepo, p.Log)
+	p.AuditLogSvc = service.NewAuditLogService(p.AuditLogRepo, p.Log)
+	p.LogConfigSvc = service.NewLogConfigService(p.LogConfigRepo, p.Log)
+}
+
+func (p *Provider) initControllers() {
+	p.AuthCtrl = controller.NewAuthController(p.AuthSvc, p.Log)
+	p.UserCtrl = controller.NewUserController(p.UserSvc, p.Log)
+	p.RoleCtrl = controller.NewRoleController(p.RoleSvc, p.Log)
+	p.PermissionCtrl = controller.NewPermissionController(p.PermissionSvc, p.Log)
+	p.ModuleCtrl = controller.NewModuleController(p.ModuleSvc, p.Log)
+	p.ArticleCtrl = controller.NewArticleController(p.ArticleSvc, p.Log)
+	p.CourseCtrl = controller.NewCourseController(p.CourseSvc, p.Log)
+	p.StudyRecordCtrl = controller.NewStudyRecordController(p.StudyRecordSvc, p.Log)
+	p.CollectionCtrl = controller.NewCollectionController(p.CollectionSvc, p.Log)
+	p.LikeCtrl = controller.NewLikeController(p.LikeSvc, p.Log)
+	p.CommentCtrl = controller.NewCommentController(p.CommentSvc, p.Log)
+	p.NotificationCtrl = controller.NewNotificationController(p.NotificationSvc, p.Log)
+	p.SystemCtrl = controller.NewSystemController(p.WechatConfigSvc, p.AuditLogSvc, p.LogConfigSvc, p.Log)
+	p.UploadCtrl = controller.NewUploadController(
+		p.Config.Upload.Dir, p.Config.Upload.BaseURL, p.Log,
+	)
+	p.DebugCtrl = controller.NewDebugController(
+		p.UserRepo, p.Config.JWT.Secret, p.Config.JWT.Expiry, p.Log,
+	)
+}
