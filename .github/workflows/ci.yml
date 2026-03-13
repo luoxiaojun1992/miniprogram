@@ -41,3 +41,24 @@ jobs:
             exit 1
           fi
           echo "PASS: coverage ${TOTAL}% meets the threshold of ${COVERAGE_THRESHOLD}%"
+
+  api-test:
+    name: API Tests (k6)
+    runs-on: ubuntu-latest
+    needs: test
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Run k6 API test suite via Docker Compose
+        run: |
+          docker compose -f docker-compose.api-test.yml up \
+            --exit-code-from k6 \
+            --abort-on-container-exit
+
+      - name: Tear down Docker Compose
+        if: always()
+        run: docker compose -f docker-compose.api-test.yml down -v --remove-orphans
