@@ -51,7 +51,7 @@ test.describe('Admin Portal', () => {
       await page.goto(`${UI_BASE_URL}/admin/index.html`);
       await page.getByRole('button', { name: /登.*录/ }).click();
       // Should show validation error – either an error-text element or the inputs remain visible
-      await expect(page.locator('.login-card, .login-wrapper')).toBeVisible();
+      await expect(page.locator('.login-card')).toBeVisible();
     });
 
     test('login with valid credentials and navigate dashboard', async ({ page }) => {
@@ -63,7 +63,7 @@ test.describe('Admin Portal', () => {
       await page.getByRole('button', { name: /登.*录/ }).click();
 
       // Should land on dashboard
-      await expect(page.locator('.sidebar, nav')).toBeVisible({ timeout: 15000 });
+      await expect(page.locator('.sidebar').first()).toBeVisible({ timeout: 15000 });
       await expect(page.locator('h3, .page-title, header').first()).toContainText(/仪表盘|Dashboard/i);
     });
   });
@@ -129,32 +129,44 @@ test.describe('Admin Portal', () => {
     });
 
     test('navigate to comment management', async ({ page }) => {
-      await page.getByText('评论管理').click();
+      // Expand 互动管理 section (collapsed by default)
+      await page.locator('.sidebar-menu .menu-item').filter({ hasText: '互动管理' }).click();
+      await page.locator('.submenu .menu-item').filter({ hasText: '评论管理' }).click();
       await expect(page.locator('h3, .page-title').first()).toContainText(/评论管理|评论/);
     });
 
     test('navigate to role management', async ({ page }) => {
-      await page.getByText('角色管理').click();
+      // Expand 权限管理 section (collapsed by default)
+      await page.locator('.sidebar-menu .menu-item').filter({ hasText: '权限管理' }).click();
+      await page.locator('.submenu .menu-item').filter({ hasText: '角色管理' }).click();
       await expect(page.locator('h3, .page-title').first()).toContainText(/角色管理/);
     });
 
     test('navigate to permission tree', async ({ page }) => {
-      await page.getByText('权限列表').click();
+      // Expand 权限管理 section (collapsed by default)
+      await page.locator('.sidebar-menu .menu-item').filter({ hasText: '权限管理' }).click();
+      await page.locator('.submenu .menu-item').filter({ hasText: '权限列表' }).click();
       await expect(page.locator('h3, .page-title').first()).toContainText(/权限/);
     });
 
     test('navigate to wechat config', async ({ page }) => {
-      await page.getByText('微信配置').click();
+      // Expand 系统管理 section (collapsed by default)
+      await page.locator('.sidebar-menu .menu-item').filter({ hasText: '系统管理' }).click();
+      await page.locator('.submenu .menu-item').filter({ hasText: '微信配置' }).click();
       await expect(page.locator('h3, .page-title').first()).toContainText(/微信配置/);
     });
 
     test('navigate to log config', async ({ page }) => {
-      await page.getByText('日志配置').click();
+      // Expand 系统管理 section (collapsed by default)
+      await page.locator('.sidebar-menu .menu-item').filter({ hasText: '系统管理' }).click();
+      await page.locator('.submenu .menu-item').filter({ hasText: '日志配置' }).click();
       await expect(page.locator('h3, .page-title').first()).toContainText(/日志配置/);
     });
 
     test('navigate to audit logs', async ({ page }) => {
-      await page.getByText('审计日志').click();
+      // Expand 系统管理 section (collapsed by default)
+      await page.locator('.sidebar-menu .menu-item').filter({ hasText: '系统管理' }).click();
+      await page.locator('.submenu .menu-item').filter({ hasText: '审计日志' }).click();
       await expect(page.locator('h3, .page-title').first()).toContainText(/审计日志/);
     });
 
@@ -175,7 +187,7 @@ test.describe('Miniprogram Simulator', () => {
 
     test('shows login interface on first visit', async ({ page }) => {
       await page.goto(`${UI_BASE_URL}/miniprogram/index.html`);
-      await expect(page.getByText('小程序模拟器')).toBeVisible();
+      await expect(page.getByText('小程序模拟器').first()).toBeVisible();
       await expect(page.getByRole('button', { name: /微信模拟登录/ })).toBeVisible();
       await expect(page.getByText('调试 Token')).toBeVisible();
     });
@@ -214,18 +226,18 @@ test.describe('Miniprogram Simulator', () => {
 
     test('tab navigation to articles', async ({ page }) => {
       // Click the articles tab
-      await page.locator('.tab-item, [class*="tab"]').filter({ hasText: '文章' }).click();
+      await page.locator('.tab-item').filter({ hasText: '文章' }).click();
       await expect(page.getByText('文章').first()).toBeVisible();
       await expect(page.locator('input[placeholder*="搜索"]')).toBeVisible();
     });
 
     test('tab navigation to courses', async ({ page }) => {
-      await page.locator('.tab-item, [class*="tab"]').filter({ hasText: '课程' }).click();
+      await page.locator('.tab-item').filter({ hasText: '课程' }).click();
       await expect(page.getByText('课程').first()).toBeVisible();
     });
 
     test('tab navigation to profile', async ({ page }) => {
-      await page.locator('.tab-item, [class*="tab"]').filter({ hasText: '我的' }).click();
+      await page.locator('.tab-item').filter({ hasText: '我的' }).click();
       await expect(page.getByText('我的收藏')).toBeVisible();
       await expect(page.getByText('学习记录')).toBeVisible();
       await expect(page.getByText('我的通知')).toBeVisible();
@@ -233,9 +245,9 @@ test.describe('Miniprogram Simulator', () => {
     });
 
     test('logout returns to login page', async ({ page }) => {
-      await page.locator('.tab-item, [class*="tab"]').filter({ hasText: '我的' }).click();
+      await page.locator('.tab-item').filter({ hasText: '我的' }).click();
       await page.getByRole('button', { name: /退出登录/ }).click();
-      await expect(page.getByText('小程序模拟器')).toBeVisible();
+      await expect(page.getByText('小程序模拟器').first()).toBeVisible();
       await expect(page.getByRole('button', { name: /微信模拟登录/ })).toBeVisible();
     });
   });

@@ -103,7 +103,7 @@ services:
     environment:
       APP_BASE_URL: "http://app:8080"
       UI_BASE_URL: "http://ui:80"
-      PLAYWRIGHT_HTML_REPORT: /work/test-results/playwright-report
+      PLAYWRIGHT_HTML_REPORT: /work/html-report
     depends_on:
       ui:
         condition: service_healthy

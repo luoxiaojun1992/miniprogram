@@ -18,7 +18,7 @@ module.exports = defineConfig({
   workers: 1,
   reporter: [
     ['list'],
-    ['html', { open: 'never', outputFolder: 'playwright-report' }],
+    ['html', { open: 'never', outputFolder: 'html-report' }],
   ],
   use: {
     baseURL: process.env.UI_BASE_URL || 'http://localhost:8081',
