@@ -227,7 +227,8 @@ test.describe('Miniprogram Simulator', () => {
     test('tab navigation to articles', async ({ page }) => {
       // Click the articles tab
       await page.locator('.tab-item').filter({ hasText: '文章' }).click();
-      await expect(page.locator('.page-title').first()).toContainText('文章');
+      // v-show keeps all tab DOMs alive; target the visible articles page title
+      await expect(page.locator('.page-title').filter({ hasText: '文章' })).toBeVisible();
       await expect(page.locator('input[placeholder*="搜索"]')).toBeVisible();
     });
 
