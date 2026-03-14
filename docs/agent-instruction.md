@@ -33,10 +33,10 @@ project/
 │       ├── errors/             # 统一错误处理（新增）
 │       └── response/           # 响应封装
 ├── api/
-│   ├── docs/swagger.yaml       # OpenAPI 2.0 规范（唯一真相源）
+│   ├── api/docs/swagger.yaml   # OpenAPI 2.0 规范（唯一真相源）
 │   └── gen/                    # OpenAPI 生成的代码文件
 ├── docs/
-│   └── agent-instruction.md    # 本文件
+│   └── docs/agent-instruction.md # 本文件
 ├── migrations/                 # SQL 迁移文件（直接放这里）
 │   ├── 000001_init_schema.up.sql
 │   ├── 000001_init_schema.down.sql
