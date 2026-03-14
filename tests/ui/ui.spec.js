@@ -227,7 +227,7 @@ test.describe('Miniprogram Simulator', () => {
     test('tab navigation to articles', async ({ page }) => {
       // Click the articles tab
       await page.locator('.tab-item').filter({ hasText: '文章' }).click();
-      await expect(page.getByText('文章').first()).toBeVisible();
+      await expect(page.locator('.page-title').first()).toContainText('文章');
       await expect(page.locator('input[placeholder*="搜索"]')).toBeVisible();
     });
 

@@ -98,7 +98,7 @@ services:
       bash -c "
         npm ci --ignore-scripts &&
         npx playwright install chromium --with-deps &&
-        npx playwright test --reporter=list,html
+        npx playwright test
       "
     environment:
       APP_BASE_URL: "http://app:8080"
