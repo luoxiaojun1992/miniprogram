@@ -229,7 +229,7 @@ test.describe('Miniprogram Simulator', () => {
       await page.locator('.tab-item').filter({ hasText: '文章' }).click();
       // v-show keeps all tab DOMs alive; target the visible articles page title
       await expect(page.locator('.page-title').filter({ hasText: '文章' })).toBeVisible();
-      await expect(page.locator('input[placeholder*="搜索"]')).toBeVisible();
+      await expect(page.locator('input[placeholder*="搜索文章"]')).toBeVisible();
     });
 
     test('tab navigation to courses', async ({ page }) => {
