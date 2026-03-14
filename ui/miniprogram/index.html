@@ -632,6 +632,14 @@ body {
    ═══════════════════════════════════════════════════════════ */
 const DEFAULT_API_BASE = 'http://localhost:8080/v1';
 const PAGE_SIZE = 20;
+const DEFAULT_TOAST_DURATION = 2000;
+const TOKEN_REFRESH_BUFFER_MS = 5 * 60 * 1000;
+const SCROLL_LOAD_THRESHOLD = 100;
+const MAX_BADGE_COUNT = 99;
+const SECONDS_PER_MINUTE = 60;
+const SECONDS_PER_HOUR = 3600;
+const SECONDS_PER_DAY = 86400;
+const SECONDS_PER_MONTH = 2592000;
 
 const state = {
   apiBase: localStorage.getItem('api_base') || DEFAULT_API_BASE,
@@ -662,10 +670,10 @@ function formatTime(t) {
   const d = new Date(t);
   const now = new Date();
   const diff = (now - d) / 1000;
-  if (diff < 60) return '刚刚';
-  if (diff < 3600) return Math.floor(diff / 60) + '分钟前';
-  if (diff < 86400) return Math.floor(diff / 3600) + '小时前';
-  if (diff < 2592000) return Math.floor(diff / 86400) + '天前';
+  if (diff < SECONDS_PER_MINUTE) return '刚刚';
+  if (diff < SECONDS_PER_HOUR) return Math.floor(diff / SECONDS_PER_MINUTE) + '分钟前';
+  if (diff < SECONDS_PER_DAY) return Math.floor(diff / SECONDS_PER_HOUR) + '小时前';
+  if (diff < SECONDS_PER_MONTH) return Math.floor(diff / SECONDS_PER_DAY) + '天前';
   return d.toLocaleDateString('zh-CN');
 }
 
@@ -695,7 +703,7 @@ setInterval(updateClock, 30000);
 // Toast
 let toastTimer = null;
 function showToast(msg, duration) {
-  duration = duration || 2000;
+  duration = duration || DEFAULT_TOAST_DURATION;
   const el = $('#toast');
   el.textContent = msg;
   el.classList.add('show');
@@ -830,7 +838,7 @@ function scheduleTokenRefresh() {
   try {
     const payload = JSON.parse(atob(state.token.split('.')[1]));
     const exp = payload.exp * 1000;
-    const refreshAt = exp - 5 * 60 * 1000;
+    const refreshAt = exp - TOKEN_REFRESH_BUFFER_MS;
     const delay = refreshAt - Date.now();
     if (delay > 0) {
       setTimeout(async () => {
@@ -1026,7 +1034,7 @@ $('#articlesLoadBtn').addEventListener('click', () => loadArticles(false));
 $('#articlesBody').addEventListener('scroll', function () {
   if (!state.articlesHasNext) return;
   const el = this;
-  if (el.scrollTop + el.clientHeight >= el.scrollHeight - 100) {
+  if (el.scrollTop + el.clientHeight >= el.scrollHeight - SCROLL_LOAD_THRESHOLD) {
     loadArticles(false);
   }
 });
@@ -1109,7 +1117,7 @@ $('#coursesLoadBtn').addEventListener('click', () => loadCourses(false));
 $('#coursesBody').addEventListener('scroll', function () {
   if (!state.coursesHasNext) return;
   const el = this;
-  if (el.scrollTop + el.clientHeight >= el.scrollHeight - 100) {
+  if (el.scrollTop + el.clientHeight >= el.scrollHeight - SCROLL_LOAD_THRESHOLD) {
     loadCourses(false);
   }
 });
@@ -1379,7 +1387,7 @@ async function loadProfile() {
     const unread = notifications.filter(n => n.is_read === 0).length;
     const pagination = data && data.pagination;
     // Use total as approximation if available
-    state.unreadCount = pagination ? Math.min(pagination.total, 99) : unread;
+    state.unreadCount = pagination ? Math.min(pagination.total, MAX_BADGE_COUNT) : unread;
     updateNotifBadge();
   } catch (_) { /* ignore */ }
 }
@@ -1389,9 +1397,9 @@ function updateNotifBadge() {
   const badge = $('#notifBadge');
   const tabBadge = $('#tabNotifBadge');
   if (count > 0) {
-    badge.textContent = count > 99 ? '99+' : count;
+    badge.textContent = count > MAX_BADGE_COUNT ? MAX_BADGE_COUNT + '+' : count;
     badge.style.display = 'flex';
-    tabBadge.textContent = count > 99 ? '99+' : count;
+    tabBadge.textContent = count > MAX_BADGE_COUNT ? MAX_BADGE_COUNT + '+' : count;
     tabBadge.style.display = 'flex';
   } else {
     badge.style.display = 'none';
