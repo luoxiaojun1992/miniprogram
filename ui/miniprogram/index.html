@@ -115,7 +115,7 @@ body { background: #1a1a2e; display: flex; justify-content: center; align-items:
 .comment-avatar { width: 32px; height: 32px; border-radius: 50%; background: var(--primary-light); flex-shrink: 0; display: flex; align-items: center; justify-content: center; font-size: 14px; }
 .comment-body { flex: 1; min-width: 0; }
 .comment-user { font-size: var(--font-sm); font-weight: 600; color: var(--text-primary); }
-.comment-text { font-size: var(--font-md); color: var(--text-primary); margin-top: 4px; word-break: break-all; }
+.comment-text { font-size: var(--font-md); color: var(--text-primary); margin-top: 4px; overflow-wrap: break-word; }
 .comment-time { font-size: var(--font-xs); color: var(--text-hint); margin-top: 4px; }
 .comment-input { display: flex; gap: 8px; padding: 8px 12px; background: var(--card-bg); border-top: 1px solid var(--border); flex-shrink: 0; }
 .comment-input textarea { flex: 1; border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 8px; font-size: var(--font-md); resize: none; outline: none; font-family: inherit; min-height: 36px; max-height: 80px; }
@@ -519,6 +519,7 @@ body { background: #1a1a2e; display: flex; justify-content: center; align-items:
 const { createApp, ref, reactive, computed, watch, onMounted, nextTick } = Vue;
 
 const store = reactive({
+  // Default API base URL uses HTTP for local development only
   apiBase: localStorage.getItem('mp_api_base') || 'http://localhost:8080/v1',
   token: localStorage.getItem('mp_token') || '',
   user: JSON.parse(localStorage.getItem('mp_user') || '{}'),
@@ -613,6 +614,7 @@ app.component('login-page', {
 
     async function wechatLogin() {
       loading.value = true;
+      // Simulated login for development only; production requires real WeChat OAuth flow
       var data = await apiPost('/auth/wechat-login', { code: 'simulator_' + Date.now() });
       loading.value = false;
       if (data && data.access_token) {
