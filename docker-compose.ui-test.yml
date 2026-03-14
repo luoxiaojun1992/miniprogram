@@ -1,0 +1,115 @@
+# Docker Compose for running Playwright UI automation tests.
+#
+# Usage:
+#   docker compose -f docker-compose.ui-test.yml up \
+#       --exit-code-from playwright --abort-on-container-exit
+#
+# Screenshots and test results are written to ./tests/ui/test-results.
+# The Playwright container exits with code 0 on success, non-zero on failure.
+# MySQL data is ephemeral (no named volume) so the schema is always fresh.
+
+version: "3.8"
+
+services:
+
+  # ---------------------------------------------------------------------------
+  # MySQL – schema is initialised from migration SQL + test seed data.
+  # No persistent volume: each run starts with a clean database.
+  # ---------------------------------------------------------------------------
+  mysql:
+    image: mysql:8.0
+    environment:
+      MYSQL_ROOT_PASSWORD: secret
+      MYSQL_DATABASE: miniapp
+    volumes:
+      - ./migrations/000001_init_schema.up.sql:/docker-entrypoint-initdb.d/01_schema.sql:ro
+      - ./tests/api/seed.sql:/docker-entrypoint-initdb.d/02_seed.sql:ro
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "127.0.0.1", "-u", "root", "-psecret"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    networks:
+      - ui-test-network
+
+  # ---------------------------------------------------------------------------
+  # Backend application
+  # ---------------------------------------------------------------------------
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    environment:
+      APP_SERVER_PORT: 8080
+      APP_SERVER_MODE: debug
+      APP_DATABASE_HOST: mysql
+      APP_DATABASE_PORT: 3306
+      APP_DATABASE_USER: root
+      APP_DATABASE_PASSWORD: secret
+      APP_DATABASE_NAME: miniapp
+      APP_JWT_SECRET: test-jwt-secret-for-ui-tests
+      APP_JWT_EXPIRY: 7200
+      APP_LOG_LEVEL: debug
+      APP_WECHAT_APP_ID: test-wechat-app-id
+      APP_WECHAT_APP_SECRET: test-wechat-app-secret
+      APP_UPLOAD_DIR: storage/uploads
+      APP_UPLOAD_BASE_URL: http://localhost:8080/static
+      APP_DEBUG_ENABLE_TEST_TOKEN: "true"
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:8080/health"]
+      interval: 5s
+      timeout: 3s
+      start_period: 10s
+      retries: 12
+    depends_on:
+      mysql:
+        condition: service_healthy
+    networks:
+      - ui-test-network
+
+  # ---------------------------------------------------------------------------
+  # UI – serves the static HTML/JS/CSS via nginx.
+  # ---------------------------------------------------------------------------
+  ui:
+    build:
+      context: .
+      dockerfile: Dockerfile.ui
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:80/admin/index.html"]
+      interval: 3s
+      timeout: 2s
+      retries: 10
+    depends_on:
+      app:
+        condition: service_healthy
+    networks:
+      - ui-test-network
+
+  # ---------------------------------------------------------------------------
+  # Playwright – runs the UI test suite and exits with its result code.
+  # Screenshots and reports are persisted to ./tests/ui/test-results.
+  # ---------------------------------------------------------------------------
+  playwright:
+    image: mcr.microsoft.com/playwright:v1.52.0-noble
+    working_dir: /work
+    volumes:
+      - ./tests/ui:/work
+    command: >
+      bash -c "
+        npm ci --ignore-scripts &&
+        npx playwright install chromium --with-deps &&
+        npx playwright test --reporter=list,html
+      "
+    environment:
+      APP_BASE_URL: "http://app:8080"
+      UI_BASE_URL: "http://ui:80"
+      PLAYWRIGHT_HTML_REPORT: /work/test-results/playwright-report
+    depends_on:
+      ui:
+        condition: service_healthy
+    networks:
+      - ui-test-network
+
+networks:
+  ui-test-network:
+    driver: bridge
