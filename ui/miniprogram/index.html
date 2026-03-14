@@ -1,0 +1,998 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>小程序模拟器</title>
+<script src="../lib/vue.global.prod.js"></script>
+<style>
+:root {
+  --primary: #07C160;
+  --primary-light: #e6f7ee;
+  --primary-dark: #06ad56;
+  --bg: #f5f5f5;
+  --card-bg: #ffffff;
+  --text-primary: #333333;
+  --text-secondary: #999999;
+  --text-hint: #cccccc;
+  --border: #e5e5e5;
+  --danger: #fa5151;
+  --warning: #ff9800;
+  --overlay-bg: rgba(0,0,0,0.5);
+  --tab-height: 50px;
+  --status-bar-height: 44px;
+  --notch-height: 30px;
+  --radius: 12px;
+  --radius-sm: 8px;
+  --shadow: 0 2px 12px rgba(0,0,0,0.08);
+  --shadow-lg: 0 4px 24px rgba(0,0,0,0.12);
+  --font-xs: 10px;
+  --font-sm: 12px;
+  --font-md: 14px;
+  --font-lg: 16px;
+  --font-xl: 18px;
+  --font-xxl: 22px;
+}
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { background: #1a1a2e; display: flex; justify-content: center; align-items: center; min-height: 100vh; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif; }
+.phone-frame { width: 375px; height: 667px; background: #000; border-radius: 40px; padding: 12px; position: relative; box-shadow: 0 0 0 3px #333, var(--shadow-lg); }
+.phone-notch { position: absolute; top: 12px; left: 50%; transform: translateX(-50%); width: 150px; height: var(--notch-height); background: #000; border-radius: 0 0 18px 18px; z-index: 100; display: flex; align-items: center; justify-content: center; }
+.phone-notch::after { content: ''; width: 60px; height: 6px; background: #1a1a1a; border-radius: 3px; margin-top: 4px; }
+.phone-screen { width: 100%; height: 100%; background: var(--bg); border-radius: 28px; overflow: hidden; position: relative; display: flex; flex-direction: column; }
+.status-bar { height: var(--status-bar-height); background: var(--card-bg); display: flex; align-items: flex-end; justify-content: center; padding-bottom: 4px; font-size: var(--font-xs); color: var(--text-primary); font-weight: 600; flex-shrink: 0; z-index: 50; }
+.page-container { flex: 1; overflow-y: auto; overflow-x: hidden; -webkit-overflow-scrolling: touch; }
+.page-container::-webkit-scrollbar { display: none; }
+.tab-bar { height: var(--tab-height); background: var(--card-bg); display: flex; border-top: 1px solid var(--border); flex-shrink: 0; z-index: 50; }
+.tab-item { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; font-size: var(--font-xs); color: var(--text-secondary); cursor: pointer; transition: color .2s; position: relative; -webkit-tap-highlight-color: transparent; }
+.tab-item.active { color: var(--primary); }
+.tab-item.active .tab-icon { transform: scale(1.1); }
+.tab-icon { font-size: 22px; transition: transform .2s; line-height: 1; }
+.tab-badge { position: absolute; top: 2px; right: 50%; transform: translateX(18px); background: var(--danger); color: #fff; font-size: 9px; min-width: 16px; height: 16px; border-radius: 8px; display: flex; align-items: center; justify-content: center; padding: 0 4px; }
+.page-title { font-size: var(--font-xl); font-weight: 700; padding: 16px 16px 8px; color: var(--text-primary); }
+.section-title { font-size: var(--font-lg); font-weight: 600; padding: 16px 16px 8px; color: var(--text-primary); }
+.card { background: var(--card-bg); border-radius: var(--radius-sm); margin: 8px 12px; padding: 12px; box-shadow: var(--shadow); }
+.card-row { display: flex; gap: 12px; align-items: center; }
+.card-cover { width: 80px; height: 60px; border-radius: 6px; object-fit: cover; background: var(--border); flex-shrink: 0; }
+.card-cover-lg { width: 100%; height: 160px; border-radius: var(--radius-sm); object-fit: cover; background: var(--border); }
+.card-title { font-size: var(--font-md); font-weight: 600; color: var(--text-primary); display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.card-desc { font-size: var(--font-sm); color: var(--text-secondary); margin-top: 4px; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.card-meta { display: flex; gap: 12px; margin-top: 6px; font-size: var(--font-xs); color: var(--text-hint); }
+.card-meta span { display: flex; align-items: center; gap: 2px; }
+.btn { display: inline-flex; align-items: center; justify-content: center; padding: 8px 20px; border-radius: 20px; font-size: var(--font-md); cursor: pointer; border: none; transition: all .2s; -webkit-tap-highlight-color: transparent; }
+.btn-primary { background: var(--primary); color: #fff; }
+.btn-primary:active { background: var(--primary-dark); }
+.btn-outline { background: transparent; color: var(--primary); border: 1px solid var(--primary); }
+.btn-outline:active { background: var(--primary-light); }
+.btn-danger { background: var(--danger); color: #fff; }
+.btn-danger:active { opacity: .8; }
+.btn-block { width: 100%; }
+.btn-sm { padding: 4px 12px; font-size: var(--font-sm); }
+.btn:disabled { opacity: .5; cursor: not-allowed; }
+.input-group { margin: 12px 16px; }
+.input-group label { display: block; font-size: var(--font-sm); color: var(--text-secondary); margin-bottom: 6px; }
+.input { width: 100%; padding: 10px 12px; border: 1px solid var(--border); border-radius: var(--radius-sm); font-size: var(--font-md); outline: none; transition: border-color .2s; background: var(--card-bg); }
+.input:focus { border-color: var(--primary); }
+.search-bar { display: flex; align-items: center; margin: 8px 12px; background: var(--card-bg); border-radius: 20px; padding: 0 12px; gap: 8px; box-shadow: var(--shadow); }
+.search-bar input { flex: 1; border: none; outline: none; padding: 10px 0; font-size: var(--font-md); background: transparent; }
+.search-bar .search-icon { color: var(--text-hint); font-size: 16px; }
+.filter-bar { display: flex; gap: 8px; padding: 0 12px 8px; overflow-x: auto; -webkit-overflow-scrolling: touch; }
+.filter-bar::-webkit-scrollbar { display: none; }
+.filter-chip { padding: 4px 14px; border-radius: 16px; font-size: var(--font-sm); background: var(--card-bg); color: var(--text-secondary); cursor: pointer; white-space: nowrap; border: 1px solid var(--border); transition: all .2s; flex-shrink: 0; }
+.filter-chip.active { background: var(--primary); color: #fff; border-color: var(--primary); }
+.detail-overlay { position: absolute; top: 0; left: 0; right: 0; bottom: 0; background: var(--bg); z-index: 80; display: flex; flex-direction: column; }
+.detail-header { height: var(--status-bar-height); display: flex; align-items: center; padding: 0 12px; background: var(--card-bg); border-bottom: 1px solid var(--border); flex-shrink: 0; z-index: 81; }
+.detail-header .back-btn { cursor: pointer; font-size: 20px; padding: 4px 8px; color: var(--text-primary); -webkit-tap-highlight-color: transparent; }
+.detail-header .detail-title { flex: 1; text-align: center; font-size: var(--font-lg); font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; margin-right: 36px; }
+.detail-body { flex: 1; overflow-y: auto; -webkit-overflow-scrolling: touch; }
+.detail-body::-webkit-scrollbar { display: none; }
+.detail-actions { display: flex; align-items: center; justify-content: space-around; padding: 8px 0; background: var(--card-bg); border-top: 1px solid var(--border); flex-shrink: 0; }
+.action-btn { display: flex; flex-direction: column; align-items: center; gap: 2px; font-size: var(--font-xs); color: var(--text-secondary); cursor: pointer; padding: 4px 12px; -webkit-tap-highlight-color: transparent; }
+.action-btn .action-icon { font-size: 20px; }
+.action-btn.active { color: var(--primary); }
+.action-btn.liked { color: var(--danger); }
+.toast { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: rgba(0,0,0,0.75); color: #fff; padding: 12px 24px; border-radius: var(--radius-sm); font-size: var(--font-md); z-index: 999; pointer-events: none; max-width: 260px; text-align: center; }
+.loading { display: flex; justify-content: center; padding: 20px; }
+.spinner { width: 24px; height: 24px; border: 2px solid var(--border); border-top-color: var(--primary); border-radius: 50%; animation: spin .6s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+.empty { text-align: center; padding: 40px 20px; color: var(--text-hint); font-size: var(--font-md); }
+.empty .empty-icon { font-size: 48px; margin-bottom: 12px; }
+.load-more { text-align: center; padding: 12px; }
+.load-more .btn { min-width: 140px; }
+.profile-header { background: linear-gradient(135deg, var(--primary), var(--primary-dark)); padding: 32px 20px 20px; color: #fff; text-align: center; }
+.profile-avatar { width: 64px; height: 64px; border-radius: 50%; background: rgba(255,255,255,0.3); margin: 0 auto 8px; display: flex; align-items: center; justify-content: center; font-size: 32px; overflow: hidden; }
+.profile-avatar img { width: 100%; height: 100%; object-fit: cover; }
+.profile-name { font-size: var(--font-lg); font-weight: 600; }
+.profile-menu { margin: 12px; }
+.profile-menu-item { display: flex; align-items: center; padding: 14px 16px; background: var(--card-bg); border-bottom: 1px solid var(--border); cursor: pointer; -webkit-tap-highlight-color: transparent; }
+.profile-menu-item:first-child { border-radius: var(--radius-sm) var(--radius-sm) 0 0; }
+.profile-menu-item:last-child { border-radius: 0 0 var(--radius-sm) var(--radius-sm); border-bottom: none; }
+.profile-menu-item .menu-icon { font-size: 20px; margin-right: 12px; }
+.profile-menu-item .menu-label { flex: 1; font-size: var(--font-md); color: var(--text-primary); }
+.profile-menu-item .menu-arrow { color: var(--text-hint); font-size: 14px; }
+.profile-menu-item .menu-badge { background: var(--danger); color: #fff; font-size: var(--font-xs); min-width: 18px; height: 18px; border-radius: 9px; display: flex; align-items: center; justify-content: center; padding: 0 5px; margin-right: 8px; }
+.comment-section { padding: 12px; }
+.comment-item { display: flex; gap: 10px; padding: 10px 0; border-bottom: 1px solid var(--border); }
+.comment-avatar { width: 32px; height: 32px; border-radius: 50%; background: var(--primary-light); flex-shrink: 0; display: flex; align-items: center; justify-content: center; font-size: 14px; }
+.comment-body { flex: 1; min-width: 0; }
+.comment-user { font-size: var(--font-sm); font-weight: 600; color: var(--text-primary); }
+.comment-text { font-size: var(--font-md); color: var(--text-primary); margin-top: 4px; overflow-wrap: break-word; }
+.comment-time { font-size: var(--font-xs); color: var(--text-hint); margin-top: 4px; }
+.comment-input { display: flex; gap: 8px; padding: 8px 12px; background: var(--card-bg); border-top: 1px solid var(--border); flex-shrink: 0; }
+.comment-input textarea { flex: 1; border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 8px; font-size: var(--font-md); resize: none; outline: none; font-family: inherit; min-height: 36px; max-height: 80px; }
+.comment-input textarea:focus { border-color: var(--primary); }
+.login-page { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; padding: 20px; background: var(--card-bg); }
+.login-logo { font-size: 64px; margin-bottom: 8px; }
+.login-title { font-size: var(--font-xxl); font-weight: 700; color: var(--text-primary); margin-bottom: 4px; }
+.login-subtitle { font-size: var(--font-sm); color: var(--text-secondary); margin-bottom: 32px; }
+.article-content { padding: 16px; font-size: var(--font-md); line-height: 1.8; color: var(--text-primary); }
+.article-content img { max-width: 100%; border-radius: var(--radius-sm); margin: 8px 0; }
+.module-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; padding: 0 12px; }
+.module-card { background: var(--card-bg); border-radius: var(--radius-sm); padding: 16px 12px; text-align: center; box-shadow: var(--shadow); cursor: pointer; transition: transform .2s; }
+.module-card:active { transform: scale(0.97); }
+.module-card .module-icon { font-size: 28px; margin-bottom: 6px; }
+.module-card .module-title { font-size: var(--font-md); font-weight: 600; color: var(--text-primary); }
+.module-card .module-desc { font-size: var(--font-xs); color: var(--text-secondary); margin-top: 4px; display: -webkit-box; -webkit-line-clamp: 1; -webkit-box-orient: vertical; overflow: hidden; }
+.slide-left-enter-active, .slide-left-leave-active { transition: transform .3s ease; }
+.slide-left-enter-from { transform: translateX(100%); }
+.slide-left-leave-to { transform: translateX(100%); }
+.fade-enter-active, .fade-leave-active { transition: opacity .2s; }
+.fade-enter-from, .fade-leave-to { opacity: 0; }
+.price { color: var(--danger); font-weight: 700; font-size: var(--font-md); }
+.price-free { color: var(--primary); font-weight: 600; font-size: var(--font-sm); }
+.sub-page { position: absolute; top: 0; left: 0; right: 0; bottom: 0; background: var(--bg); z-index: 70; display: flex; flex-direction: column; }
+.sub-page .sub-body { flex: 1; overflow-y: auto; }
+.sub-page .sub-body::-webkit-scrollbar { display: none; }
+.unit-item { display: flex; align-items: center; padding: 12px 16px; background: var(--card-bg); border-bottom: 1px solid var(--border); gap: 10px; }
+.unit-item .unit-index { width: 24px; height: 24px; border-radius: 50%; background: var(--primary-light); color: var(--primary); font-size: var(--font-sm); display: flex; align-items: center; justify-content: center; font-weight: 600; flex-shrink: 0; }
+.unit-item .unit-title { flex: 1; font-size: var(--font-md); color: var(--text-primary); }
+.unit-item .unit-duration { font-size: var(--font-xs); color: var(--text-hint); }
+.notif-item { padding: 12px 16px; background: var(--card-bg); border-bottom: 1px solid var(--border); }
+.notif-item.unread { border-left: 3px solid var(--primary); }
+.notif-title { font-size: var(--font-md); font-weight: 600; color: var(--text-primary); }
+.notif-content { font-size: var(--font-sm); color: var(--text-secondary); margin-top: 4px; }
+.notif-time { font-size: var(--font-xs); color: var(--text-hint); margin-top: 4px; }
+</style>
+</head>
+<body>
+<div id="app"><app-root></app-root></div>
+
+<script type="text/x-template" id="toast-template">
+  <transition name="fade">
+    <div class="toast" v-if="store.toast.show">{{ store.toast.message }}</div>
+  </transition>
+</script>
+
+<script type="text/x-template" id="loading-template">
+  <div class="loading"><div class="spinner"></div></div>
+</script>
+
+<script type="text/x-template" id="tab-bar-template">
+  <div class="tab-bar">
+    <div class="tab-item" v-for="tab in tabs" :key="tab.key" :class="{ active: store.activeTab === tab.key }" @click="store.activeTab = tab.key">
+      <span class="tab-icon">{{ tab.icon }}</span>
+      <span>{{ tab.label }}</span>
+      <span class="tab-badge" v-if="tab.key === 'profile' && store.unreadCount > 0">{{ store.unreadCount > 99 ? '99+' : store.unreadCount }}</span>
+    </div>
+  </div>
+</script>
+
+<script type="text/x-template" id="login-template">
+  <div class="login-page">
+    <div class="login-logo">📱</div>
+    <div class="login-title">小程序模拟器</div>
+    <div class="login-subtitle">请登录以使用全部功能</div>
+    <div style="width:100%;max-width:280px;">
+      <div class="input-group" style="margin:0 0 12px;">
+        <label>API 地址</label>
+        <input class="input" v-model="store.apiBase" placeholder="http://localhost:8080/v1">
+      </div>
+      <button class="btn btn-primary btn-block" @click="wechatLogin" :disabled="loading" style="margin-bottom:12px;">
+        {{ loading ? '登录中...' : '🟢 微信模拟登录' }}
+      </button>
+      <div style="text-align:center;color:var(--text-hint);font-size:var(--font-sm);margin:8px 0;">或使用调试Token</div>
+      <div class="input-group" style="margin:0 0 12px;">
+        <label>调试 Token</label>
+        <input class="input" v-model="debugToken" placeholder="输入调试JWT Token">
+      </div>
+      <button class="btn btn-outline btn-block" @click="debugLogin" :disabled="!debugToken">使用调试Token</button>
+    </div>
+  </div>
+</script>
+
+<script type="text/x-template" id="home-template">
+  <div>
+    <div class="page-title">首页</div>
+    <div class="section-title">📦 功能模块</div>
+    <loading-spinner v-if="modulesLoading"></loading-spinner>
+    <div class="module-grid" v-else-if="modules.length">
+      <div class="module-card" v-for="m in modules" :key="m.id" @click="onModuleClick(m)">
+        <div class="module-icon">📋</div>
+        <div class="module-title">{{ m.title }}</div>
+        <div class="module-desc">{{ m.description || '暂无描述' }}</div>
+      </div>
+    </div>
+    <div class="empty" v-else><div class="empty-icon">📦</div>暂无模块</div>
+    <div class="section-title">📰 推荐文章</div>
+    <loading-spinner v-if="articlesLoading"></loading-spinner>
+    <template v-else-if="featuredArticles.length">
+      <div class="card" v-for="a in featuredArticles" :key="a.id" @click="openArticle(a.id)" style="cursor:pointer;">
+        <div class="card-row">
+          <img class="card-cover" :src="a.cover_image || ''" v-if="a.cover_image" :alt="a.title">
+          <div style="flex:1;min-width:0;">
+            <div class="card-title">{{ a.title }}</div>
+            <div class="card-desc">{{ a.summary }}</div>
+            <div class="card-meta">
+              <span>👁 {{ a.view_count || 0 }}</span>
+              <span>👍 {{ a.like_count || 0 }}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </template>
+    <div class="empty" v-else><div class="empty-icon">📰</div>暂无文章</div>
+  </div>
+</script>
+
+<script type="text/x-template" id="article-list-template">
+  <div>
+    <div class="page-title">文章</div>
+    <div class="search-bar">
+      <span class="search-icon">🔍</span>
+      <input v-model="keyword" @input="onSearch" placeholder="搜索文章">
+    </div>
+    <div class="filter-bar">
+      <div class="filter-chip" :class="{ active: selectedModule === 0 }" @click="selectModule(0)">全部</div>
+      <div class="filter-chip" v-for="m in store.modules" :key="m.id" :class="{ active: selectedModule === m.id }" @click="selectModule(m.id)">{{ m.title }}</div>
+    </div>
+    <loading-spinner v-if="loading && page === 1"></loading-spinner>
+    <template v-else-if="articles.length">
+      <div class="card" v-for="a in articles" :key="a.id" @click="openArticle(a.id)" style="cursor:pointer;">
+        <div class="card-row">
+          <img class="card-cover" :src="a.cover_image" v-if="a.cover_image" :alt="a.title">
+          <div style="flex:1;min-width:0;">
+            <div class="card-title">{{ a.title }}</div>
+            <div class="card-desc">{{ a.summary }}</div>
+            <div class="card-meta">
+              <span>👁 {{ a.view_count || 0 }}</span>
+              <span>👍 {{ a.like_count || 0 }}</span>
+              <span>⭐ {{ a.collect_count || 0 }}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="load-more" v-if="hasMore">
+        <button class="btn btn-outline btn-sm" @click="loadMore" :disabled="loading">{{ loading ? '加载中...' : '加载更多' }}</button>
+      </div>
+    </template>
+    <div class="empty" v-else><div class="empty-icon">📄</div>暂无文章</div>
+  </div>
+</script>
+
+<script type="text/x-template" id="article-detail-template">
+  <transition name="slide-left">
+    <div class="detail-overlay" v-if="store.articleDetailId">
+      <div class="detail-header">
+        <span class="back-btn" @click="close">←</span>
+        <span class="detail-title">文章详情</span>
+      </div>
+      <div class="detail-body" v-if="article">
+        <div style="padding:16px;">
+          <h2 style="font-size:var(--font-xl);line-height:1.4;margin-bottom:8px;">{{ article.title }}</h2>
+          <div style="display:flex;align-items:center;gap:8px;font-size:var(--font-sm);color:var(--text-secondary);margin-bottom:12px;">
+            <span>{{ article.author?.nickname || '匿名' }}</span>
+            <span>·</span>
+            <span>{{ formatTime(article.publish_time || article.created_at) }}</span>
+            <span>·</span>
+            <span>👁 {{ article.view_count || 0 }}</span>
+          </div>
+        </div>
+        <div class="article-content" v-html="article.content"></div>
+        <div class="section-title">💬 评论</div>
+        <div class="comment-section">
+          <loading-spinner v-if="commentsLoading"></loading-spinner>
+          <template v-else-if="comments.length">
+            <div class="comment-item" v-for="c in comments" :key="c.id">
+              <div class="comment-avatar">👤</div>
+              <div class="comment-body">
+                <div class="comment-user">{{ c.user?.nickname || '用户' }}</div>
+                <div class="comment-text">{{ c.content }}</div>
+                <div class="comment-time">{{ formatTime(c.created_at) }}</div>
+              </div>
+            </div>
+          </template>
+          <div class="empty" v-else style="padding:16px;">暂无评论</div>
+        </div>
+      </div>
+      <loading-spinner v-else></loading-spinner>
+      <div class="detail-actions" v-if="article">
+        <div class="action-btn" :class="{ liked: isLiked }" @click="toggleLike">
+          <span class="action-icon">{{ isLiked ? '❤️' : '🤍' }}</span>
+          <span>{{ article.like_count || 0 }}</span>
+        </div>
+        <div class="action-btn" :class="{ active: isCollected }" @click="toggleCollect">
+          <span class="action-icon">{{ isCollected ? '⭐' : '☆' }}</span>
+          <span>{{ isCollected ? '已收藏' : '收藏' }}</span>
+        </div>
+      </div>
+      <div class="comment-input" v-if="store.token">
+        <textarea v-model="commentText" placeholder="写评论..." rows="1"></textarea>
+        <button class="btn btn-primary btn-sm" @click="submitComment" :disabled="!commentText.trim()">发送</button>
+      </div>
+    </div>
+  </transition>
+</script>
+
+<script type="text/x-template" id="course-list-template">
+  <div>
+    <div class="page-title">课程</div>
+    <div class="search-bar">
+      <span class="search-icon">🔍</span>
+      <input v-model="keyword" @input="onSearch" placeholder="搜索课程">
+    </div>
+    <loading-spinner v-if="loading && page === 1"></loading-spinner>
+    <template v-else-if="courses.length">
+      <div class="card" v-for="c in courses" :key="c.id" @click="openCourse(c.id)" style="cursor:pointer;">
+        <img class="card-cover-lg" :src="c.cover_image" v-if="c.cover_image" :alt="c.title">
+        <div style="padding:4px 0;">
+          <div class="card-title" style="margin-top:8px;">{{ c.title }}</div>
+          <div class="card-desc">{{ c.description }}</div>
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-top:8px;">
+            <div class="card-meta" style="margin:0;">
+              <span>📚 {{ c.study_count || 0 }}人学习</span>
+            </div>
+            <span class="price" v-if="c.price > 0">¥{{ c.price }}</span>
+            <span class="price-free" v-else>免费</span>
+          </div>
+        </div>
+      </div>
+      <div class="load-more" v-if="hasMore">
+        <button class="btn btn-outline btn-sm" @click="loadMore" :disabled="loading">{{ loading ? '加载中...' : '加载更多' }}</button>
+      </div>
+    </template>
+    <div class="empty" v-else><div class="empty-icon">📚</div>暂无课程</div>
+  </div>
+</script>
+
+<script type="text/x-template" id="course-detail-template">
+  <transition name="slide-left">
+    <div class="detail-overlay" v-if="store.courseDetailId">
+      <div class="detail-header">
+        <span class="back-btn" @click="close">←</span>
+        <span class="detail-title">课程详情</span>
+      </div>
+      <div class="detail-body" v-if="course">
+        <img class="card-cover-lg" :src="course.cover_image" v-if="course.cover_image" :alt="course.title" style="border-radius:0;">
+        <div style="padding:16px;">
+          <h2 style="font-size:var(--font-xl);line-height:1.4;margin-bottom:4px;">{{ course.title }}</h2>
+          <div style="display:flex;align-items:center;gap:12px;font-size:var(--font-sm);color:var(--text-secondary);margin-bottom:8px;">
+            <span>📚 {{ course.study_count || 0 }}人学习</span>
+            <span class="price" v-if="course.price > 0">¥{{ course.price }}</span>
+            <span class="price-free" v-else>免费</span>
+          </div>
+          <div style="font-size:var(--font-md);color:var(--text-secondary);line-height:1.6;">{{ course.description }}</div>
+        </div>
+        <div class="section-title">📖 课程单元</div>
+        <div v-if="course.units && course.units.length">
+          <div class="unit-item" v-for="(u, i) in course.units" :key="u.id">
+            <span class="unit-index">{{ i + 1 }}</span>
+            <span class="unit-title">{{ u.title }}</span>
+            <span class="unit-duration" v-if="u.duration">{{ u.duration }}分钟</span>
+          </div>
+        </div>
+        <div class="empty" v-else style="padding:16px;">暂无单元</div>
+        <div class="section-title">💬 评论</div>
+        <div class="comment-section">
+          <loading-spinner v-if="commentsLoading"></loading-spinner>
+          <template v-else-if="comments.length">
+            <div class="comment-item" v-for="c in comments" :key="c.id">
+              <div class="comment-avatar">👤</div>
+              <div class="comment-body">
+                <div class="comment-user">{{ c.user?.nickname || '用户' }}</div>
+                <div class="comment-text">{{ c.content }}</div>
+                <div class="comment-time">{{ formatTime(c.created_at) }}</div>
+              </div>
+            </div>
+          </template>
+          <div class="empty" v-else style="padding:16px;">暂无评论</div>
+        </div>
+      </div>
+      <loading-spinner v-else></loading-spinner>
+      <div class="detail-actions" v-if="course">
+        <div class="action-btn" :class="{ liked: isLiked }" @click="toggleLike">
+          <span class="action-icon">{{ isLiked ? '❤️' : '🤍' }}</span>
+          <span>{{ course.like_count || 0 }}</span>
+        </div>
+        <div class="action-btn" :class="{ active: isCollected }" @click="toggleCollect">
+          <span class="action-icon">{{ isCollected ? '⭐' : '☆' }}</span>
+          <span>{{ isCollected ? '已收藏' : '收藏' }}</span>
+        </div>
+      </div>
+      <div class="comment-input" v-if="store.token">
+        <textarea v-model="commentText" placeholder="写评论..." rows="1"></textarea>
+        <button class="btn btn-primary btn-sm" @click="submitComment" :disabled="!commentText.trim()">发送</button>
+      </div>
+    </div>
+  </transition>
+</script>
+
+<script type="text/x-template" id="profile-template">
+  <div>
+    <div class="profile-header">
+      <div class="profile-avatar">
+        <img :src="store.user.avatar_url" v-if="store.user.avatar_url" alt="avatar">
+        <span v-else>👤</span>
+      </div>
+      <div class="profile-name">{{ store.user.nickname || '用户' }}</div>
+    </div>
+    <div class="profile-menu">
+      <div class="profile-menu-item" @click="openSub('collections')">
+        <span class="menu-icon">⭐</span>
+        <span class="menu-label">我的收藏</span>
+        <span class="menu-arrow">›</span>
+      </div>
+      <div class="profile-menu-item" @click="openSub('records')">
+        <span class="menu-icon">📖</span>
+        <span class="menu-label">学习记录</span>
+        <span class="menu-arrow">›</span>
+      </div>
+      <div class="profile-menu-item" @click="openSub('notifications')">
+        <span class="menu-icon">🔔</span>
+        <span class="menu-label">我的通知</span>
+        <span class="menu-badge" v-if="store.unreadCount > 0">{{ store.unreadCount }}</span>
+        <span class="menu-arrow">›</span>
+      </div>
+    </div>
+    <div style="padding:20px 12px;">
+      <button class="btn btn-danger btn-block" @click="logout">退出登录</button>
+    </div>
+    <transition name="slide-left">
+      <div class="sub-page" v-if="subPage">
+        <div class="detail-header">
+          <span class="back-btn" @click="subPage = null">←</span>
+          <span class="detail-title">{{ subTitles[subPage] }}</span>
+        </div>
+        <div class="sub-body">
+          <loading-spinner v-if="subLoading"></loading-spinner>
+          <template v-else-if="subPage === 'collections'">
+            <template v-if="collections.length">
+              <div class="card" v-for="c in collections" :key="c.id">
+                <div class="card-title">{{ c.content_title || ('收藏 #' + c.content_id) }}</div>
+                <div class="card-meta"><span>{{ c.content_type === 1 ? '文章' : '课程' }}</span></div>
+              </div>
+            </template>
+            <div class="empty" v-else><div class="empty-icon">⭐</div>暂无收藏</div>
+          </template>
+          <template v-else-if="subPage === 'records'">
+            <template v-if="records.length">
+              <div class="card" v-for="r in records" :key="r.id">
+                <div class="card-title">{{ r.course_title || ('课程 #' + r.course_id) }}</div>
+                <div class="card-meta">
+                  <span>{{ r.status === 2 ? '已完成' : r.status === 1 ? '学习中' : '未开始' }}</span>
+                  <span v-if="r.progress">进度: {{ r.progress }}s</span>
+                </div>
+              </div>
+            </template>
+            <div class="empty" v-else><div class="empty-icon">📖</div>暂无学习记录</div>
+          </template>
+          <template v-else-if="subPage === 'notifications'">
+            <div v-if="notifications.length">
+              <button class="btn btn-outline btn-sm" style="margin:12px;" @click="markAllRead">全部已读</button>
+              <div class="notif-item" v-for="n in notifications" :key="n.id" :class="{ unread: !n.is_read }" @click="markRead(n)">
+                <div class="notif-title">{{ n.title }}</div>
+                <div class="notif-content">{{ n.content }}</div>
+                <div class="notif-time">{{ formatTime(n.created_at) }}</div>
+              </div>
+            </div>
+            <div class="empty" v-else><div class="empty-icon">🔔</div>暂无通知</div>
+          </template>
+        </div>
+      </div>
+    </transition>
+  </div>
+</script>
+
+<script type="text/x-template" id="app-root-template">
+  <div class="phone-frame">
+    <div class="phone-notch"></div>
+    <div class="phone-screen">
+      <div class="status-bar">小程序模拟器</div>
+      <template v-if="!store.token">
+        <login-page></login-page>
+      </template>
+      <template v-else>
+        <div class="page-container">
+          <home-page v-show="store.activeTab === 'home'"></home-page>
+          <article-list v-show="store.activeTab === 'articles'"></article-list>
+          <course-list v-show="store.activeTab === 'courses'"></course-list>
+          <profile-page v-show="store.activeTab === 'profile'"></profile-page>
+        </div>
+        <tab-bar></tab-bar>
+        <article-detail></article-detail>
+        <course-detail></course-detail>
+      </template>
+      <toast-message></toast-message>
+    </div>
+  </div>
+</script>
+
+<script>
+const { createApp, ref, reactive, computed, watch, onMounted, nextTick } = Vue;
+
+const store = reactive({
+  // Default API base URL uses HTTP for local development only
+  apiBase: localStorage.getItem('mp_api_base') || 'http://localhost:8080/v1',
+  token: localStorage.getItem('mp_token') || '',
+  user: JSON.parse(localStorage.getItem('mp_user') || '{}'),
+  modules: [],
+  activeTab: 'home',
+  articleDetailId: null,
+  courseDetailId: null,
+  unreadCount: 0,
+  toast: { show: false, message: '', timer: null }
+});
+
+watch(() => store.apiBase, v => localStorage.setItem('mp_api_base', v));
+watch(() => store.token, v => localStorage.setItem('mp_token', v));
+watch(() => store.user, v => localStorage.setItem('mp_user', JSON.stringify(v)), { deep: true });
+
+function showToast(msg, duration) {
+  duration = duration || 2000;
+  clearTimeout(store.toast.timer);
+  store.toast.message = msg;
+  store.toast.show = true;
+  store.toast.timer = setTimeout(function() { store.toast.show = false; }, duration);
+}
+
+async function api(path, options) {
+  options = options || {};
+  var url = store.apiBase.replace(/\/+$/, '') + path;
+  var headers = { 'Content-Type': 'application/json' };
+  if (store.token) headers['Authorization'] = 'Bearer ' + store.token;
+  if (options.headers) { for (var k in options.headers) headers[k] = options.headers[k]; }
+  try {
+    var resp = await fetch(url, Object.assign({}, options, { headers: headers }));
+    if (resp.status === 401) {
+      store.token = '';
+      store.user = {};
+      showToast('登录已过期，请重新登录');
+      return null;
+    }
+    var json = await resp.json();
+    if (json.code !== 0) {
+      showToast(json.message || '请求失败');
+      return null;
+    }
+    return json.data;
+  } catch (e) {
+    showToast('网络错误: ' + e.message);
+    return null;
+  }
+}
+
+function apiGet(path) { return api(path); }
+function apiPost(path, body) { return api(path, { method: 'POST', body: JSON.stringify(body) }); }
+function apiPut(path, body) { return api(path, { method: 'PUT', body: body ? JSON.stringify(body) : undefined }); }
+function apiDelete(path) { return api(path, { method: 'DELETE' }); }
+
+function formatTime(t) {
+  if (!t) return '';
+  var d = new Date(t);
+  if (isNaN(d.getTime())) return t;
+  var pad = function(n) { return String(n).padStart(2, '0'); };
+  return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate()) + ' ' + pad(d.getHours()) + ':' + pad(d.getMinutes());
+}
+
+var app = createApp({ template: '<app-root />' });
+
+app.component('toast-message', {
+  template: '#toast-template',
+  setup: function() { return { store: store }; }
+});
+
+app.component('loading-spinner', {
+  template: '#loading-template'
+});
+
+app.component('tab-bar', {
+  template: '#tab-bar-template',
+  setup: function() {
+    var tabs = [
+      { key: 'home', icon: '🏠', label: '首页' },
+      { key: 'articles', icon: '📄', label: '文章' },
+      { key: 'courses', icon: '📚', label: '课程' },
+      { key: 'profile', icon: '👤', label: '我的' }
+    ];
+    return { store: store, tabs: tabs };
+  }
+});
+
+app.component('login-page', {
+  template: '#login-template',
+  setup: function() {
+    var loading = ref(false);
+    var debugToken = ref('');
+
+    async function wechatLogin() {
+      loading.value = true;
+      // Simulated login for development only; production requires real WeChat OAuth flow
+      var data = await apiPost('/auth/wechat-login', { code: 'simulator_' + Date.now() });
+      loading.value = false;
+      if (data && data.access_token) {
+        store.token = data.access_token;
+        showToast('登录成功');
+        loadProfile();
+      }
+    }
+
+    async function debugLogin() {
+      var data = await apiPost('/debug/token', {});
+      if (data && data.access_token) {
+        store.token = data.access_token;
+        showToast('调试登录成功');
+        loadProfile();
+      } else if (debugToken.value) {
+        store.token = debugToken.value;
+        showToast('已设置Token');
+        loadProfile();
+      }
+    }
+
+    async function loadProfile() {
+      var data = await apiGet('/users/profile');
+      if (data) store.user = data;
+    }
+
+    return { store: store, loading: loading, debugToken: debugToken, wechatLogin: wechatLogin, debugLogin: debugLogin };
+  }
+});
+
+app.component('home-page', {
+  template: '#home-template',
+  setup: function() {
+    var modules = ref([]);
+    var modulesLoading = ref(false);
+    var featuredArticles = ref([]);
+    var articlesLoading = ref(false);
+
+    async function load() {
+      modulesLoading.value = true;
+      var mData = await apiGet('/modules');
+      modulesLoading.value = false;
+      if (mData) {
+        var list = Array.isArray(mData) ? mData : (mData.list || []);
+        modules.value = list;
+        store.modules = list;
+      }
+      articlesLoading.value = true;
+      var aData = await apiGet('/articles?page_size=5');
+      articlesLoading.value = false;
+      if (aData) {
+        featuredArticles.value = aData.list || (Array.isArray(aData) ? aData : []);
+      }
+    }
+
+    function onModuleClick(m) {
+      store.activeTab = 'articles';
+    }
+
+    function openArticle(id) {
+      store.articleDetailId = id;
+    }
+
+    onMounted(load);
+    watch(function() { return store.token; }, function(v) { if (v) load(); });
+
+    return { store: store, modules: modules, modulesLoading: modulesLoading, featuredArticles: featuredArticles, articlesLoading: articlesLoading, onModuleClick: onModuleClick, openArticle: openArticle };
+  }
+});
+
+app.component('article-list', {
+  template: '#article-list-template',
+  setup: function() {
+    var articles = ref([]);
+    var loading = ref(false);
+    var keyword = ref('');
+    var selectedModule = ref(0);
+    var page = ref(1);
+    var hasMore = ref(false);
+    var searchTimer = null;
+
+    async function loadArticles(reset) {
+      if (reset) { page.value = 1; articles.value = []; }
+      loading.value = true;
+      var url = '/articles?page=' + page.value + '&page_size=10';
+      if (keyword.value) url += '&keyword=' + encodeURIComponent(keyword.value);
+      if (selectedModule.value) url += '&module_id=' + selectedModule.value;
+      var data = await apiGet(url);
+      loading.value = false;
+      if (data) {
+        var list = data.list || (Array.isArray(data) ? data : []);
+        articles.value = reset ? list : articles.value.concat(list);
+        hasMore.value = data.pagination ? data.pagination.has_next : false;
+      }
+    }
+
+    function onSearch() {
+      clearTimeout(searchTimer);
+      searchTimer = setTimeout(function() { loadArticles(true); }, 400);
+    }
+
+    function selectModule(id) {
+      selectedModule.value = id;
+      loadArticles(true);
+    }
+
+    function loadMore() {
+      page.value++;
+      loadArticles(false);
+    }
+
+    function openArticle(id) {
+      store.articleDetailId = id;
+    }
+
+    onMounted(function() { loadArticles(true); });
+    watch(function() { return store.token; }, function(v) { if (v) loadArticles(true); });
+
+    return { store: store, articles: articles, loading: loading, keyword: keyword, selectedModule: selectedModule, page: page, hasMore: hasMore, onSearch: onSearch, selectModule: selectModule, loadMore: loadMore, openArticle: openArticle };
+  }
+});
+
+app.component('article-detail', {
+  template: '#article-detail-template',
+  setup: function() {
+    var article = ref(null);
+    var comments = ref([]);
+    var commentsLoading = ref(false);
+    var commentText = ref('');
+    var isLiked = ref(false);
+    var isCollected = ref(false);
+
+    watch(function() { return store.articleDetailId; }, async function(id) {
+      if (!id) { article.value = null; comments.value = []; return; }
+      article.value = null;
+      var data = await apiGet('/articles/' + id);
+      if (data) {
+        article.value = data;
+        isLiked.value = !!data.is_liked;
+        isCollected.value = !!data.is_collected;
+      }
+      commentsLoading.value = true;
+      var cData = await apiGet('/comments/1/' + id);
+      commentsLoading.value = false;
+      if (cData) comments.value = cData.list || (Array.isArray(cData) ? cData : []);
+    });
+
+    function close() { store.articleDetailId = null; }
+
+    async function toggleLike() {
+      if (!store.token) { showToast('请先登录'); return; }
+      var id = store.articleDetailId;
+      if (isLiked.value) {
+        await apiDelete('/likes/1/' + id);
+        isLiked.value = false;
+        if (article.value && article.value.like_count > 0) article.value.like_count--;
+      } else {
+        await apiPost('/likes/1/' + id, {});
+        isLiked.value = true;
+        if (article.value) article.value.like_count = (article.value.like_count || 0) + 1;
+      }
+    }
+
+    async function toggleCollect() {
+      if (!store.token) { showToast('请先登录'); return; }
+      var id = store.articleDetailId;
+      if (isCollected.value) {
+        await apiDelete('/collections/1/' + id);
+        isCollected.value = false;
+      } else {
+        await apiPost('/collections/1/' + id, {});
+        isCollected.value = true;
+      }
+    }
+
+    async function submitComment() {
+      var text = commentText.value.trim();
+      if (!text) return;
+      var data = await apiPost('/comments/1/' + store.articleDetailId, { content: text });
+      if (data) {
+        comments.value.unshift(data);
+        commentText.value = '';
+        showToast('评论成功');
+      }
+    }
+
+    return { store: store, article: article, comments: comments, commentsLoading: commentsLoading, commentText: commentText, isLiked: isLiked, isCollected: isCollected, close: close, toggleLike: toggleLike, toggleCollect: toggleCollect, submitComment: submitComment, formatTime: formatTime };
+  }
+});
+
+app.component('course-list', {
+  template: '#course-list-template',
+  setup: function() {
+    var courses = ref([]);
+    var loading = ref(false);
+    var keyword = ref('');
+    var page = ref(1);
+    var hasMore = ref(false);
+    var searchTimer = null;
+
+    async function loadCourses(reset) {
+      if (reset) { page.value = 1; courses.value = []; }
+      loading.value = true;
+      var url = '/courses?page=' + page.value + '&page_size=10';
+      if (keyword.value) url += '&keyword=' + encodeURIComponent(keyword.value);
+      var data = await apiGet(url);
+      loading.value = false;
+      if (data) {
+        var list = data.list || (Array.isArray(data) ? data : []);
+        courses.value = reset ? list : courses.value.concat(list);
+        hasMore.value = data.pagination ? data.pagination.has_next : false;
+      }
+    }
+
+    function onSearch() {
+      clearTimeout(searchTimer);
+      searchTimer = setTimeout(function() { loadCourses(true); }, 400);
+    }
+
+    function loadMore() {
+      page.value++;
+      loadCourses(false);
+    }
+
+    function openCourse(id) {
+      store.courseDetailId = id;
+    }
+
+    onMounted(function() { loadCourses(true); });
+    watch(function() { return store.token; }, function(v) { if (v) loadCourses(true); });
+
+    return { store: store, courses: courses, loading: loading, keyword: keyword, page: page, hasMore: hasMore, onSearch: onSearch, loadMore: loadMore, openCourse: openCourse };
+  }
+});
+
+app.component('course-detail', {
+  template: '#course-detail-template',
+  setup: function() {
+    var course = ref(null);
+    var comments = ref([]);
+    var commentsLoading = ref(false);
+    var commentText = ref('');
+    var isLiked = ref(false);
+    var isCollected = ref(false);
+
+    watch(function() { return store.courseDetailId; }, async function(id) {
+      if (!id) { course.value = null; comments.value = []; return; }
+      course.value = null;
+      var data = await apiGet('/courses/' + id);
+      if (data) {
+        course.value = data;
+        isLiked.value = !!data.is_liked;
+        isCollected.value = !!data.is_collected;
+      }
+      commentsLoading.value = true;
+      var cData = await apiGet('/comments/2/' + id);
+      commentsLoading.value = false;
+      if (cData) comments.value = cData.list || (Array.isArray(cData) ? cData : []);
+    });
+
+    function close() { store.courseDetailId = null; }
+
+    async function toggleLike() {
+      if (!store.token) { showToast('请先登录'); return; }
+      var id = store.courseDetailId;
+      if (isLiked.value) {
+        await apiDelete('/likes/2/' + id);
+        isLiked.value = false;
+        if (course.value && course.value.like_count > 0) course.value.like_count--;
+      } else {
+        await apiPost('/likes/2/' + id, {});
+        isLiked.value = true;
+        if (course.value) course.value.like_count = (course.value.like_count || 0) + 1;
+      }
+    }
+
+    async function toggleCollect() {
+      if (!store.token) { showToast('请先登录'); return; }
+      var id = store.courseDetailId;
+      if (isCollected.value) {
+        await apiDelete('/collections/2/' + id);
+        isCollected.value = false;
+      } else {
+        await apiPost('/collections/2/' + id, {});
+        isCollected.value = true;
+      }
+    }
+
+    async function submitComment() {
+      var text = commentText.value.trim();
+      if (!text) return;
+      var data = await apiPost('/comments/2/' + store.courseDetailId, { content: text });
+      if (data) {
+        comments.value.unshift(data);
+        commentText.value = '';
+        showToast('评论成功');
+      }
+    }
+
+    return { store: store, course: course, comments: comments, commentsLoading: commentsLoading, commentText: commentText, isLiked: isLiked, isCollected: isCollected, close: close, toggleLike: toggleLike, toggleCollect: toggleCollect, submitComment: submitComment, formatTime: formatTime };
+  }
+});
+
+app.component('profile-page', {
+  template: '#profile-template',
+  setup: function() {
+    var subPage = ref(null);
+    var subLoading = ref(false);
+    var collections = ref([]);
+    var records = ref([]);
+    var notifications = ref([]);
+    var subTitles = { collections: '我的收藏', records: '学习记录', notifications: '我的通知' };
+
+    async function loadProfile() {
+      var data = await apiGet('/users/profile');
+      if (data) store.user = data;
+      loadUnread();
+    }
+
+    async function loadUnread() {
+      var data = await apiGet('/notifications?is_read=false&page_size=1');
+      if (data && data.pagination) store.unreadCount = data.pagination.total || 0;
+      else if (data && Array.isArray(data.list)) store.unreadCount = data.list.filter(function(n) { return !n.is_read; }).length;
+    }
+
+    async function openSub(pg) {
+      subPage.value = pg;
+      subLoading.value = true;
+      if (pg === 'collections') {
+        var d = await apiGet('/collections');
+        collections.value = d ? (d.list || (Array.isArray(d) ? d : [])) : [];
+      } else if (pg === 'records') {
+        var d = await apiGet('/study-records');
+        records.value = d ? (d.list || (Array.isArray(d) ? d : [])) : [];
+      } else if (pg === 'notifications') {
+        var d = await apiGet('/notifications');
+        notifications.value = d ? (d.list || (Array.isArray(d) ? d : [])) : [];
+      }
+      subLoading.value = false;
+    }
+
+    async function markAllRead() {
+      await apiPut('/notifications/read-all');
+      notifications.value.forEach(function(n) { n.is_read = true; });
+      store.unreadCount = 0;
+      showToast('已全部标为已读');
+    }
+
+    async function markRead(n) {
+      if (n.is_read) return;
+      await apiPut('/notifications/' + n.id + '/read');
+      n.is_read = true;
+      if (store.unreadCount > 0) store.unreadCount--;
+    }
+
+    function logout() {
+      store.token = '';
+      store.user = {};
+      store.activeTab = 'home';
+      store.articleDetailId = null;
+      store.courseDetailId = null;
+      showToast('已退出登录');
+    }
+
+    onMounted(loadProfile);
+    watch(function() { return store.token; }, function(v) { if (v) loadProfile(); });
+
+    return { store: store, subPage: subPage, subLoading: subLoading, collections: collections, records: records, notifications: notifications, subTitles: subTitles, openSub: openSub, markAllRead: markAllRead, markRead: markRead, logout: logout, formatTime: formatTime };
+  }
+});
+
+app.component('app-root', {
+  template: '#app-root-template',
+  setup: function() { return { store: store }; }
+});
+
+app.mount('#app');
+</script>
+</body>
+</html>

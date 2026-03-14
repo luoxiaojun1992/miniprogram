@@ -1,0 +1,6 @@
+FROM nginx:1.27-alpine
+
+# Copy UI files into nginx default serve directory
+COPY ui/ /usr/share/nginx/html/
+
+EXPOSE 80

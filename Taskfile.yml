@@ -77,3 +77,13 @@ tasks:
     desc: Stop environment
     cmds:
       - docker-compose down
+
+  ui-test:
+    desc: Run Playwright UI tests via Docker Compose
+    cmds:
+      - docker compose -f docker-compose.ui-test.yml up --exit-code-from playwright --abort-on-container-exit
+
+  ui-test-down:
+    desc: Tear down UI test environment
+    cmds:
+      - docker compose -f docker-compose.ui-test.yml down -v --remove-orphans
