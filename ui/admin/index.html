@@ -1,0 +1,2182 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>知识库管理后台</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0,0" rel="stylesheet">
+<style>
+:root {
+  --sidebar-bg: #1a1a2e;
+  --sidebar-hover: #16213e;
+  --sidebar-active: #0f3460;
+  --sidebar-text: #a8a8b3;
+  --sidebar-text-active: #ffffff;
+  --sidebar-width: 260px;
+  --primary: #4361ee;
+  --primary-hover: #3a56d4;
+  --primary-light: #eef0ff;
+  --success: #2ec4b6;
+  --success-light: #e8faf8;
+  --warning: #ff9f1c;
+  --warning-light: #fff5e6;
+  --danger: #e63946;
+  --danger-light: #fde8ea;
+  --info: #457b9d;
+  --bg: #f0f2f5;
+  --card-bg: #ffffff;
+  --text: #1d1d1f;
+  --text-secondary: #6b7280;
+  --border: #e5e7eb;
+  --radius: 8px;
+  --shadow: 0 1px 3px rgba(0,0,0,0.08);
+  --shadow-lg: 0 4px 12px rgba(0,0,0,0.12);
+  --transition: 0.2s ease;
+  --header-height: 60px;
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+/* Scrollbar */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: #c1c1c1; border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: #a1a1a1; }
+
+/* Icons */
+.icon {
+  font-family: 'Material Symbols Outlined';
+  font-size: 20px;
+  vertical-align: middle;
+  font-weight: normal;
+  font-style: normal;
+  line-height: 1;
+  letter-spacing: normal;
+  text-transform: none;
+  display: inline-block;
+  white-space: nowrap;
+  word-wrap: normal;
+  direction: ltr;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ==================== LOGIN ==================== */
+#login-page {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 100vh;
+  background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+}
+
+.login-card {
+  background: var(--card-bg);
+  border-radius: 12px;
+  padding: 40px;
+  width: 400px;
+  max-width: 90vw;
+  box-shadow: var(--shadow-lg);
+}
+
+.login-card h1 {
+  text-align: center;
+  margin-bottom: 8px;
+  color: var(--primary);
+  font-size: 24px;
+}
+
+.login-card .subtitle {
+  text-align: center;
+  color: var(--text-secondary);
+  margin-bottom: 32px;
+  font-size: 14px;
+}
+
+.form-group { margin-bottom: 20px; }
+.form-group label {
+  display: block;
+  margin-bottom: 6px;
+  font-weight: 500;
+  color: var(--text);
+  font-size: 13px;
+}
+
+.form-group input, .form-group select, .form-group textarea {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  font-size: 14px;
+  transition: border-color var(--transition);
+  outline: none;
+  font-family: inherit;
+}
+
+.form-group input:focus, .form-group select:focus, .form-group textarea:focus {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px rgba(67, 97, 238, 0.1);
+}
+
+.form-group textarea { resize: vertical; min-height: 100px; }
+
+.form-group .api-url-row {
+  display: flex;
+  gap: 8px;
+}
+
+.form-group .api-url-row input { flex: 1; }
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 16px;
+  border: none;
+  border-radius: var(--radius);
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all var(--transition);
+  font-family: inherit;
+  white-space: nowrap;
+}
+
+.btn:disabled { opacity: 0.6; cursor: not-allowed; }
+.btn-primary { background: var(--primary); color: #fff; }
+.btn-primary:hover:not(:disabled) { background: var(--primary-hover); }
+.btn-success { background: var(--success); color: #fff; }
+.btn-success:hover:not(:disabled) { background: #27b0a3; }
+.btn-warning { background: var(--warning); color: #fff; }
+.btn-warning:hover:not(:disabled) { background: #e8900f; }
+.btn-danger { background: var(--danger); color: #fff; }
+.btn-danger:hover:not(:disabled) { background: #cf2f3c; }
+.btn-outline {
+  background: transparent;
+  color: var(--primary);
+  border: 1px solid var(--primary);
+}
+.btn-outline:hover:not(:disabled) { background: var(--primary-light); }
+.btn-ghost { background: transparent; color: var(--text-secondary); }
+.btn-ghost:hover:not(:disabled) { background: #f3f4f6; }
+.btn-sm { padding: 5px 10px; font-size: 12px; }
+.btn-lg { padding: 12px 24px; font-size: 16px; }
+.btn-block { width: 100%; justify-content: center; }
+
+/* ==================== LAYOUT ==================== */
+#app { display: none; }
+
+.layout {
+  display: flex;
+  min-height: 100vh;
+}
+
+/* Sidebar */
+.sidebar {
+  width: var(--sidebar-width);
+  background: var(--sidebar-bg);
+  color: var(--sidebar-text);
+  display: flex;
+  flex-direction: column;
+  position: fixed;
+  top: 0;
+  left: 0;
+  bottom: 0;
+  z-index: 100;
+  transition: transform var(--transition);
+  overflow-y: auto;
+}
+
+.sidebar-header {
+  padding: 20px;
+  border-bottom: 1px solid rgba(255,255,255,0.08);
+}
+
+.sidebar-header .brand {
+  font-size: 18px;
+  font-weight: 700;
+  color: #fff;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.sidebar-header .brand .icon { font-size: 24px; color: var(--primary); }
+
+.sidebar-user {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 16px;
+  padding: 10px;
+  background: rgba(255,255,255,0.05);
+  border-radius: var(--radius);
+}
+
+.sidebar-user .avatar {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: var(--primary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  font-weight: 600;
+  font-size: 14px;
+  flex-shrink: 0;
+}
+
+.sidebar-user .user-info { overflow: hidden; }
+.sidebar-user .user-name { color: #fff; font-weight: 500; font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.sidebar-user .user-role { font-size: 11px; color: var(--sidebar-text); }
+
+.sidebar-nav { flex: 1; padding: 12px 0; }
+
+.nav-section { margin-bottom: 4px; }
+
+.nav-section-title {
+  padding: 8px 20px;
+  font-size: 11px;
+  text-transform: uppercase;
+  color: rgba(168,168,179,0.6);
+  letter-spacing: 0.5px;
+  font-weight: 600;
+}
+
+.nav-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 20px;
+  color: var(--sidebar-text);
+  cursor: pointer;
+  transition: all var(--transition);
+  font-size: 14px;
+  text-decoration: none;
+  position: relative;
+}
+
+.nav-item:hover { background: var(--sidebar-hover); color: #fff; }
+
+.nav-item.active {
+  background: var(--sidebar-active);
+  color: var(--sidebar-text-active);
+  border-right: 3px solid var(--primary);
+}
+
+.nav-item .icon { font-size: 20px; width: 24px; text-align: center; }
+
+.nav-group-toggle {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 20px;
+  color: var(--sidebar-text);
+  cursor: pointer;
+  transition: all var(--transition);
+  font-size: 14px;
+  user-select: none;
+}
+
+.nav-group-toggle:hover { background: var(--sidebar-hover); color: #fff; }
+.nav-group-toggle .icon { font-size: 20px; width: 24px; text-align: center; }
+.nav-group-toggle .arrow { margin-left: auto; font-size: 16px; transition: transform var(--transition); }
+.nav-group-toggle.open .arrow { transform: rotate(90deg); }
+
+.nav-group-items { display: none; }
+.nav-group-items.open { display: block; }
+.nav-group-items .nav-item { padding-left: 54px; font-size: 13px; }
+
+.sidebar-footer {
+  padding: 16px 20px;
+  border-top: 1px solid rgba(255,255,255,0.08);
+}
+
+.sidebar-footer .nav-item { padding: 10px 0; }
+
+/* Main content */
+.main {
+  flex: 1;
+  margin-left: var(--sidebar-width);
+  min-height: 100vh;
+}
+
+.topbar {
+  height: var(--header-height);
+  background: var(--card-bg);
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 24px;
+  position: sticky;
+  top: 0;
+  z-index: 50;
+}
+
+.topbar-left { display: flex; align-items: center; gap: 12px; }
+.topbar-left h2 { font-size: 18px; font-weight: 600; }
+
+.topbar-right { display: flex; align-items: center; gap: 12px; }
+
+.content { padding: 24px; }
+
+/* ==================== CARDS ==================== */
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 20px;
+  margin-bottom: 24px;
+}
+
+.stat-card {
+  background: var(--card-bg);
+  border-radius: var(--radius);
+  padding: 20px;
+  box-shadow: var(--shadow);
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.stat-card .stat-icon {
+  width: 48px;
+  height: 48px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 24px;
+}
+
+.stat-card .stat-icon.blue { background: var(--primary-light); color: var(--primary); }
+.stat-card .stat-icon.green { background: var(--success-light); color: var(--success); }
+.stat-card .stat-icon.orange { background: var(--warning-light); color: var(--warning); }
+.stat-card .stat-icon.red { background: var(--danger-light); color: var(--danger); }
+
+.stat-card .stat-info h3 { font-size: 24px; font-weight: 700; }
+.stat-card .stat-info p { color: var(--text-secondary); font-size: 13px; }
+
+/* ==================== TABLE ==================== */
+.card {
+  background: var(--card-bg);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  overflow: hidden;
+}
+
+.card-header {
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.card-header h3 { font-size: 16px; font-weight: 600; }
+
+.card-body { padding: 0; }
+.card-body.padded { padding: 20px; }
+
+.toolbar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.search-input {
+  position: relative;
+}
+
+.search-input input {
+  padding: 8px 12px 8px 36px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  font-size: 13px;
+  width: 220px;
+  outline: none;
+  transition: border-color var(--transition);
+}
+
+.search-input input:focus { border-color: var(--primary); }
+
+.search-input .icon {
+  position: absolute;
+  left: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 18px;
+  color: var(--text-secondary);
+}
+
+.filter-select {
+  padding: 8px 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  font-size: 13px;
+  outline: none;
+  background: #fff;
+}
+
+.table-wrapper { overflow-x: auto; }
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+table th, table td {
+  padding: 12px 16px;
+  text-align: left;
+  border-bottom: 1px solid var(--border);
+  font-size: 13px;
+  white-space: nowrap;
+}
+
+table th {
+  background: #f9fafb;
+  font-weight: 600;
+  color: var(--text-secondary);
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  cursor: pointer;
+  user-select: none;
+}
+
+table th:hover { color: var(--text); }
+
+table tbody tr:hover { background: #f9fafb; }
+
+table .actions { display: flex; gap: 6px; }
+
+.badge {
+  display: inline-block;
+  padding: 3px 10px;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.badge-success { background: var(--success-light); color: #1a9e91; }
+.badge-warning { background: var(--warning-light); color: #cc7f00; }
+.badge-danger { background: var(--danger-light); color: var(--danger); }
+.badge-info { background: var(--primary-light); color: var(--primary); }
+.badge-default { background: #f3f4f6; color: var(--text-secondary); }
+
+/* Pagination */
+.pagination-bar {
+  padding: 12px 20px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-top: 1px solid var(--border);
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+
+.pagination-info { font-size: 13px; }
+
+.pagination-buttons {
+  display: flex;
+  gap: 4px;
+}
+
+.pagination-buttons button {
+  width: 32px;
+  height: 32px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: #fff;
+  cursor: pointer;
+  font-size: 13px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all var(--transition);
+}
+
+.pagination-buttons button:hover:not(:disabled) { border-color: var(--primary); color: var(--primary); }
+.pagination-buttons button.active { background: var(--primary); color: #fff; border-color: var(--primary); }
+.pagination-buttons button:disabled { opacity: 0.4; cursor: not-allowed; }
+
+/* Empty state */
+.empty-state {
+  padding: 60px 20px;
+  text-align: center;
+  color: var(--text-secondary);
+}
+
+.empty-state .icon { font-size: 48px; margin-bottom: 12px; color: #d1d5db; }
+.empty-state p { font-size: 14px; }
+
+/* ==================== MODAL ==================== */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.5);
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  opacity: 0;
+  visibility: hidden;
+  transition: all var(--transition);
+}
+
+.modal-overlay.open { opacity: 1; visibility: visible; }
+
+.modal {
+  background: var(--card-bg);
+  border-radius: 12px;
+  width: 560px;
+  max-width: 100%;
+  max-height: 85vh;
+  display: flex;
+  flex-direction: column;
+  box-shadow: var(--shadow-lg);
+  transform: scale(0.95);
+  transition: transform var(--transition);
+}
+
+.modal-overlay.open .modal { transform: scale(1); }
+
+.modal.wide { width: 720px; }
+
+.modal-header {
+  padding: 20px 24px;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.modal-header h3 { font-size: 18px; font-weight: 600; }
+
+.modal-close {
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--text-secondary);
+  font-size: 20px;
+  padding: 4px;
+  display: flex;
+  align-items: center;
+  border-radius: 4px;
+}
+
+.modal-close:hover { background: #f3f4f6; }
+
+.modal-body {
+  padding: 24px;
+  overflow-y: auto;
+  flex: 1;
+}
+
+.modal-footer {
+  padding: 16px 24px;
+  border-top: 1px solid var(--border);
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+.form-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+
+/* ==================== TOAST ==================== */
+#toast-container {
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  z-index: 9999;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.toast {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 16px;
+  border-radius: var(--radius);
+  background: var(--card-bg);
+  box-shadow: var(--shadow-lg);
+  font-size: 14px;
+  min-width: 280px;
+  max-width: 400px;
+  animation: slideIn 0.3s ease;
+  border-left: 4px solid;
+}
+
+.toast.success { border-color: var(--success); }
+.toast.error { border-color: var(--danger); }
+.toast.warning { border-color: var(--warning); }
+.toast.info { border-color: var(--primary); }
+
+.toast .icon { font-size: 20px; }
+.toast.success .icon { color: var(--success); }
+.toast.error .icon { color: var(--danger); }
+.toast.warning .icon { color: var(--warning); }
+.toast.info .icon { color: var(--primary); }
+
+.toast .toast-msg { flex: 1; }
+
+@keyframes slideIn {
+  from { transform: translateX(100%); opacity: 0; }
+  to { transform: translateX(0); opacity: 1; }
+}
+
+/* ==================== LOADING ==================== */
+.spinner {
+  display: inline-block;
+  width: 20px;
+  height: 20px;
+  border: 2px solid var(--border);
+  border-top-color: var(--primary);
+  border-radius: 50%;
+  animation: spin 0.6s linear infinite;
+}
+
+.spinner-lg { width: 32px; height: 32px; border-width: 3px; }
+
+.loading-overlay {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 60px;
+}
+
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* ==================== CONFIRM DIALOG ==================== */
+.confirm-body { text-align: center; padding: 20px 0; }
+.confirm-body .icon { font-size: 48px; color: var(--warning); margin-bottom: 12px; }
+.confirm-body p { font-size: 15px; color: var(--text); }
+.confirm-body .sub { font-size: 13px; color: var(--text-secondary); margin-top: 6px; }
+
+/* ==================== TREE ==================== */
+.tree { padding: 16px; }
+.tree-node { padding: 4px 0; }
+.tree-node-content {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  border-radius: var(--radius);
+  cursor: default;
+  font-size: 13px;
+}
+
+.tree-node-content:hover { background: #f9fafb; }
+
+.tree-children { padding-left: 24px; }
+
+.tree-node-content .badge { margin-left: 8px; }
+
+/* ==================== TAGS ==================== */
+.tag-list { display: flex; flex-wrap: wrap; gap: 6px; }
+
+.tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 10px;
+  background: var(--primary-light);
+  color: var(--primary);
+  border-radius: 20px;
+  font-size: 12px;
+}
+
+.tag .remove {
+  cursor: pointer;
+  font-size: 14px;
+  opacity: 0.7;
+}
+
+.tag .remove:hover { opacity: 1; }
+
+/* ==================== RESPONSIVE ==================== */
+@media (max-width: 1024px) {
+  .sidebar { transform: translateX(-100%); }
+  .sidebar.open { transform: translateX(0); }
+  .main { margin-left: 0; }
+  .menu-toggle { display: flex !important; }
+  .form-row { grid-template-columns: 1fr; }
+}
+
+.menu-toggle {
+  display: none;
+  align-items: center;
+  justify-content: center;
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 24px;
+  color: var(--text);
+}
+
+/* Sub-table styling */
+.sub-table-wrapper {
+  margin-top: 16px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+
+.sub-table-header {
+  padding: 12px 16px;
+  background: #f9fafb;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid var(--border);
+  font-weight: 600;
+  font-size: 14px;
+}
+
+/* Multi-select */
+.multi-select {
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  max-height: 200px;
+  overflow-y: auto;
+  padding: 8px;
+}
+
+.multi-select label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 8px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 13px;
+}
+
+.multi-select label:hover { background: #f9fafb; }
+</style>
+</head>
+<body>
+
+<!-- Toast Container -->
+<div id="toast-container"></div>
+
+<!-- Login Page -->
+<div id="login-page">
+  <div class="login-card">
+    <h1><span class="icon">school</span> 知识库管理后台</h1>
+    <p class="subtitle">WeChat Mini-Program Knowledge Base Admin</p>
+    <form id="login-form" onsubmit="return handleLogin(event)">
+      <div class="form-group">
+        <label>API 地址</label>
+        <div class="api-url-row">
+          <input type="text" id="login-api-url" placeholder="http://localhost:8080/v1">
+          <button type="button" class="btn btn-outline btn-sm" onclick="saveApiUrl()">保存</button>
+        </div>
+      </div>
+      <div class="form-group">
+        <label>邮箱</label>
+        <input type="email" id="login-email" placeholder="admin@example.com" required>
+      </div>
+      <div class="form-group">
+        <label>密码</label>
+        <input type="password" id="login-password" placeholder="请输入密码" required>
+      </div>
+      <button type="submit" class="btn btn-primary btn-lg btn-block" id="login-btn">
+        登录
+      </button>
+    </form>
+  </div>
+</div>
+
+<!-- App Layout -->
+<div id="app">
+  <div class="layout">
+    <!-- Sidebar -->
+    <aside class="sidebar" id="sidebar">
+      <div class="sidebar-header">
+        <div class="brand"><span class="icon">school</span> 知识库管理</div>
+        <div class="sidebar-user">
+          <div class="avatar" id="user-avatar">A</div>
+          <div class="user-info">
+            <div class="user-name" id="user-name">管理员</div>
+            <div class="user-role" id="user-role-label">系统管理员</div>
+          </div>
+        </div>
+      </div>
+      <nav class="sidebar-nav">
+        <div class="nav-section">
+          <div class="nav-item active" data-page="dashboard" onclick="navigate('dashboard')">
+            <span class="icon">dashboard</span> 仪表盘
+          </div>
+        </div>
+        <div class="nav-section">
+          <div class="nav-item" data-page="users" onclick="navigate('users')">
+            <span class="icon">group</span> 用户管理
+          </div>
+        </div>
+        <div class="nav-section">
+          <div class="nav-section-title">内容管理</div>
+          <div class="nav-item" data-page="articles" onclick="navigate('articles')">
+            <span class="icon">article</span> 文章管理
+          </div>
+          <div class="nav-item" data-page="courses" onclick="navigate('courses')">
+            <span class="icon">play_circle</span> 课程管理
+          </div>
+          <div class="nav-item" data-page="modules" onclick="navigate('modules')">
+            <span class="icon">widgets</span> 模块管理
+          </div>
+        </div>
+        <div class="nav-section">
+          <div class="nav-section-title">互动管理</div>
+          <div class="nav-item" data-page="comments" onclick="navigate('comments')">
+            <span class="icon">chat</span> 评论管理
+          </div>
+        </div>
+        <div class="nav-section">
+          <div class="nav-section-title">权限管理</div>
+          <div class="nav-item" data-page="roles" onclick="navigate('roles')">
+            <span class="icon">admin_panel_settings</span> 角色管理
+          </div>
+          <div class="nav-item" data-page="permissions" onclick="navigate('permissions')">
+            <span class="icon">lock</span> 权限列表
+          </div>
+        </div>
+        <div class="nav-section">
+          <div class="nav-section-title">系统管理</div>
+          <div class="nav-item" data-page="wechat-config" onclick="navigate('wechat-config')">
+            <span class="icon">sms</span> 微信配置
+          </div>
+          <div class="nav-item" data-page="log-config" onclick="navigate('log-config')">
+            <span class="icon">settings</span> 日志配置
+          </div>
+          <div class="nav-item" data-page="audit-logs" onclick="navigate('audit-logs')">
+            <span class="icon">history</span> 审计日志
+          </div>
+        </div>
+      </nav>
+      <div class="sidebar-footer">
+        <div class="nav-item" onclick="handleLogout()">
+          <span class="icon">logout</span> 退出登录
+        </div>
+      </div>
+    </aside>
+
+    <!-- Main Content -->
+    <main class="main">
+      <div class="topbar">
+        <div class="topbar-left">
+          <button class="menu-toggle" onclick="toggleSidebar()"><span class="icon">menu</span></button>
+          <h2 id="page-title">仪表盘</h2>
+        </div>
+        <div class="topbar-right">
+          <button class="btn btn-ghost btn-sm" onclick="showApiSettings()"><span class="icon">settings</span> API设置</button>
+          <button class="btn btn-ghost btn-sm" onclick="handleLogout()"><span class="icon">logout</span> 退出</button>
+        </div>
+      </div>
+      <div class="content" id="page-content">
+        <!-- Dynamic content loaded here -->
+      </div>
+    </main>
+  </div>
+</div>
+
+<!-- Global Modal -->
+<div class="modal-overlay" id="modal-overlay" onclick="closeModalOnOverlay(event)">
+  <div class="modal" id="modal">
+    <div class="modal-header">
+      <h3 id="modal-title">标题</h3>
+      <button class="modal-close" onclick="closeModal()"><span class="icon">close</span></button>
+    </div>
+    <div class="modal-body" id="modal-body"></div>
+    <div class="modal-footer" id="modal-footer"></div>
+  </div>
+</div>
+
+<script>
+// ===================== CONFIG =====================
+// Default is HTTP for local development; use HTTPS in production environments
+const DEFAULT_API_URL = 'http://localhost:8080/v1';
+
+function getApiUrl() {
+  return localStorage.getItem('api_base_url') || DEFAULT_API_URL;
+}
+
+function setApiUrl(url) {
+  localStorage.setItem('api_base_url', url.replace(/\/+$/, ''));
+}
+
+function saveApiUrl() {
+  const url = document.getElementById('login-api-url').value.trim();
+  if (url) {
+    setApiUrl(url);
+    toast('API 地址已保存', 'success');
+  }
+}
+
+// ===================== API MODULE =====================
+const api = {
+  async request(method, path, body, opts = {}) {
+    const url = getApiUrl() + path;
+    const headers = { 'Content-Type': 'application/json' };
+    const token = localStorage.getItem('access_token');
+    if (token) headers['Authorization'] = 'Bearer ' + token;
+
+    const config = { method, headers };
+    if (body && method !== 'GET') config.body = JSON.stringify(body);
+
+    try {
+      const resp = await fetch(url, config);
+      if (resp.status === 401) {
+        handleLogout();
+        throw new Error('登录已过期，请重新登录');
+      }
+      const json = await resp.json();
+      if (json.code !== 0) {
+        throw new Error(json.message || '请求失败');
+      }
+      return json.data;
+    } catch (e) {
+      if (e.name === 'TypeError' && e.message.includes('fetch')) {
+        throw new Error('无法连接到服务器，请检查API地址');
+      }
+      throw e;
+    }
+  },
+
+  get(path) { return this.request('GET', path); },
+  post(path, body) { return this.request('POST', path, body); },
+  put(path, body) { return this.request('PUT', path, body); },
+  delete(path) { return this.request('DELETE', path); },
+};
+
+// ===================== TOAST =====================
+function toast(msg, type = 'info') {
+  const container = document.getElementById('toast-container');
+  const icons = { success: 'check_circle', error: 'error', warning: 'warning', info: 'info' };
+  const el = document.createElement('div');
+  el.className = 'toast ' + type;
+  el.innerHTML = `<span class="icon">${icons[type]}</span><span class="toast-msg">${escapeHtml(msg)}</span>`;
+  container.appendChild(el);
+  setTimeout(() => { el.style.opacity = '0'; setTimeout(() => el.remove(), 300); }, 3000);
+}
+
+// ===================== MODAL =====================
+function openModal(title, bodyHtml, footerHtml, wide) {
+  document.getElementById('modal-title').textContent = title;
+  document.getElementById('modal-body').innerHTML = bodyHtml;
+  document.getElementById('modal-footer').innerHTML = footerHtml;
+  const modal = document.getElementById('modal');
+  modal.className = wide ? 'modal wide' : 'modal';
+  document.getElementById('modal-overlay').classList.add('open');
+}
+
+function closeModal() {
+  document.getElementById('modal-overlay').classList.remove('open');
+}
+
+function closeModalOnOverlay(e) {
+  if (e.target === e.currentTarget) closeModal();
+}
+
+let _confirmCallback = null;
+
+function confirmDialog(msg, sub, onConfirm) {
+  _confirmCallback = onConfirm;
+  openModal('确认操作',
+    `<div class="confirm-body"><span class="icon">warning</span><p>${escapeHtml(msg)}</p>${sub ? '<p class="sub">' + escapeHtml(sub) + '</p>' : ''}</div>`,
+    `<button class="btn btn-ghost" onclick="closeModal()">取消</button>
+     <button class="btn btn-danger" onclick="executeConfirm()">确认</button>`
+  );
+}
+
+function executeConfirm() {
+  closeModal();
+  if (typeof _confirmCallback === 'function') {
+    _confirmCallback();
+    _confirmCallback = null;
+  }
+}
+
+// ===================== HELPERS =====================
+function escapeHtml(str) {
+  if (str == null) return '';
+  const d = document.createElement('div');
+  d.textContent = String(str);
+  return d.innerHTML;
+}
+
+function formatDate(str) {
+  if (!str) return '-';
+  const d = new Date(str);
+  if (isNaN(d.getTime())) return '-';
+  return d.toLocaleString('zh-CN', { year:'numeric', month:'2-digit', day:'2-digit', hour:'2-digit', minute:'2-digit' });
+}
+
+function statusBadge(status, map) {
+  const item = map[status] || { label: '未知', cls: 'default' };
+  return `<span class="badge badge-${item.cls}">${item.label}</span>`;
+}
+
+function buildQueryString(params) {
+  const p = new URLSearchParams();
+  Object.entries(params).forEach(([k, v]) => { if (v !== '' && v != null) p.set(k, v); });
+  return p.toString() ? '?' + p.toString() : '';
+}
+
+function loadingHtml() {
+  return '<div class="loading-overlay"><div class="spinner spinner-lg"></div></div>';
+}
+
+function emptyHtml(msg = '暂无数据') {
+  return `<div class="empty-state"><span class="icon">inbox</span><p>${msg}</p></div>`;
+}
+
+function paginationHtml(pagination, onPageFn) {
+  if (!pagination || pagination.total === 0) return '';
+  const { page, total_pages, total, has_prev, has_next } = pagination;
+  let btns = `<button ${has_prev ? '' : 'disabled'} onclick="${onPageFn}(${page - 1})">&laquo;</button>`;
+  const start = Math.max(1, page - 2);
+  const end = Math.min(total_pages, page + 2);
+  for (let i = start; i <= end; i++) {
+    btns += `<button class="${i === page ? 'active' : ''}" onclick="${onPageFn}(${i})">${i}</button>`;
+  }
+  btns += `<button ${has_next ? '' : 'disabled'} onclick="${onPageFn}(${page + 1})">&raquo;</button>`;
+  return `<div class="pagination-bar">
+    <div class="pagination-info">共 ${total} 条，第 ${page}/${total_pages} 页</div>
+    <div class="pagination-buttons">${btns}</div>
+  </div>`;
+}
+
+// ===================== AUTH =====================
+async function handleLogin(e) {
+  e.preventDefault();
+  const btn = document.getElementById('login-btn');
+  const email = document.getElementById('login-email').value.trim();
+  const password = document.getElementById('login-password').value;
+
+  const urlInput = document.getElementById('login-api-url').value.trim();
+  if (urlInput) setApiUrl(urlInput);
+
+  btn.disabled = true;
+  btn.innerHTML = '<div class="spinner"></div> 登录中...';
+  try {
+    // captcha field required by API schema; implement CAPTCHA UI if brute-force protection is needed
+    const data = await api.post('/auth/admin-login', { email, password, captcha: '' });
+    localStorage.setItem('access_token', data.access_token);
+    if (data.user_info) localStorage.setItem('user_info', JSON.stringify(data.user_info));
+    showApp();
+    toast('登录成功', 'success');
+  } catch (err) {
+    toast(err.message, 'error');
+  } finally {
+    btn.disabled = false;
+    btn.textContent = '登录';
+  }
+  return false;
+}
+
+function handleLogout() {
+  localStorage.removeItem('access_token');
+  localStorage.removeItem('user_info');
+  document.getElementById('app').style.display = 'none';
+  document.getElementById('login-page').style.display = 'flex';
+}
+
+function showApp() {
+  document.getElementById('login-page').style.display = 'none';
+  document.getElementById('app').style.display = 'block';
+  updateUserInfo();
+  navigate('dashboard');
+}
+
+function updateUserInfo() {
+  try {
+    const info = JSON.parse(localStorage.getItem('user_info') || '{}');
+    const name = info.nickname || info.email || '管理员';
+    document.getElementById('user-name').textContent = name;
+    document.getElementById('user-avatar').textContent = (name[0] || 'A').toUpperCase();
+    const typeMap = { 2: '管理员', 3: '系统管理员' };
+    document.getElementById('user-role-label').textContent = typeMap[info.user_type] || '管理员';
+  } catch {}
+}
+
+function showApiSettings() {
+  openModal('API 设置',
+    `<div class="form-group"><label>API 基础地址</label><input type="text" id="settings-api-url" value="${escapeHtml(getApiUrl())}"></div>`,
+    `<button class="btn btn-ghost" onclick="closeModal()">取消</button>
+     <button class="btn btn-primary" onclick="saveApiSettings()">保存</button>`
+  );
+}
+
+function saveApiSettings() {
+  const url = document.getElementById('settings-api-url').value.trim();
+  if (url) { setApiUrl(url); toast('API 地址已更新', 'success'); closeModal(); }
+}
+
+// ===================== ROUTER =====================
+let currentPage = 'dashboard';
+
+function navigate(page) {
+  currentPage = page;
+  // Update nav
+  document.querySelectorAll('.nav-item').forEach(el => {
+    el.classList.toggle('active', el.dataset.page === page);
+  });
+  // Close mobile sidebar
+  document.getElementById('sidebar').classList.remove('open');
+
+  const titles = {
+    'dashboard': '仪表盘', 'users': '用户管理', 'articles': '文章管理',
+    'courses': '课程管理', 'modules': '模块管理', 'comments': '评论管理',
+    'roles': '角色管理', 'permissions': '权限列表', 'wechat-config': '微信配置',
+    'log-config': '日志配置', 'audit-logs': '审计日志'
+  };
+  document.getElementById('page-title').textContent = titles[page] || page;
+
+  const content = document.getElementById('page-content');
+  content.innerHTML = loadingHtml();
+
+  const renderers = {
+    'dashboard': renderDashboard, 'users': renderUsers, 'articles': renderArticles,
+    'courses': renderCourses, 'modules': renderModules, 'comments': renderComments,
+    'roles': renderRoles, 'permissions': renderPermissions, 'wechat-config': renderWechatConfig,
+    'log-config': renderLogConfig, 'audit-logs': renderAuditLogs
+  };
+
+  if (renderers[page]) renderers[page]();
+  else content.innerHTML = emptyHtml('页面开发中');
+}
+
+function toggleSidebar() {
+  document.getElementById('sidebar').classList.toggle('open');
+}
+
+// ===================== DASHBOARD =====================
+async function renderDashboard() {
+  const content = document.getElementById('page-content');
+  try {
+    const [users, articles, courses, comments] = await Promise.all([
+      api.get('/admin/users?page=1&page_size=1').catch(() => null),
+      api.get('/admin/articles?page=1&page_size=1').catch(() => null),
+      api.get('/admin/courses?page=1&page_size=1').catch(() => null),
+      api.get('/admin/comments?page=1&page_size=1').catch(() => null),
+    ]);
+
+    const uTotal = users?.pagination?.total ?? '-';
+    const aTotal = articles?.pagination?.total ?? '-';
+    const cTotal = courses?.pagination?.total ?? '-';
+    const cmTotal = comments?.pagination?.total ?? '-';
+
+    content.innerHTML = `
+      <div class="stats-grid">
+        <div class="stat-card"><div class="stat-icon blue"><span class="icon">group</span></div><div class="stat-info"><h3>${uTotal}</h3><p>用户总数</p></div></div>
+        <div class="stat-card"><div class="stat-icon green"><span class="icon">article</span></div><div class="stat-info"><h3>${aTotal}</h3><p>文章总数</p></div></div>
+        <div class="stat-card"><div class="stat-icon orange"><span class="icon">play_circle</span></div><div class="stat-info"><h3>${cTotal}</h3><p>课程总数</p></div></div>
+        <div class="stat-card"><div class="stat-icon red"><span class="icon">chat</span></div><div class="stat-info"><h3>${cmTotal}</h3><p>评论总数</p></div></div>
+      </div>
+      <div class="card"><div class="card-header"><h3>快速入口</h3></div><div class="card-body padded">
+        <div style="display:flex;gap:12px;flex-wrap:wrap;">
+          <button class="btn btn-primary" onclick="navigate('users')"><span class="icon">group</span> 用户管理</button>
+          <button class="btn btn-success" onclick="navigate('articles')"><span class="icon">article</span> 文章管理</button>
+          <button class="btn btn-warning" onclick="navigate('courses')"><span class="icon">play_circle</span> 课程管理</button>
+          <button class="btn btn-outline" onclick="navigate('comments')"><span class="icon">chat</span> 评论管理</button>
+        </div>
+      </div></div>`;
+  } catch (err) {
+    content.innerHTML = `<div class="empty-state"><span class="icon">error</span><p>${escapeHtml(err.message)}</p></div>`;
+  }
+}
+
+// ===================== USERS =====================
+let usersState = { page: 1, keyword: '', user_type: '', status: '' };
+
+async function renderUsers() {
+  const content = document.getElementById('page-content');
+  content.innerHTML = `
+    <div class="card">
+      <div class="card-header">
+        <h3>用户列表</h3>
+        <div class="toolbar">
+          <div class="search-input"><span class="icon">search</span>
+            <input placeholder="搜索用户..." value="${escapeHtml(usersState.keyword)}" onchange="usersState.keyword=this.value;usersState.page=1;renderUsers()">
+          </div>
+          <select class="filter-select" onchange="usersState.user_type=this.value;usersState.page=1;renderUsers()">
+            <option value="">全部类型</option><option value="1" ${usersState.user_type==='1'?'selected':''}>普通用户</option>
+            <option value="2" ${usersState.user_type==='2'?'selected':''}>管理员</option><option value="3" ${usersState.user_type==='3'?'selected':''}>系统管理员</option>
+          </select>
+          <select class="filter-select" onchange="usersState.status=this.value;usersState.page=1;renderUsers()">
+            <option value="">全部状态</option><option value="1" ${usersState.status==='1'?'selected':''}>正常</option>
+            <option value="2" ${usersState.status==='2'?'selected':''}>冻结</option>
+          </select>
+          <button class="btn btn-primary btn-sm" onclick="showCreateUserModal()"><span class="icon">add</span> 创建管理员</button>
+        </div>
+      </div>
+      <div class="card-body"><div id="users-table">${loadingHtml()}</div></div>
+    </div>`;
+  loadUsersTable();
+}
+
+async function loadUsersTable() {
+  const el = document.getElementById('users-table');
+  try {
+    const qs = buildQueryString({ page: usersState.page, page_size: 20, keyword: usersState.keyword, user_type: usersState.user_type, status: usersState.status });
+    const data = await api.get('/admin/users' + qs);
+    const list = data.list || [];
+    if (!list.length) { el.innerHTML = emptyHtml(); return; }
+
+    const typeMap = { 1: '普通用户', 2: '管理员', 3: '系统管理员' };
+    const statusMap = { 1: { label: '正常', cls: 'success' }, 2: { label: '冻结', cls: 'danger' } };
+
+    let rows = list.map(u => `<tr>
+      <td>${u.id}</td>
+      <td>${escapeHtml(u.nickname || '-')}</td>
+      <td>${escapeHtml(u.email || '-')}</td>
+      <td>${typeMap[u.user_type] || u.user_type}</td>
+      <td>${statusBadge(u.status, statusMap)}</td>
+      <td>${formatDate(u.created_at)}</td>
+      <td><div class="actions">
+        <button class="btn btn-outline btn-sm" onclick="showEditUserModal(${u.id})">编辑</button>
+        <button class="btn btn-sm btn-ghost" onclick="showAssignRolesModal(${u.id})">角色</button>
+        <button class="btn btn-sm btn-ghost" onclick="showUserTagsModal(${u.id})">标签</button>
+        <button class="btn btn-danger btn-sm" onclick="deleteUser(${u.id})">删除</button>
+      </div></td>
+    </tr>`).join('');
+
+    el.innerHTML = `<div class="table-wrapper"><table>
+      <thead><tr><th>ID</th><th>昵称</th><th>邮箱</th><th>类型</th><th>状态</th><th>创建时间</th><th>操作</th></tr></thead>
+      <tbody>${rows}</tbody></table></div>` + paginationHtml(data.pagination, 'loadUsersPage');
+  } catch (err) { el.innerHTML = `<div class="empty-state"><p>${escapeHtml(err.message)}</p></div>`; }
+}
+
+function loadUsersPage(p) { usersState.page = p; loadUsersTable(); }
+
+function showCreateUserModal() {
+  openModal('创建管理员用户', `
+    <div class="form-group"><label>邮箱 *</label><input type="email" id="cu-email" required></div>
+    <div class="form-group"><label>密码 *</label><input type="password" id="cu-password" required></div>
+    <div class="form-group"><label>昵称</label><input type="text" id="cu-nickname"></div>
+    <div class="form-group"><label>用户类型</label><select id="cu-type"><option value="2">管理员</option><option value="3">系统管理员</option></select></div>`,
+    `<button class="btn btn-ghost" onclick="closeModal()">取消</button>
+     <button class="btn btn-primary" onclick="createUser()">创建</button>`
+  );
+}
+
+async function createUser() {
+  const email = document.getElementById('cu-email').value.trim();
+  const password = document.getElementById('cu-password').value;
+  const nickname = document.getElementById('cu-nickname').value.trim();
+  const user_type = parseInt(document.getElementById('cu-type').value);
+  if (!email || !password) { toast('请填写必填项', 'warning'); return; }
+  try {
+    await api.post('/admin/users', { email, password, nickname, user_type });
+    toast('创建成功', 'success'); closeModal(); loadUsersTable();
+  } catch (err) { toast(err.message, 'error'); }
+}
+
+async function showEditUserModal(id) {
+  try {
+    const u = await api.get('/admin/users/' + id);
+    openModal('编辑用户', `
+      <div class="form-group"><label>昵称</label><input type="text" id="eu-nickname" value="${escapeHtml(u.nickname || '')}"></div>
+      <div class="form-row">
+        <div class="form-group"><label>用户类型</label><select id="eu-type">
+          <option value="1" ${u.user_type===1?'selected':''}>普通用户</option>
+          <option value="2" ${u.user_type===2?'selected':''}>管理员</option>
+          <option value="3" ${u.user_type===3?'selected':''}>系统管理员</option>
+        </select></div>
+        <div class="form-group"><label>状态</label><select id="eu-status">
+          <option value="1" ${u.status===1?'selected':''}>正常</option>
+          <option value="2" ${u.status===2?'selected':''}>冻结</option>
+        </select></div>
+      </div>
+      <div class="form-group"><label>冻结截止时间</label><input type="datetime-local" id="eu-freeze"></div>`,
+      `<button class="btn btn-ghost" onclick="closeModal()">取消</button>
+       <button class="btn btn-primary" onclick="updateUser(${id})">保存</button>`
+    );
+  } catch (err) { toast(err.message, 'error'); }
+}
+
+async function updateUser(id) {
+  const nickname = document.getElementById('eu-nickname').value.trim();
+  const user_type = parseInt(document.getElementById('eu-type').value);
+  const status = parseInt(document.getElementById('eu-status').value);
+  const freezeVal = document.getElementById('eu-freeze').value;
+  const body = { nickname, user_type, status };
+  if (freezeVal) body.freeze_end_time = new Date(freezeVal).toISOString();
+  try {
+    await api.put('/admin/users/' + id, body);
+    toast('更新成功', 'success'); closeModal(); loadUsersTable();
+  } catch (err) { toast(err.message, 'error'); }
+}
+
+function deleteUser(id) {
+  confirmDialog('确定要删除该用户吗？', '此操作不可恢复', async () => {
+    try { await api.delete('/admin/users/' + id); toast('删除成功', 'success'); loadUsersTable(); }
+    catch (err) { toast(err.message, 'error'); }
+  });
+}
+
+async function showAssignRolesModal(userId) {
+  try {
+    const [rolesData, userData] = await Promise.all([
+      api.get('/admin/roles'),
+      api.get('/admin/users/' + userId)
+    ]);
+    const roles = rolesData.list || rolesData || [];
+    const currentRoles = (userData.roles || []).map(r => r.id);
+    let html = '<div class="form-group"><label>选择角色</label><div class="multi-select">';
+    (Array.isArray(roles) ? roles : []).forEach(r => {
+      html += `<label><input type="checkbox" value="${r.id}" ${currentRoles.includes(r.id)?'checked':''}> ${escapeHtml(r.name)}</label>`;
+    });
+    html += '</div></div>';
+    openModal('分配角色', html,
+      `<button class="btn btn-ghost" onclick="closeModal()">取消</button>
+       <button class="btn btn-primary" onclick="assignRoles(${userId})">保存</button>`);
+  } catch (err) { toast(err.message, 'error'); }
+}
+
+async function assignRoles(userId) {
+  const checks = document.querySelectorAll('#modal-body .multi-select input:checked');
+  const role_ids = Array.from(checks).map(c => parseInt(c.value));
+  try {
+    await api.put('/admin/users/' + userId + '/roles', { role_ids });
+    toast('角色分配成功', 'success'); closeModal();
+  } catch (err) { toast(err.message, 'error'); }
+}
+
+async function showUserTagsModal(userId) {
+  try {
+    const u = await api.get('/admin/users/' + userId);
+    const tags = u.tags || [];
+    let tagHtml = tags.length ? tags.map(t =>
+      `<span class="tag">${escapeHtml(t.tag_name || t.name)}<span class="remove icon" onclick="removeUserTag(${userId},${t.id},this)">close</span></span>`
+    ).join('') : '<span style="color:var(--text-secondary)">暂无标签</span>';
+    openModal('管理标签 - ' + escapeHtml(u.nickname || u.email), `
+      <div class="form-group"><label>当前标签</label><div class="tag-list" id="tag-list">${tagHtml}</div></div>
+      <div class="form-group"><label>添加标签</label><div style="display:flex;gap:8px;">
+        <input type="text" id="new-tag" placeholder="输入标签名"><button class="btn btn-primary btn-sm" onclick="addUserTag(${userId})">添加</button>
+      </div></div>`,
+      `<button class="btn btn-ghost" onclick="closeModal()">关闭</button>`);
+  } catch (err) { toast(err.message, 'error'); }
+}
+
+async function addUserTag(userId) {
+  const tag_name = document.getElementById('new-tag').value.trim();
+  if (!tag_name) return;
+  try {
+    await api.post('/admin/users/' + userId + '/tags', { tag_name });
+    toast('标签已添加', 'success'); showUserTagsModal(userId);
+  } catch (err) { toast(err.message, 'error'); }
+}
+
+async function removeUserTag(userId, tagId, el) {
+  try {
+    await api.delete('/admin/users/' + userId + '/tags?tag_id=' + tagId);
+    toast('标签已删除', 'success'); showUserTagsModal(userId);
+  } catch (err) { toast(err.message, 'error'); }
+}
+
+// ===================== ARTICLES =====================
+let articlesState = { page: 1, keyword: '', module_id: '', status: '' };
+
+async function renderArticles() {
+  const content = document.getElementById('page-content');
+  let moduleOpts = '<option value="">全部模块</option>';
+  try {
+    const mods = await api.get('/modules');
+    (mods.list || mods || []).forEach(m => {
+      moduleOpts += `<option value="${m.id}" ${articlesState.module_id==m.id?'selected':''}>${escapeHtml(m.title)}</option>`;
+    });
+  } catch {}
+
+  content.innerHTML = `
+    <div class="card">
+      <div class="card-header"><h3>文章列表</h3>
+        <div class="toolbar">
+          <div class="search-input"><span class="icon">search</span>
+            <input placeholder="搜索文章..." value="${escapeHtml(articlesState.keyword)}" onchange="articlesState.keyword=this.value;articlesState.page=1;loadArticlesTable()">
+          </div>
+          <select class="filter-select" onchange="articlesState.module_id=this.value;articlesState.page=1;loadArticlesTable()">${moduleOpts}</select>
+          <select class="filter-select" onchange="articlesState.status=this.value;articlesState.page=1;loadArticlesTable()">
+            <option value="">全部状态</option><option value="0" ${articlesState.status==='0'?'selected':''}>草稿</option>
+            <option value="1" ${articlesState.status==='1'?'selected':''}>已发布</option>
+          </select>
+          <button class="btn btn-primary btn-sm" onclick="showArticleModal()"><span class="icon">add</span> 创建文章</button>
+        </div>
+      </div>
+      <div class="card-body"><div id="articles-table">${loadingHtml()}</div></div>
+    </div>`;
+  loadArticlesTable();
+}
+
+async function loadArticlesTable() {
+  const el = document.getElementById('articles-table');
+  try {
+    const qs = buildQueryString({ page: articlesState.page, page_size: 20, keyword: articlesState.keyword, module_id: articlesState.module_id, status: articlesState.status });
+    const data = await api.get('/admin/articles' + qs);
+    const list = data.list || [];
+    if (!list.length) { el.innerHTML = emptyHtml(); return; }
+
+    const statusMap = { 0: { label: '草稿', cls: 'default' }, 1: { label: '已发布', cls: 'success' } };
+    let rows = list.map(a => `<tr>
+      <td>${a.id}</td>
+      <td style="max-width:200px;overflow:hidden;text-overflow:ellipsis">${escapeHtml(a.title)}</td>
+      <td>${escapeHtml(a.module_title || a.module_id || '-')}</td>
+      <td>${escapeHtml(a.author_name || a.author_id || '-')}</td>
+      <td>${statusBadge(a.status, statusMap)}</td>
+      <td>${a.view_count ?? '-'}</td>
+      <td>${a.like_count ?? '-'}</td>
+      <td>${formatDate(a.created_at)}</td>
+      <td><div class="actions">
+        <button class="btn btn-outline btn-sm" onclick="showArticleModal(${a.id})">编辑</button>
+        <button class="btn btn-sm ${a.status===1?'btn-warning':'btn-success'}" onclick="toggleArticlePublish(${a.id},${a.status})">${a.status===1?'下架':'发布'}</button>
+        <button class="btn btn-danger btn-sm" onclick="deleteArticle(${a.id})">删除</button>
+      </div></td>
+    </tr>`).join('');
+
+    el.innerHTML = `<div class="table-wrapper"><table>
+      <thead><tr><th>ID</th><th>标题</th><th>模块</th><th>作者</th><th>状态</th><th>浏览</th><th>点赞</th><th>创建时间</th><th>操作</th></tr></thead>
+      <tbody>${rows}</tbody></table></div>` + paginationHtml(data.pagination, 'loadArticlesPage');
+  } catch (err) { el.innerHTML = `<div class="empty-state"><p>${escapeHtml(err.message)}</p></div>`; }
+}
+
+function loadArticlesPage(p) { articlesState.page = p; loadArticlesTable(); }
+
+async function showArticleModal(id) {
+  let article = { title:'', summary:'', content:'', content_type:1, cover_image:'', module_id:'', status:0, publish_time:'', role_permissions:[] };
+  if (id) {
+    try { article = await api.get('/admin/articles/' + id); } catch (err) { toast(err.message, 'error'); return; }
+  }
+
+  let moduleOpts = '<option value="">请选择模块</option>';
+  try {
+    const mods = await api.get('/modules');
+    (mods.list || mods || []).forEach(m => {
+      moduleOpts += `<option value="${m.id}" ${article.module_id==m.id?'selected':''}>${escapeHtml(m.title)}</option>`;
+    });
+  } catch {}
+
+  const pubTime = article.publish_time ? article.publish_time.slice(0, 16) : '';
+
+  openModal(id ? '编辑文章' : '创建文章', `
+    <div class="form-group"><label>标题 *</label><input type="text" id="af-title" value="${escapeHtml(article.title)}"></div>
+    <div class="form-group"><label>摘要</label><input type="text" id="af-summary" value="${escapeHtml(article.summary || '')}"></div>
+    <div class="form-group"><label>内容 *</label><textarea id="af-content" rows="8">${escapeHtml(article.content || '')}</textarea></div>
+    <div class="form-row">
+      <div class="form-group"><label>内容类型</label><select id="af-ctype"><option value="1" ${article.content_type===1?'selected':''}>Markdown</option><option value="2" ${article.content_type===2?'selected':''}>HTML</option></select></div>
+      <div class="form-group"><label>模块</label><select id="af-module">${moduleOpts}</select></div>
+    </div>
+    <div class="form-group"><label>封面图片 URL</label><input type="text" id="af-cover" value="${escapeHtml(article.cover_image || '')}"></div>
+    <div class="form-row">
+      <div class="form-group"><label>状态</label><select id="af-status"><option value="0" ${article.status===0?'selected':''}>草稿</option><option value="1" ${article.status===1?'selected':''}>已发布</option></select></div>
+      <div class="form-group"><label>发布时间</label><input type="datetime-local" id="af-pubtime" value="${pubTime}"></div>
+    </div>`,
+    `<button class="btn btn-ghost" onclick="closeModal()">取消</button>
+     <button class="btn btn-primary" onclick="saveArticle(${id || 0})">${id ? '保存' : '创建'}</button>`, true);
+}
+
+async function saveArticle(id) {
+  const body = {
+    title: document.getElementById('af-title').value.trim(),
+    summary: document.getElementById('af-summary').value.trim(),
+    content: document.getElementById('af-content').value,
+    content_type: parseInt(document.getElementById('af-ctype').value),
+    cover_image: document.getElementById('af-cover').value.trim(),
+    module_id: parseInt(document.getElementById('af-module').value) || 0,
+    status: parseInt(document.getElementById('af-status').value),
+  };
+  const pt = document.getElementById('af-pubtime').value;
+  if (pt) body.publish_time = new Date(pt).toISOString();
+  if (!body.title) { toast('请输入标题', 'warning'); return; }
+  try {
+    if (id) await api.put('/admin/articles/' + id, body);
+    else await api.post('/admin/articles', body);
+    toast(id ? '更新成功' : '创建成功', 'success'); closeModal(); loadArticlesTable();
+  } catch (err) { toast(err.message, 'error'); }
+}
+
+async function toggleArticlePublish(id, currentStatus) {
+  try {
+    await api.post('/admin/articles/' + id + '/publish', { status: currentStatus === 1 ? 0 : 1 });
+    toast(currentStatus === 1 ? '已下架' : '已发布', 'success'); loadArticlesTable();
+  } catch (err) { toast(err.message, 'error'); }
+}
+
+function deleteArticle(id) {
+  confirmDialog('确定要删除该文章吗？', '此操作不可恢复', async () => {
+    try { await api.delete('/admin/articles/' + id); toast('删除成功', 'success'); loadArticlesTable(); }
+    catch (err) { toast(err.message, 'error'); }
+  });
+}
+
+// ===================== COURSES =====================
+let coursesState = { page: 1, keyword: '', status: '' };
+
+async function renderCourses() {
+  const content = document.getElementById('page-content');
+  content.innerHTML = `
+    <div class="card">
+      <div class="card-header"><h3>课程列表</h3>
+        <div class="toolbar">
+          <div class="search-input"><span class="icon">search</span>
+            <input placeholder="搜索课程..." value="${escapeHtml(coursesState.keyword)}" onchange="coursesState.keyword=this.value;coursesState.page=1;loadCoursesTable()">
+          </div>
+          <select class="filter-select" onchange="coursesState.status=this.value;coursesState.page=1;loadCoursesTable()">
+            <option value="">全部状态</option><option value="0" ${coursesState.status==='0'?'selected':''}>草稿</option>
+            <option value="1" ${coursesState.status==='1'?'selected':''}>已发布</option>
+          </select>
+          <button class="btn btn-primary btn-sm" onclick="showCourseModal()"><span class="icon">add</span> 创建课程</button>
+        </div>
+      </div>
+      <div class="card-body"><div id="courses-table">${loadingHtml()}</div></div>
+    </div>`;
+  loadCoursesTable();
+}
+
+async function loadCoursesTable() {
+  const el = document.getElementById('courses-table');
+  try {
+    const qs = buildQueryString({ page: coursesState.page, page_size: 20, keyword: coursesState.keyword, status: coursesState.status });
+    const data = await api.get('/admin/courses' + qs);
+    const list = data.list || [];
+    if (!list.length) { el.innerHTML = emptyHtml(); return; }
+
+    const statusMap = { 0: { label: '草稿', cls: 'default' }, 1: { label: '已发布', cls: 'success' } };
+    let rows = list.map(c => `<tr>
+      <td>${c.id}</td>
+      <td style="max-width:200px;overflow:hidden;text-overflow:ellipsis">${escapeHtml(c.title)}</td>
+      <td>${escapeHtml(c.module_title || c.module_id || '-')}</td>
+      <td>${c.price != null ? '¥' + c.price : '-'}</td>
+      <td>${statusBadge(c.status, statusMap)}</td>
+      <td>${c.view_count ?? '-'}</td>
+      <td>${c.study_count ?? '-'}</td>
+      <td>${formatDate(c.created_at)}</td>
+      <td><div class="actions">
+        <button class="btn btn-outline btn-sm" onclick="showCourseModal(${c.id})">编辑</button>
+        <button class="btn btn-sm btn-ghost" onclick="showCourseUnits(${c.id})">课时</button>
+        <button class="btn btn-sm ${c.status===1?'btn-warning':'btn-success'}" onclick="toggleCoursePublish(${c.id},${c.status})">${c.status===1?'下架':'发布'}</button>
+        <button class="btn btn-danger btn-sm" onclick="deleteCourse(${c.id})">删除</button>
+      </div></td>
+    </tr>`).join('');
+
+    el.innerHTML = `<div class="table-wrapper"><table>
+      <thead><tr><th>ID</th><th>标题</th><th>模块</th><th>价格</th><th>状态</th><th>浏览</th><th>学习</th><th>创建时间</th><th>操作</th></tr></thead>
+      <tbody>${rows}</tbody></table></div>` + paginationHtml(data.pagination, 'loadCoursesPage');
+  } catch (err) { el.innerHTML = `<div class="empty-state"><p>${escapeHtml(err.message)}</p></div>`; }
+}
+
+function loadCoursesPage(p) { coursesState.page = p; loadCoursesTable(); }
+
+async function showCourseModal(id) {
+  let course = { title:'', description:'', cover_image:'', price:0, module_id:'', status:0, publish_time:'' };
+  if (id) {
+    try { course = await api.get('/admin/courses/' + id); } catch (err) { toast(err.message, 'error'); return; }
+  }
+
+  let moduleOpts = '<option value="">请选择模块</option>';
+  try {
+    const mods = await api.get('/modules');
+    (mods.list || mods || []).forEach(m => {
+      moduleOpts += `<option value="${m.id}" ${course.module_id==m.id?'selected':''}>${escapeHtml(m.title)}</option>`;
+    });
+  } catch {}
+
+  const pubTime = course.publish_time ? course.publish_time.slice(0, 16) : '';
+
+  openModal(id ? '编辑课程' : '创建课程', `
+    <div class="form-group"><label>标题 *</label><input type="text" id="cf-title" value="${escapeHtml(course.title)}"></div>
+    <div class="form-group"><label>描述</label><textarea id="cf-desc" rows="4">${escapeHtml(course.description || '')}</textarea></div>
+    <div class="form-group"><label>封面图片 URL</label><input type="text" id="cf-cover" value="${escapeHtml(course.cover_image || '')}"></div>
+    <div class="form-row">
+      <div class="form-group"><label>价格</label><input type="number" id="cf-price" step="0.01" value="${course.price || 0}"></div>
+      <div class="form-group"><label>模块</label><select id="cf-module">${moduleOpts}</select></div>
+    </div>
+    <div class="form-row">
+      <div class="form-group"><label>状态</label><select id="cf-status"><option value="0" ${course.status===0?'selected':''}>草稿</option><option value="1" ${course.status===1?'selected':''}>已发布</option></select></div>
+      <div class="form-group"><label>发布时间</label><input type="datetime-local" id="cf-pubtime" value="${pubTime}"></div>
+    </div>`,
+    `<button class="btn btn-ghost" onclick="closeModal()">取消</button>
+     <button class="btn btn-primary" onclick="saveCourse(${id || 0})">${id ? '保存' : '创建'}</button>`, true);
+}
+
+async function saveCourse(id) {
+  const body = {
+    title: document.getElementById('cf-title').value.trim(),
+    description: document.getElementById('cf-desc').value.trim(),
+    cover_image: document.getElementById('cf-cover').value.trim(),
+    price: parseFloat(document.getElementById('cf-price').value) || 0,
+    module_id: parseInt(document.getElementById('cf-module').value) || 0,
+    status: parseInt(document.getElementById('cf-status').value),
+  };
+  const pt = document.getElementById('cf-pubtime').value;
+  if (pt) body.publish_time = new Date(pt).toISOString();
+  if (!body.title) { toast('请输入标题', 'warning'); return; }
+  try {
+    if (id) await api.put('/admin/courses/' + id, body);
+    else await api.post('/admin/courses', body);
+    toast(id ? '更新成功' : '创建成功', 'success'); closeModal(); loadCoursesTable();
+  } catch (err) { toast(err.message, 'error'); }
+}
+
+async function toggleCoursePublish(id, currentStatus) {
+  try {
+    await api.post('/admin/courses/' + id + '/publish', { status: currentStatus === 1 ? 0 : 1 });
+    toast(currentStatus === 1 ? '已下架' : '已发布', 'success'); loadCoursesTable();
+  } catch (err) { toast(err.message, 'error'); }
+}
+
+function deleteCourse(id) {
+  confirmDialog('确定要删除该课程吗？', '此操作不可恢复', async () => {
+    try { await api.delete('/admin/courses/' + id); toast('删除成功', 'success'); loadCoursesTable(); }
+    catch (err) { toast(err.message, 'error'); }
+  });
+}
+
+async function showCourseUnits(courseId) {
+  try {
+    const data = await api.get('/admin/courses/' + courseId + '/units');
+    const units = data.list || data || [];
+    let rows = '';
+    if (units.length) {
+      rows = units.map(u => `<tr>
+        <td>${u.id}</td><td>${escapeHtml(u.title)}</td><td>${escapeHtml(u.video_url || '-')}</td>
+        <td>${u.duration || 0}s</td><td>${u.sort_order ?? 0}</td>
+        <td><div class="actions">
+          <button class="btn btn-outline btn-sm" onclick="showUnitModal(${courseId},${u.id})">编辑</button>
+          <button class="btn btn-danger btn-sm" onclick="deleteUnit(${courseId},${u.id})">删除</button>
+        </div></td>
+      </tr>`).join('');
+    }
+
+    openModal('课程课时管理', `
+      <div style="margin-bottom:12px;text-align:right"><button class="btn btn-primary btn-sm" onclick="showUnitModal(${courseId})"><span class="icon">add</span> 添加课时</button></div>
+      ${units.length ? `<div class="table-wrapper"><table>
+        <thead><tr><th>ID</th><th>标题</th><th>视频URL</th><th>时长</th><th>排序</th><th>操作</th></tr></thead>
+        <tbody>${rows}</tbody></table></div>` : emptyHtml('暂无课时')}`,
+      `<button class="btn btn-ghost" onclick="closeModal()">关闭</button>`, true);
+  } catch (err) { toast(err.message, 'error'); }
+}
+
+async function showUnitModal(courseId, unitId) {
+  let unit = { title:'', video_url:'', duration:0, sort_order:0 };
+  if (unitId) {
+    try {
+      const data = await api.get('/admin/courses/' + courseId + '/units');
+      const units = data.list || data || [];
+      unit = units.find(u => u.id === unitId) || unit;
+    } catch {}
+  }
+  openModal(unitId ? '编辑课时' : '添加课时', `
+    <div class="form-group"><label>标题 *</label><input type="text" id="uf-title" value="${escapeHtml(unit.title)}"></div>
+    <div class="form-group"><label>视频 URL</label><input type="text" id="uf-video" value="${escapeHtml(unit.video_url || '')}"></div>
+    <div class="form-row">
+      <div class="form-group"><label>时长 (秒)</label><input type="number" id="uf-duration" value="${unit.duration || 0}"></div>
+      <div class="form-group"><label>排序</label><input type="number" id="uf-sort" value="${unit.sort_order || 0}"></div>
+    </div>`,
+    `<button class="btn btn-ghost" onclick="closeModal()">取消</button>
+     <button class="btn btn-primary" onclick="saveUnit(${courseId},${unitId || 0})">${unitId ? '保存' : '创建'}</button>`);
+}
+
+async function saveUnit(courseId, unitId) {
+  const body = {
+    title: document.getElementById('uf-title').value.trim(),
+    video_url: document.getElementById('uf-video').value.trim(),
+    duration: parseInt(document.getElementById('uf-duration').value) || 0,
+    sort_order: parseInt(document.getElementById('uf-sort').value) || 0,
+  };
+  if (!body.title) { toast('请输入标题', 'warning'); return; }
+  try {
+    if (unitId) await api.put('/admin/courses/' + courseId + '/units/' + unitId, body);
+    else await api.post('/admin/courses/' + courseId + '/units', body);
+    toast(unitId ? '更新成功' : '创建成功', 'success'); closeModal(); showCourseUnits(courseId);
+  } catch (err) { toast(err.message, 'error'); }
+}
+
+function deleteUnit(courseId, unitId) {
+  confirmDialog('确定要删除该课时吗？', '', async () => {
+    try { await api.delete('/admin/courses/' + courseId + '/units/' + unitId); toast('删除成功', 'success'); showCourseUnits(courseId); }
+    catch (err) { toast(err.message, 'error'); }
+  });
+}
+
+// ===================== MODULES =====================
+async function renderModules() {
+  const content = document.getElementById('page-content');
+  content.innerHTML = `
+    <div class="card">
+      <div class="card-header"><h3>模块列表</h3>
+        <div class="toolbar"><button class="btn btn-primary btn-sm" onclick="showModuleModal()"><span class="icon">add</span> 创建模块</button></div>
+      </div>
+      <div class="card-body"><div id="modules-table">${loadingHtml()}</div></div>
+    </div>`;
+  loadModulesTable();
+}
+
+async function loadModulesTable() {
+  const el = document.getElementById('modules-table');
+  try {
+    const data = await api.get('/modules');
+    const list = data.list || data || [];
+    if (!list.length) { el.innerHTML = emptyHtml(); return; }
+
+    let rows = list.map(m => `<tr>
+      <td>${m.id}</td>
+      <td>${escapeHtml(m.title)}</td>
+      <td style="max-width:300px;overflow:hidden;text-overflow:ellipsis">${escapeHtml(m.description || '-')}</td>
+      <td>${m.sort_order ?? 0}</td>
+      <td>${formatDate(m.created_at)}</td>
+      <td><div class="actions">
+        <button class="btn btn-outline btn-sm" onclick="showModuleModal(${m.id})">编辑</button>
+        <button class="btn btn-sm btn-ghost" onclick="showModulePages(${m.id})">页面</button>
+        <button class="btn btn-danger btn-sm" onclick="deleteModule(${m.id})">删除</button>
+      </div></td>
+    </tr>`).join('');
+
+    el.innerHTML = `<div class="table-wrapper"><table>
+      <thead><tr><th>ID</th><th>标题</th><th>描述</th><th>排序</th><th>创建时间</th><th>操作</th></tr></thead>
+      <tbody>${rows}</tbody></table></div>`;
+  } catch (err) { el.innerHTML = `<div class="empty-state"><p>${escapeHtml(err.message)}</p></div>`; }
+}
+
+async function showModuleModal(id) {
+  let mod = { title:'', description:'', sort_order:0 };
+  if (id) {
+    try {
+      const data = await api.get('/modules');
+      const list = data.list || data || [];
+      mod = list.find(m => m.id === id) || mod;
+    } catch {}
+  }
+  openModal(id ? '编辑模块' : '创建模块', `
+    <div class="form-group"><label>标题 *</label><input type="text" id="mf-title" value="${escapeHtml(mod.title)}"></div>
+    <div class="form-group"><label>描述</label><textarea id="mf-desc" rows="3">${escapeHtml(mod.description || '')}</textarea></div>
+    <div class="form-group"><label>排序</label><input type="number" id="mf-sort" value="${mod.sort_order || 0}"></div>`,
+    `<button class="btn btn-ghost" onclick="closeModal()">取消</button>
+     <button class="btn btn-primary" onclick="saveModule(${id || 0})">${id ? '保存' : '创建'}</button>`);
+}
+
+async function saveModule(id) {
+  const body = {
+    title: document.getElementById('mf-title').value.trim(),
+    description: document.getElementById('mf-desc').value.trim(),
+    sort_order: parseInt(document.getElementById('mf-sort').value) || 0,
+  };
+  if (!body.title) { toast('请输入标题', 'warning'); return; }
+  try {
+    if (id) await api.put('/admin/modules/' + id, body);
+    else await api.post('/admin/modules', body);
+    toast(id ? '更新成功' : '创建成功', 'success'); closeModal(); loadModulesTable();
+  } catch (err) { toast(err.message, 'error'); }
+}
+
+function deleteModule(id) {
+  confirmDialog('确定要删除该模块吗？', '关联的内容可能受影响', async () => {
+    try { await api.delete('/admin/modules/' + id); toast('删除成功', 'success'); loadModulesTable(); }
+    catch (err) { toast(err.message, 'error'); }
+  });
+}
+
+async function showModulePages(moduleId) {
+  try {
+    const data = await api.get('/admin/modules/' + moduleId + '/pages');
+    const pages = data.list || data || [];
+    let rows = '';
+    if (pages.length) {
+      rows = pages.map(p => `<tr>
+        <td>${p.id}</td><td>${escapeHtml(p.title)}</td><td>${p.content_type === 1 ? 'Markdown' : 'HTML'}</td>
+        <td>${p.sort_order ?? 0}</td>
+        <td><div class="actions">
+          <button class="btn btn-outline btn-sm" onclick="showModulePageModal(${moduleId},${p.id})">编辑</button>
+          <button class="btn btn-danger btn-sm" onclick="deleteModulePage(${moduleId},${p.id})">删除</button>
+        </div></td>
+      </tr>`).join('');
+    }
+    openModal('模块页面管理', `
+      <div style="margin-bottom:12px;text-align:right"><button class="btn btn-primary btn-sm" onclick="showModulePageModal(${moduleId})"><span class="icon">add</span> 添加页面</button></div>
+      ${pages.length ? `<div class="table-wrapper"><table>
+        <thead><tr><th>ID</th><th>标题</th><th>类型</th><th>排序</th><th>操作</th></tr></thead>
+        <tbody>${rows}</tbody></table></div>` : emptyHtml('暂无页面')}`,
+      `<button class="btn btn-ghost" onclick="closeModal()">关闭</button>`, true);
+  } catch (err) { toast(err.message, 'error'); }
+}
+
+async function showModulePageModal(moduleId, pageId) {
+  let pg = { title:'', content:'', content_type:1, sort_order:0 };
+  if (pageId) {
+    try {
+      const data = await api.get('/admin/modules/' + moduleId + '/pages');
+      const pages = data.list || data || [];
+      pg = pages.find(p => p.id === pageId) || pg;
+    } catch {}
+  }
+  openModal(pageId ? '编辑页面' : '添加页面', `
+    <div class="form-group"><label>标题 *</label><input type="text" id="mpf-title" value="${escapeHtml(pg.title)}"></div>
+    <div class="form-group"><label>内容</label><textarea id="mpf-content" rows="6">${escapeHtml(pg.content || '')}</textarea></div>
+    <div class="form-row">
+      <div class="form-group"><label>内容类型</label><select id="mpf-ctype"><option value="1" ${pg.content_type===1?'selected':''}>Markdown</option><option value="2" ${pg.content_type===2?'selected':''}>HTML</option></select></div>
+      <div class="form-group"><label>排序</label><input type="number" id="mpf-sort" value="${pg.sort_order || 0}"></div>
+    </div>`,
+    `<button class="btn btn-ghost" onclick="closeModal()">取消</button>
+     <button class="btn btn-primary" onclick="saveModulePage(${moduleId},${pageId || 0})">${pageId ? '保存' : '创建'}</button>`);
+}
+
+async function saveModulePage(moduleId, pageId) {
+  const body = {
+    title: document.getElementById('mpf-title').value.trim(),
+    content: document.getElementById('mpf-content').value,
+    content_type: parseInt(document.getElementById('mpf-ctype').value),
+    sort_order: parseInt(document.getElementById('mpf-sort').value) || 0,
+  };
+  if (!body.title) { toast('请输入标题', 'warning'); return; }
+  try {
+    if (pageId) await api.put('/admin/modules/' + moduleId + '/pages/' + pageId, body);
+    else await api.post('/admin/modules/' + moduleId + '/pages', body);
+    toast(pageId ? '更新成功' : '创建成功', 'success'); closeModal(); showModulePages(moduleId);
+  } catch (err) { toast(err.message, 'error'); }
+}
+
+function deleteModulePage(moduleId, pageId) {
+  confirmDialog('确定要删除该页面吗？', '', async () => {
+    try { await api.delete('/admin/modules/' + moduleId + '/pages/' + pageId); toast('删除成功', 'success'); showModulePages(moduleId); }
+    catch (err) { toast(err.message, 'error'); }
+  });
+}
+
+// ===================== COMMENTS =====================
+let commentsState = { page: 1, status: '' };
+
+async function renderComments() {
+  const content = document.getElementById('page-content');
+  content.innerHTML = `
+    <div class="card">
+      <div class="card-header"><h3>评论列表</h3>
+        <div class="toolbar">
+          <select class="filter-select" onchange="commentsState.status=this.value;commentsState.page=1;loadCommentsTable()">
+            <option value="">全部状态</option><option value="0" ${commentsState.status==='0'?'selected':''}>待审核</option>
+            <option value="1" ${commentsState.status==='1'?'selected':''}>已通过</option><option value="2" ${commentsState.status==='2'?'selected':''}>已拒绝</option>
+          </select>
+        </div>
+      </div>
+      <div class="card-body"><div id="comments-table">${loadingHtml()}</div></div>
+    </div>`;
+  loadCommentsTable();
+}
+
+async function loadCommentsTable() {
+  const el = document.getElementById('comments-table');
+  try {
+    const qs = buildQueryString({ page: commentsState.page, page_size: 20, status: commentsState.status });
+    const data = await api.get('/admin/comments' + qs);
+    const list = data.list || [];
+    if (!list.length) { el.innerHTML = emptyHtml(); return; }
+
+    const statusMap = { 0: { label: '待审核', cls: 'warning' }, 1: { label: '已通过', cls: 'success' }, 2: { label: '已拒绝', cls: 'danger' } };
+    let rows = list.map(c => `<tr>
+      <td>${c.id}</td>
+      <td>${escapeHtml(c.user_name || c.user_id || '-')}</td>
+      <td>${escapeHtml(c.content_type || '-')}</td>
+      <td style="max-width:300px;overflow:hidden;text-overflow:ellipsis">${escapeHtml(c.content)}</td>
+      <td>${statusBadge(c.status, statusMap)}</td>
+      <td>${formatDate(c.created_at)}</td>
+      <td><div class="actions">
+        ${c.status !== 1 ? `<button class="btn btn-success btn-sm" onclick="auditComment(${c.id},1)">通过</button>` : ''}
+        ${c.status !== 2 ? `<button class="btn btn-warning btn-sm" onclick="auditComment(${c.id},2)">拒绝</button>` : ''}
+        <button class="btn btn-danger btn-sm" onclick="deleteComment(${c.id})">删除</button>
+      </div></td>
+    </tr>`).join('');
+
+    el.innerHTML = `<div class="table-wrapper"><table>
+      <thead><tr><th>ID</th><th>用户</th><th>内容类型</th><th>内容</th><th>状态</th><th>创建时间</th><th>操作</th></tr></thead>
+      <tbody>${rows}</tbody></table></div>` + paginationHtml(data.pagination, 'loadCommentsPage');
+  } catch (err) { el.innerHTML = `<div class="empty-state"><p>${escapeHtml(err.message)}</p></div>`; }
+}
+
+function loadCommentsPage(p) { commentsState.page = p; loadCommentsTable(); }
+
+async function auditComment(id, status) {
+  try {
+    await api.put('/admin/comments/' + id + '/audit', { status });
+    toast(status === 1 ? '已通过' : '已拒绝', 'success'); loadCommentsTable();
+  } catch (err) { toast(err.message, 'error'); }
+}
+
+function deleteComment(id) {
+  confirmDialog('确定要删除该评论吗？', '', async () => {
+    try { await api.delete('/admin/comments/' + id); toast('删除成功', 'success'); loadCommentsTable(); }
+    catch (err) { toast(err.message, 'error'); }
+  });
+}
+
+// ===================== ROLES =====================
+async function renderRoles() {
+  const content = document.getElementById('page-content');
+  content.innerHTML = `
+    <div class="card">
+      <div class="card-header"><h3>角色列表</h3>
+        <div class="toolbar"><button class="btn btn-primary btn-sm" onclick="showRoleModal()"><span class="icon">add</span> 创建角色</button></div>
+      </div>
+      <div class="card-body"><div id="roles-table">${loadingHtml()}</div></div>
+    </div>`;
+  loadRolesTable();
+}
+
+async function loadRolesTable() {
+  const el = document.getElementById('roles-table');
+  try {
+    const data = await api.get('/admin/roles');
+    const list = data.list || data || [];
+    if (!list.length) { el.innerHTML = emptyHtml(); return; }
+
+    let rows = list.map(r => `<tr>
+      <td>${r.id}</td>
+      <td><strong>${escapeHtml(r.name)}</strong></td>
+      <td>${escapeHtml(r.description || '-')}</td>
+      <td>${r.is_system ? '<span class="badge badge-info">系统</span>' : '<span class="badge badge-default">自定义</span>'}</td>
+      <td>${formatDate(r.created_at)}</td>
+      <td><div class="actions">
+        <button class="btn btn-outline btn-sm" onclick="showRoleDetail(${r.id})">详情</button>
+        <button class="btn btn-outline btn-sm" onclick="showRoleModal(${r.id})">编辑</button>
+        ${!r.is_system ? `<button class="btn btn-danger btn-sm" onclick="deleteRole(${r.id})">删除</button>` : ''}
+      </div></td>
+    </tr>`).join('');
+
+    el.innerHTML = `<div class="table-wrapper"><table>
+      <thead><tr><th>ID</th><th>名称</th><th>描述</th><th>类型</th><th>创建时间</th><th>操作</th></tr></thead>
+      <tbody>${rows}</tbody></table></div>`;
+  } catch (err) { el.innerHTML = `<div class="empty-state"><p>${escapeHtml(err.message)}</p></div>`; }
+}
+
+async function showRoleDetail(id) {
+  try {
+    const role = await api.get('/admin/roles/' + id);
+    const perms = role.permissions || [];
+    let permHtml = perms.length ?
+      perms.map(p => `<span class="badge badge-info" style="margin:2px">${escapeHtml(p.name || p.code)}</span>`).join('') :
+      '<span style="color:var(--text-secondary)">暂无权限</span>';
+    openModal('角色详情 - ' + escapeHtml(role.name), `
+      <div class="form-group"><label>名称</label><p>${escapeHtml(role.name)}</p></div>
+      <div class="form-group"><label>描述</label><p>${escapeHtml(role.description || '-')}</p></div>
+      <div class="form-group"><label>权限列表</label><div style="margin-top:4px">${permHtml}</div></div>`,
+      `<button class="btn btn-ghost" onclick="closeModal()">关闭</button>`);
+  } catch (err) { toast(err.message, 'error'); }
+}
+
+async function showRoleModal(id) {
+  let role = { name:'', description:'', parent_id:0, permission_ids:[] };
+  let permTree = [];
+  try {
+    const [permsData, rolesData] = await Promise.all([
+      api.get('/admin/permissions'),
+      id ? api.get('/admin/roles/' + id) : Promise.resolve(null)
+    ]);
+    permTree = permsData.list || permsData || [];
+    if (rolesData) {
+      role = rolesData;
+      role.permission_ids = (role.permissions || []).map(p => p.id);
+    }
+  } catch {}
+
+  function renderPermCheckboxes(nodes, level = 0) {
+    if (!Array.isArray(nodes)) return '';
+    return nodes.map(n => {
+      const checked = role.permission_ids.includes(n.id) ? 'checked' : '';
+      const children = n.children ? renderPermCheckboxes(n.children, level + 1) : '';
+      return `<div style="padding-left:${level * 20}px"><label style="display:flex;align-items:center;gap:6px;padding:4px 0;font-size:13px;cursor:pointer">
+        <input type="checkbox" name="perm" value="${n.id}" ${checked}> ${escapeHtml(n.name || n.code)} <span class="badge badge-default" style="font-size:10px">${escapeHtml(n.type || '')}</span>
+      </label>${children}</div>`;
+    }).join('');
+  }
+
+  openModal(id ? '编辑角色' : '创建角色', `
+    <div class="form-group"><label>名称 *</label><input type="text" id="rf-name" value="${escapeHtml(role.name)}"></div>
+    <div class="form-group"><label>描述</label><textarea id="rf-desc" rows="2">${escapeHtml(role.description || '')}</textarea></div>
+    <div class="form-group"><label>父角色 ID</label><input type="number" id="rf-parent" value="${role.parent_id || 0}"></div>
+    <div class="form-group"><label>权限</label><div class="multi-select" style="max-height:250px">${renderPermCheckboxes(permTree)}</div></div>`,
+    `<button class="btn btn-ghost" onclick="closeModal()">取消</button>
+     <button class="btn btn-primary" onclick="saveRole(${id || 0})">${id ? '保存' : '创建'}</button>`, true);
+}
+
+async function saveRole(id) {
+  const checks = document.querySelectorAll('#modal-body input[name="perm"]:checked');
+  const body = {
+    name: document.getElementById('rf-name').value.trim(),
+    description: document.getElementById('rf-desc').value.trim(),
+    parent_id: parseInt(document.getElementById('rf-parent').value) || 0,
+    permission_ids: Array.from(checks).map(c => parseInt(c.value)),
+  };
+  if (!body.name) { toast('请输入名称', 'warning'); return; }
+  try {
+    if (id) await api.put('/admin/roles/' + id, body);
+    else await api.post('/admin/roles', body);
+    toast(id ? '更新成功' : '创建成功', 'success'); closeModal(); loadRolesTable();
+  } catch (err) { toast(err.message, 'error'); }
+}
+
+function deleteRole(id) {
+  confirmDialog('确定要删除该角色吗？', '已分配此角色的用户将受影响', async () => {
+    try { await api.delete('/admin/roles/' + id); toast('删除成功', 'success'); loadRolesTable(); }
+    catch (err) { toast(err.message, 'error'); }
+  });
+}
+
+// ===================== PERMISSIONS =====================
+async function renderPermissions() {
+  const content = document.getElementById('page-content');
+  content.innerHTML = `<div class="card"><div class="card-header"><h3>权限树</h3></div><div class="card-body padded"><div id="perm-tree">${loadingHtml()}</div></div></div>`;
+  try {
+    const data = await api.get('/admin/permissions');
+    const tree = data.list || data || [];
+    document.getElementById('perm-tree').innerHTML = tree.length ? '<div class="tree">' + renderPermTree(tree) + '</div>' : emptyHtml('暂无权限数据');
+  } catch (err) {
+    document.getElementById('perm-tree').innerHTML = `<div class="empty-state"><p>${escapeHtml(err.message)}</p></div>`;
+  }
+}
+
+function renderPermTree(nodes) {
+  if (!Array.isArray(nodes)) return '';
+  return nodes.map(n => {
+    const typeMap = { 'menu': 'info', 'button': 'warning', 'api': 'success' };
+    const badgeCls = typeMap[n.type] || 'default';
+    const children = n.children && n.children.length ? `<div class="tree-children">${renderPermTree(n.children)}</div>` : '';
+    return `<div class="tree-node">
+      <div class="tree-node-content">
+        <span class="icon" style="font-size:16px">${n.children && n.children.length ? 'folder' : 'description'}</span>
+        <strong>${escapeHtml(n.name || n.code)}</strong>
+        <span class="badge badge-${badgeCls}">${escapeHtml(n.type || '-')}</span>
+        <span style="color:var(--text-secondary);font-size:12px;margin-left:8px">${escapeHtml(n.code || '')}</span>
+        ${n.level != null ? `<span style="color:var(--text-secondary);font-size:11px">Level: ${n.level}</span>` : ''}
+      </div>${children}
+    </div>`;
+  }).join('');
+}
+
+// ===================== WECHAT CONFIG =====================
+async function renderWechatConfig() {
+  const content = document.getElementById('page-content');
+  content.innerHTML = `<div class="card"><div class="card-header"><h3>微信配置</h3></div><div class="card-body padded"><div id="wechat-form">${loadingHtml()}</div></div></div>`;
+  try {
+    const config = await api.get('/admin/wechat-config');
+    document.getElementById('wechat-form').innerHTML = `
+      <div class="form-group"><label>App ID</label><input type="text" id="wc-appid" value="${escapeHtml(config.app_id || '')}"></div>
+      <div class="form-group"><label>App Secret</label><input type="password" id="wc-secret" value="${escapeHtml(config.app_secret || '')}" placeholder="留空则不修改"></div>
+      <div class="form-group"><label>API Token</label><input type="password" id="wc-token" value="${escapeHtml(config.api_token || '')}" placeholder="留空则不修改"></div>
+      <div style="margin-top:20px"><button class="btn btn-primary" onclick="saveWechatConfig()">保存配置</button></div>`;
+  } catch (err) {
+    document.getElementById('wechat-form').innerHTML = `<div class="empty-state"><p>${escapeHtml(err.message)}</p></div>`;
+  }
+}
+
+async function saveWechatConfig() {
+  const body = {
+    app_id: document.getElementById('wc-appid').value.trim(),
+    app_secret: document.getElementById('wc-secret').value.trim(),
+    api_token: document.getElementById('wc-token').value.trim(),
+  };
+  try {
+    await api.put('/admin/wechat-config', body);
+    toast('配置已保存', 'success');
+  } catch (err) { toast(err.message, 'error'); }
+}
+
+// ===================== LOG CONFIG =====================
+async function renderLogConfig() {
+  const content = document.getElementById('page-content');
+  content.innerHTML = `<div class="card"><div class="card-header"><h3>日志配置</h3></div><div class="card-body padded"><div id="log-form">${loadingHtml()}</div></div></div>`;
+  try {
+    const config = await api.get('/admin/log-config');
+    document.getElementById('log-form').innerHTML = `
+      <div class="form-group"><label>日志保留天数</label><input type="number" id="lc-days" value="${config.retention_days || 90}" min="1"></div>
+      <div style="margin-top:20px"><button class="btn btn-primary" onclick="saveLogConfig()">保存配置</button></div>`;
+  } catch (err) {
+    document.getElementById('log-form').innerHTML = `<div class="empty-state"><p>${escapeHtml(err.message)}</p></div>`;
+  }
+}
+
+async function saveLogConfig() {
+  const retention_days = parseInt(document.getElementById('lc-days').value) || 90;
+  try {
+    await api.put('/admin/log-config', { retention_days });
+    toast('配置已保存', 'success');
+  } catch (err) { toast(err.message, 'error'); }
+}
+
+// ===================== AUDIT LOGS =====================
+let auditState = { page: 1, module: '', action: '', start_date: '', end_date: '' };
+
+async function renderAuditLogs() {
+  const content = document.getElementById('page-content');
+  content.innerHTML = `
+    <div class="card">
+      <div class="card-header"><h3>审计日志</h3>
+        <div class="toolbar">
+          <input type="date" class="filter-select" value="${auditState.start_date}" onchange="auditState.start_date=this.value;auditState.page=1;loadAuditTable()" placeholder="开始日期">
+          <input type="date" class="filter-select" value="${auditState.end_date}" onchange="auditState.end_date=this.value;auditState.page=1;loadAuditTable()" placeholder="结束日期">
+          <input type="text" class="filter-select" style="width:120px" placeholder="模块" value="${escapeHtml(auditState.module)}" onchange="auditState.module=this.value;auditState.page=1;loadAuditTable()">
+          <input type="text" class="filter-select" style="width:120px" placeholder="操作" value="${escapeHtml(auditState.action)}" onchange="auditState.action=this.value;auditState.page=1;loadAuditTable()">
+        </div>
+      </div>
+      <div class="card-body"><div id="audit-table">${loadingHtml()}</div></div>
+    </div>`;
+  loadAuditTable();
+}
+
+async function loadAuditTable() {
+  const el = document.getElementById('audit-table');
+  try {
+    const qs = buildQueryString({
+      page: auditState.page, page_size: 20,
+      module: auditState.module, action: auditState.action,
+      start_date: auditState.start_date, end_date: auditState.end_date,
+    });
+    const data = await api.get('/admin/audit-logs' + qs);
+    const list = data.list || [];
+    if (!list.length) { el.innerHTML = emptyHtml(); return; }
+
+    let rows = list.map(l => `<tr>
+      <td>${l.id}</td>
+      <td>${escapeHtml(l.username || l.user_id || '-')}</td>
+      <td>${escapeHtml(l.action || '-')}</td>
+      <td>${escapeHtml(l.module || '-')}</td>
+      <td style="max-width:300px;overflow:hidden;text-overflow:ellipsis">${escapeHtml(l.description || '-')}</td>
+      <td>${escapeHtml(l.ip_address || l.ip || '-')}</td>
+      <td>${formatDate(l.created_at)}</td>
+    </tr>`).join('');
+
+    el.innerHTML = `<div class="table-wrapper"><table>
+      <thead><tr><th>ID</th><th>用户</th><th>操作</th><th>模块</th><th>描述</th><th>IP地址</th><th>时间</th></tr></thead>
+      <tbody>${rows}</tbody></table></div>` + paginationHtml(data.pagination, 'loadAuditPage');
+  } catch (err) { el.innerHTML = `<div class="empty-state"><p>${escapeHtml(err.message)}</p></div>`; }
+}
+
+function loadAuditPage(p) { auditState.page = p; loadAuditTable(); }
+
+// ===================== INIT =====================
+(function init() {
+  const savedUrl = localStorage.getItem('api_base_url');
+  document.getElementById('login-api-url').value = savedUrl || DEFAULT_API_URL;
+
+  if (localStorage.getItem('access_token')) {
+    showApp();
+  }
+})();
+</script>
+</body>
+</html>
