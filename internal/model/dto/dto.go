@@ -416,3 +416,43 @@ func (q *ListQuery) GetPageSize() int {
 func (q *ListQuery) GetOffset() int {
 	return (q.GetPage() - 1) * q.GetPageSize()
 }
+
+// ==================== Attribute DTOs ====================
+
+// CreateAttributeRequest is the request body for creating an attribute.
+type CreateAttributeRequest struct {
+	Name string `json:"name"`
+}
+
+// Validate validates CreateAttributeRequest.
+func (r CreateAttributeRequest) Validate() error {
+	return validation.ValidateStruct(&r,
+		validation.Field(&r.Name, validation.Required, validation.Length(1, 64)),
+	)
+}
+
+// UpdateAttributeRequest is the request body for updating an attribute.
+type UpdateAttributeRequest struct {
+	Name string `json:"name"`
+}
+
+// Validate validates UpdateAttributeRequest.
+func (r UpdateAttributeRequest) Validate() error {
+	return validation.ValidateStruct(&r,
+		validation.Field(&r.Name, validation.Required, validation.Length(1, 64)),
+	)
+}
+
+// SetUserAttributeRequest is the request body for setting a user attribute value.
+type SetUserAttributeRequest struct {
+	AttributeID uint   `json:"attribute_id"`
+	Value       string `json:"value"`
+}
+
+// Validate validates SetUserAttributeRequest.
+func (r SetUserAttributeRequest) Validate() error {
+	return validation.ValidateStruct(&r,
+		validation.Field(&r.AttributeID, validation.Required),
+		validation.Field(&r.Value, validation.Length(0, 255)),
+	)
+}

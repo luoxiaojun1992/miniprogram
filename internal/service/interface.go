@@ -135,3 +135,14 @@ type LogConfigService interface {
 	Get(ctx context.Context) (*entity.LogConfig, error)
 	Update(ctx context.Context, req *dto.UpdateLogConfigRequest) error
 }
+
+// AttributeService handles attribute operations.
+type AttributeService interface {
+	List(ctx context.Context) ([]*entity.Attribute, error)
+	Create(ctx context.Context, req *dto.CreateAttributeRequest) (uint, error)
+	Update(ctx context.Context, id uint, req *dto.UpdateAttributeRequest) error
+	Delete(ctx context.Context, id uint) error
+	ListUserAttributes(ctx context.Context, userID uint64) ([]*entity.UserAttribute, error)
+	SetUserAttribute(ctx context.Context, userID uint64, req *dto.SetUserAttributeRequest) error
+	DeleteUserAttribute(ctx context.Context, userID uint64, attributeID uint) error
+}

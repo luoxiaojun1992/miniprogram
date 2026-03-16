@@ -164,3 +164,19 @@ type LogConfigRepository interface {
 	Get(ctx context.Context) (*entity.LogConfig, error)
 	Update(ctx context.Context, cfg *entity.LogConfig) error
 }
+
+// AttributeRepository defines the interface for attribute data access.
+type AttributeRepository interface {
+	GetByID(ctx context.Context, id uint) (*entity.Attribute, error)
+	List(ctx context.Context) ([]*entity.Attribute, error)
+	Create(ctx context.Context, attr *entity.Attribute) error
+	Update(ctx context.Context, attr *entity.Attribute) error
+	Delete(ctx context.Context, id uint) error
+}
+
+// UserAttributeRepository defines the interface for user attribute data access.
+type UserAttributeRepository interface {
+	ListByUserID(ctx context.Context, userID uint64) ([]*entity.UserAttribute, error)
+	Upsert(ctx context.Context, ua *entity.UserAttribute) error
+	Delete(ctx context.Context, userID uint64, attributeID uint) error
+}

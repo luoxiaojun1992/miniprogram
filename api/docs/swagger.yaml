@@ -279,6 +279,42 @@ definitions:
       tag_name:
         type: string
         example: "VIP用户"
+
+  Attribute:
+    type: object
+    properties:
+      id:
+        type: integer
+      name:
+        type: string
+        example: "性别"
+      created_at:
+        type: string
+        format: date-time
+      updated_at:
+        type: string
+        format: date-time
+
+  UserAttribute:
+    type: object
+    properties:
+      id:
+        type: integer
+      user_id:
+        type: integer
+      attribute_id:
+        type: integer
+      value:
+        type: string
+        example: "男"
+      created_at:
+        type: string
+        format: date-time
+      updated_at:
+        type: string
+        format: date-time
+      attribute:
+        $ref: "#/definitions/Attribute"
         
   AdminUserInfo:
     allOf:
@@ -1320,6 +1356,147 @@ paths:
           in: query
           required: true
           type: integer
+      responses:
+        204:
+          $ref: "#/responses/NoContent"
+
+  /admin/users/{id}/attributes:
+    parameters:
+      - $ref: "#/parameters/IdPathParam"
+
+    get:
+      tags:
+        - 用户管理
+      summary: 获取用户属性列表
+      security:
+        - Bearer: []
+      x-permission: "user:view"
+      responses:
+        200:
+          description: 成功
+          schema:
+            allOf:
+              - $ref: "#/definitions/ApiResponse"
+              - properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: "#/definitions/UserAttribute"
+
+    post:
+      tags:
+        - 用户管理
+      summary: 设置用户属性值
+      security:
+        - Bearer: []
+      x-permission: "user:edit"
+      parameters:
+        - in: body
+          name: body
+          required: true
+          schema:
+            type: object
+            properties:
+              attribute_id:
+                type: integer
+              value:
+                type: string
+                maxLength: 255
+            required:
+              - attribute_id
+      responses:
+        200:
+          $ref: "#/responses/Success"
+
+    delete:
+      tags:
+        - 用户管理
+      summary: 删除用户属性
+      security:
+        - Bearer: []
+      x-permission: "user:edit"
+      parameters:
+        - name: attribute_id
+          in: query
+          required: true
+          type: integer
+      responses:
+        204:
+          $ref: "#/responses/NoContent"
+
+  /admin/attributes:
+    get:
+      tags:
+        - 属性管理
+      summary: 属性列表
+      security:
+        - Bearer: []
+      responses:
+        200:
+          description: 成功
+          schema:
+            allOf:
+              - $ref: "#/definitions/ApiResponse"
+              - properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: "#/definitions/Attribute"
+
+    post:
+      tags:
+        - 属性管理
+      summary: 创建属性
+      security:
+        - Bearer: []
+      parameters:
+        - in: body
+          name: body
+          required: true
+          schema:
+            type: object
+            properties:
+              name:
+                type: string
+                maxLength: 64
+            required:
+              - name
+      responses:
+        201:
+          $ref: "#/responses/Created"
+
+  /admin/attributes/{id}:
+    parameters:
+      - $ref: "#/parameters/IdPathParam"
+
+    put:
+      tags:
+        - 属性管理
+      summary: 更新属性
+      security:
+        - Bearer: []
+      parameters:
+        - in: body
+          name: body
+          required: true
+          schema:
+            type: object
+            properties:
+              name:
+                type: string
+                maxLength: 64
+            required:
+              - name
+      responses:
+        200:
+          $ref: "#/responses/Success"
+
+    delete:
+      tags:
+        - 属性管理
+      summary: 删除属性
+      security:
+        - Bearer: []
       responses:
         204:
           $ref: "#/responses/NoContent"

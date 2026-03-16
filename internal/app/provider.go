@@ -40,6 +40,8 @@ type Provider struct {
 	WechatConfigRepo      repository.WechatConfigRepository
 	AuditLogRepo          repository.AuditLogRepository
 	LogConfigRepo         repository.LogConfigRepository
+	AttributeRepo         repository.AttributeRepository
+	UserAttributeRepo     repository.UserAttributeRepository
 
 	// Services
 	AuthSvc         service.AuthService
@@ -57,6 +59,7 @@ type Provider struct {
 	WechatConfigSvc service.WechatConfigService
 	AuditLogSvc     service.AuditLogService
 	LogConfigSvc    service.LogConfigService
+	AttributeSvc    service.AttributeService
 
 	// Controllers
 	AuthCtrl         *controller.AuthController
@@ -74,6 +77,7 @@ type Provider struct {
 	SystemCtrl       *controller.SystemController
 	UploadCtrl       *controller.UploadController
 	DebugCtrl        *controller.DebugController
+	AttributeCtrl    *controller.AttributeController
 }
 
 // NewProvider initializes all components in order.
@@ -153,6 +157,8 @@ func (p *Provider) initRepositories() {
 	p.WechatConfigRepo = repository.NewWechatConfigRepository(p.DB)
 	p.AuditLogRepo = repository.NewAuditLogRepository(p.DB)
 	p.LogConfigRepo = repository.NewLogConfigRepository(p.DB)
+	p.AttributeRepo = repository.NewAttributeRepository(p.DB)
+	p.UserAttributeRepo = repository.NewUserAttributeRepository(p.DB)
 }
 
 func (p *Provider) initServices() {
@@ -183,6 +189,7 @@ func (p *Provider) initServices() {
 	p.WechatConfigSvc = service.NewWechatConfigService(p.WechatConfigRepo, p.Log)
 	p.AuditLogSvc = service.NewAuditLogService(p.AuditLogRepo, p.Log)
 	p.LogConfigSvc = service.NewLogConfigService(p.LogConfigRepo, p.Log)
+	p.AttributeSvc = service.NewAttributeService(p.AttributeRepo, p.UserAttributeRepo, p.UserRepo, p.Log)
 }
 
 func (p *Provider) initControllers() {
@@ -205,4 +212,5 @@ func (p *Provider) initControllers() {
 	p.DebugCtrl = controller.NewDebugController(
 		p.UserRepo, p.Config.JWT.Secret, p.Config.JWT.Expiry, p.Log,
 	)
+	p.AttributeCtrl = controller.NewAttributeController(p.AttributeSvc, p.Log)
 }

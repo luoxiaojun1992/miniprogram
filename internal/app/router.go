@@ -103,6 +103,9 @@ func InitRouter(p *Provider) *gin.Engine {
 		admin.PUT("/users/:id/roles", p.UserCtrl.AdminAssignRoles)
 		admin.POST("/users/:id/tags", p.UserCtrl.AdminAddUserTag)
 		admin.DELETE("/users/:id/tags", p.UserCtrl.AdminDeleteUserTag)
+		admin.GET("/users/:id/attributes", p.AttributeCtrl.ListUserAttributes)
+		admin.POST("/users/:id/attributes", p.AttributeCtrl.SetUserAttribute)
+		admin.DELETE("/users/:id/attributes", p.AttributeCtrl.DeleteUserAttribute)
 
 		// Roles
 		admin.GET("/roles", p.RoleCtrl.List)
@@ -154,6 +157,12 @@ func InitRouter(p *Provider) *gin.Engine {
 		admin.GET("/audit-logs", p.SystemCtrl.ListAuditLogs)
 		admin.GET("/log-config", p.SystemCtrl.GetLogConfig)
 		admin.PUT("/log-config", p.SystemCtrl.UpdateLogConfig)
+
+		// Attributes
+		admin.GET("/attributes", p.AttributeCtrl.List)
+		admin.POST("/attributes", p.AttributeCtrl.Create)
+		admin.PUT("/attributes/:id", p.AttributeCtrl.Update)
+		admin.DELETE("/attributes/:id", p.AttributeCtrl.Delete)
 	}
 
 	// ==================== Debug (disabled by default) ====================

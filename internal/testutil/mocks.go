@@ -1233,3 +1233,125 @@ func (m *MockLogConfigService) Update(ctx context.Context, req *dto.UpdateLogCon
 		}
 		return nil
 }
+
+// ==================== Attribute Mocks ====================
+
+// MockAttributeRepository is a test double for repository.AttributeRepository.
+type MockAttributeRepository struct {
+	GetByIDFn func(ctx context.Context, id uint) (*entity.Attribute, error)
+	ListFn    func(ctx context.Context) ([]*entity.Attribute, error)
+	CreateFn  func(ctx context.Context, attr *entity.Attribute) error
+	UpdateFn  func(ctx context.Context, attr *entity.Attribute) error
+	DeleteFn  func(ctx context.Context, id uint) error
+}
+
+func (m *MockAttributeRepository) GetByID(ctx context.Context, id uint) (*entity.Attribute, error) {
+	if m.GetByIDFn != nil {
+		return m.GetByIDFn(ctx, id)
+	}
+	return nil, nil
+}
+func (m *MockAttributeRepository) List(ctx context.Context) ([]*entity.Attribute, error) {
+	if m.ListFn != nil {
+		return m.ListFn(ctx)
+	}
+	return nil, nil
+}
+func (m *MockAttributeRepository) Create(ctx context.Context, attr *entity.Attribute) error {
+	if m.CreateFn != nil {
+		return m.CreateFn(ctx, attr)
+	}
+	return nil
+}
+func (m *MockAttributeRepository) Update(ctx context.Context, attr *entity.Attribute) error {
+	if m.UpdateFn != nil {
+		return m.UpdateFn(ctx, attr)
+	}
+	return nil
+}
+func (m *MockAttributeRepository) Delete(ctx context.Context, id uint) error {
+	if m.DeleteFn != nil {
+		return m.DeleteFn(ctx, id)
+	}
+	return nil
+}
+
+// MockUserAttributeRepository is a test double for repository.UserAttributeRepository.
+type MockUserAttributeRepository struct {
+	ListByUserIDFn func(ctx context.Context, userID uint64) ([]*entity.UserAttribute, error)
+	UpsertFn       func(ctx context.Context, ua *entity.UserAttribute) error
+	DeleteFn       func(ctx context.Context, userID uint64, attributeID uint) error
+}
+
+func (m *MockUserAttributeRepository) ListByUserID(ctx context.Context, userID uint64) ([]*entity.UserAttribute, error) {
+	if m.ListByUserIDFn != nil {
+		return m.ListByUserIDFn(ctx, userID)
+	}
+	return nil, nil
+}
+func (m *MockUserAttributeRepository) Upsert(ctx context.Context, ua *entity.UserAttribute) error {
+	if m.UpsertFn != nil {
+		return m.UpsertFn(ctx, ua)
+	}
+	return nil
+}
+func (m *MockUserAttributeRepository) Delete(ctx context.Context, userID uint64, attributeID uint) error {
+	if m.DeleteFn != nil {
+		return m.DeleteFn(ctx, userID, attributeID)
+	}
+	return nil
+}
+
+// MockAttributeService is a test double for service.AttributeService.
+type MockAttributeService struct {
+	ListFn              func(ctx context.Context) ([]*entity.Attribute, error)
+	CreateFn            func(ctx context.Context, req *dto.CreateAttributeRequest) (uint, error)
+	UpdateFn            func(ctx context.Context, id uint, req *dto.UpdateAttributeRequest) error
+	DeleteFn            func(ctx context.Context, id uint) error
+	ListUserAttrsFn     func(ctx context.Context, userID uint64) ([]*entity.UserAttribute, error)
+	SetUserAttrFn       func(ctx context.Context, userID uint64, req *dto.SetUserAttributeRequest) error
+	DeleteUserAttrFn    func(ctx context.Context, userID uint64, attributeID uint) error
+}
+
+func (m *MockAttributeService) List(ctx context.Context) ([]*entity.Attribute, error) {
+	if m.ListFn != nil {
+		return m.ListFn(ctx)
+	}
+	return nil, nil
+}
+func (m *MockAttributeService) Create(ctx context.Context, req *dto.CreateAttributeRequest) (uint, error) {
+	if m.CreateFn != nil {
+		return m.CreateFn(ctx, req)
+	}
+	return 0, nil
+}
+func (m *MockAttributeService) Update(ctx context.Context, id uint, req *dto.UpdateAttributeRequest) error {
+	if m.UpdateFn != nil {
+		return m.UpdateFn(ctx, id, req)
+	}
+	return nil
+}
+func (m *MockAttributeService) Delete(ctx context.Context, id uint) error {
+	if m.DeleteFn != nil {
+		return m.DeleteFn(ctx, id)
+	}
+	return nil
+}
+func (m *MockAttributeService) ListUserAttributes(ctx context.Context, userID uint64) ([]*entity.UserAttribute, error) {
+	if m.ListUserAttrsFn != nil {
+		return m.ListUserAttrsFn(ctx, userID)
+	}
+	return nil, nil
+}
+func (m *MockAttributeService) SetUserAttribute(ctx context.Context, userID uint64, req *dto.SetUserAttributeRequest) error {
+	if m.SetUserAttrFn != nil {
+		return m.SetUserAttrFn(ctx, userID, req)
+	}
+	return nil
+}
+func (m *MockAttributeService) DeleteUserAttribute(ctx context.Context, userID uint64, attributeID uint) error {
+	if m.DeleteUserAttrFn != nil {
+		return m.DeleteUserAttrFn(ctx, userID, attributeID)
+	}
+	return nil
+}
