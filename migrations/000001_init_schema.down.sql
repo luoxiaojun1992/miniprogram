@@ -11,6 +11,8 @@ DROP TABLE IF EXISTS `courses`;
 DROP TABLE IF EXISTS `articles`;
 DROP TABLE IF EXISTS `module_pages`;
 DROP TABLE IF EXISTS `modules`;
+DROP TABLE IF EXISTS `user_attributes`;
+DROP TABLE IF EXISTS `attributes`;
 DROP TABLE IF EXISTS `user_tags`;
 DROP TABLE IF EXISTS `role_permissions`;
 DROP TABLE IF EXISTS `user_roles`;

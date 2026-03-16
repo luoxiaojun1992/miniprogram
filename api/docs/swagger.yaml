@@ -577,6 +577,12 @@ definitions:
       collect_count:
         type: integer
         default: 0
+      comment_count:
+        type: integer
+        default: 0
+      share_count:
+        type: integer
+        default: 0
         
   ArticleListItem:
     allOf:
@@ -694,6 +700,12 @@ definitions:
         type: integer
         default: 0
       collect_count:
+        type: integer
+        default: 0
+      comment_count:
+        type: integer
+        default: 0
+      share_count:
         type: integer
         default: 0
       study_count:
@@ -947,8 +959,8 @@ definitions:
         format: int64
       type:
         type: integer
-        enum: [1, 2, 3]
-        description: "1-系统通知，2-评论回复，3-学习提醒"
+        enum: [1, 2, 3, 4]
+        description: "1-系统通知，2-评论回复，3-学习提醒，4-点赞通知"
       title:
         type: string
       content:

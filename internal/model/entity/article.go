@@ -17,6 +17,8 @@ type Article struct {
 	ViewCount    uint       `gorm:"default:0;comment:浏览量" json:"view_count"`
 	LikeCount    uint       `gorm:"default:0;comment:点赞数" json:"like_count"`
 	CollectCount uint       `gorm:"default:0;comment:收藏数" json:"collect_count"`
+	CommentCount uint       `gorm:"default:0;comment:评论数" json:"comment_count"`
+	ShareCount   uint       `gorm:"default:0;comment:分享数" json:"share_count"`
 	SortOrder    int        `gorm:"default:0;comment:排序" json:"sort_order"`
 	CreatedAt    time.Time  `gorm:"comment:创建时间" json:"created_at"`
 	UpdatedAt    time.Time  `gorm:"comment:更新时间" json:"updated_at"`
