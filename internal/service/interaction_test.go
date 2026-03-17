@@ -473,6 +473,21 @@ func TestCommentService_Create_Err(t *testing.T) {
 	require.Error(t, err)
 }
 
+func TestCommentService_Create_MaskSensitiveWords(t *testing.T) {
+	repo := &testutil.MockCommentRepository{
+		CreateFn: func(_ context.Context, c *entity.Comment) error { return nil },
+	}
+	wordsRepo := &testutil.MockSensitiveWordRepository{
+		ListEnabledWordsFn: func(_ context.Context) ([]string, error) {
+			return []string{"bad", "词"}, nil
+		},
+	}
+	svc := NewCommentService(repo, logrus.New(), wordsRepo)
+	c, err := svc.Create(context.Background(), 1, 1, 10, &dto.CreateCommentRequest{Content: "bad词"})
+	require.NoError(t, err)
+	assert.Equal(t, "****", c.Content)
+}
+
 func TestCommentService_AdminList_OK(t *testing.T) {
 	repo := &testutil.MockCommentRepository{
 		ListAdminFn: func(_ context.Context, p, ps int, st *int8) ([]*entity.Comment, int64, error) {

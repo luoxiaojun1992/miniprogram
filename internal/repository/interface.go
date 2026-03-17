@@ -180,3 +180,8 @@ type UserAttributeRepository interface {
 	Upsert(ctx context.Context, ua *entity.UserAttribute) error
 	Delete(ctx context.Context, userID uint64, attributeID uint) error
 }
+
+// SensitiveWordRepository defines the interface for sensitive word data access.
+type SensitiveWordRepository interface {
+	ListEnabledWords(ctx context.Context) ([]string, error)
+}

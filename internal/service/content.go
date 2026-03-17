@@ -126,9 +126,10 @@ func (s *moduleService) DeletePage(ctx context.Context, moduleID, pageID uint) e
 // ==================== Article Service ====================
 
 type articleService struct {
-	articleRepo    repository.ArticleRepository
-	contentPermRepo repository.ContentPermissionRepository
-	log            *logrus.Logger
+	articleRepo       repository.ArticleRepository
+	contentPermRepo   repository.ContentPermissionRepository
+	sensitiveWordRepo repository.SensitiveWordRepository
+	log               *logrus.Logger
 }
 
 // NewArticleService creates a new ArticleService.
@@ -136,11 +137,17 @@ func NewArticleService(
 	articleRepo repository.ArticleRepository,
 	contentPermRepo repository.ContentPermissionRepository,
 	log *logrus.Logger,
+	sensitiveWordRepo ...repository.SensitiveWordRepository,
 ) ArticleService {
+	var swRepo repository.SensitiveWordRepository
+	if len(sensitiveWordRepo) > 0 {
+		swRepo = sensitiveWordRepo[0]
+	}
 	return &articleService{
-		articleRepo:    articleRepo,
-		contentPermRepo: contentPermRepo,
-		log:            log,
+		articleRepo:       articleRepo,
+		contentPermRepo:   contentPermRepo,
+		sensitiveWordRepo: swRepo,
+		log:               log,
 	}
 }
 
@@ -182,10 +189,11 @@ func (s *articleService) AdminGetByID(ctx context.Context, id uint64) (*entity.A
 }
 
 func (s *articleService) Create(ctx context.Context, req *dto.CreateArticleRequest, authorID uint64) (uint64, error) {
+	words := loadSensitiveWords(ctx, s.sensitiveWordRepo, s.log)
 	article := &entity.Article{
-		Title:       req.Title,
-		Summary:     req.Summary,
-		Content:     req.Content,
+		Title:       maskText(req.Title, words),
+		Summary:     maskText(req.Summary, words),
+		Content:     maskText(req.Content, words),
 		ContentType: req.ContentType,
 		CoverImage:  req.CoverImage,
 		AuthorID:    authorID,
@@ -219,9 +227,10 @@ func (s *articleService) Update(ctx context.Context, id uint64, req *dto.UpdateA
 	if article == nil {
 		return errors.NewNotFound("文章不存在", nil)
 	}
-	article.Title = req.Title
-	article.Summary = req.Summary
-	article.Content = req.Content
+	words := loadSensitiveWords(ctx, s.sensitiveWordRepo, s.log)
+	article.Title = maskText(req.Title, words)
+	article.Summary = maskText(req.Summary, words)
+	article.Content = maskText(req.Content, words)
 	article.ContentType = req.ContentType
 	article.CoverImage = req.CoverImage
 	article.ModuleID = req.ModuleID
@@ -263,10 +272,11 @@ func (s *articleService) Publish(ctx context.Context, id uint64, req *dto.Publis
 // ==================== Course Service ====================
 
 type courseService struct {
-	courseRepo      repository.CourseRepository
-	courseUnitRepo  repository.CourseUnitRepository
-	contentPermRepo repository.ContentPermissionRepository
-	log             *logrus.Logger
+	courseRepo        repository.CourseRepository
+	courseUnitRepo    repository.CourseUnitRepository
+	contentPermRepo   repository.ContentPermissionRepository
+	sensitiveWordRepo repository.SensitiveWordRepository
+	log               *logrus.Logger
 }
 
 // NewCourseService creates a new CourseService.
@@ -275,12 +285,18 @@ func NewCourseService(
 	courseUnitRepo repository.CourseUnitRepository,
 	contentPermRepo repository.ContentPermissionRepository,
 	log *logrus.Logger,
+	sensitiveWordRepo ...repository.SensitiveWordRepository,
 ) CourseService {
+	var swRepo repository.SensitiveWordRepository
+	if len(sensitiveWordRepo) > 0 {
+		swRepo = sensitiveWordRepo[0]
+	}
 	return &courseService{
-		courseRepo:      courseRepo,
-		courseUnitRepo:  courseUnitRepo,
-		contentPermRepo: contentPermRepo,
-		log:             log,
+		courseRepo:        courseRepo,
+		courseUnitRepo:    courseUnitRepo,
+		contentPermRepo:   contentPermRepo,
+		sensitiveWordRepo: swRepo,
+		log:               log,
 	}
 }
 
@@ -322,9 +338,10 @@ func (s *courseService) AdminGetByID(ctx context.Context, id uint64) (*entity.Co
 }
 
 func (s *courseService) Create(ctx context.Context, req *dto.CreateCourseRequest, authorID uint64) (uint64, error) {
+	words := loadSensitiveWords(ctx, s.sensitiveWordRepo, s.log)
 	course := &entity.Course{
-		Title:       req.Title,
-		Description: req.Description,
+		Title:       maskText(req.Title, words),
+		Description: maskText(req.Description, words),
 		CoverImage:  req.CoverImage,
 		Price:       req.Price,
 		AuthorID:    authorID,
@@ -355,8 +372,9 @@ func (s *courseService) Update(ctx context.Context, id uint64, req *dto.UpdateCo
 	if course == nil {
 		return errors.NewNotFound("课程不存在", nil)
 	}
-	course.Title = req.Title
-	course.Description = req.Description
+	words := loadSensitiveWords(ctx, s.sensitiveWordRepo, s.log)
+	course.Title = maskText(req.Title, words)
+	course.Description = maskText(req.Description, words)
 	course.CoverImage = req.CoverImage
 	course.Price = req.Price
 	course.ModuleID = req.ModuleID

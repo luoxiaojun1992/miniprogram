@@ -42,6 +42,7 @@ type Provider struct {
 	LogConfigRepo         repository.LogConfigRepository
 	AttributeRepo         repository.AttributeRepository
 	UserAttributeRepo     repository.UserAttributeRepository
+	SensitiveWordRepo     repository.SensitiveWordRepository
 
 	// Services
 	AuthSvc         service.AuthService
@@ -159,6 +160,7 @@ func (p *Provider) initRepositories() {
 	p.LogConfigRepo = repository.NewLogConfigRepository(p.DB)
 	p.AttributeRepo = repository.NewAttributeRepository(p.DB)
 	p.UserAttributeRepo = repository.NewUserAttributeRepository(p.DB)
+	p.SensitiveWordRepo = repository.NewSensitiveWordRepository(p.DB)
 }
 
 func (p *Provider) initServices() {
@@ -176,15 +178,15 @@ func (p *Provider) initServices() {
 	p.PermissionSvc = service.NewPermissionService(p.PermissionRepo, p.Log)
 	p.ModuleSvc = service.NewModuleService(p.ModuleRepo, p.ModulePageRepo, p.Log)
 	p.ArticleSvc = service.NewArticleService(
-		p.ArticleRepo, p.ContentPermissionRepo, p.Log,
+		p.ArticleRepo, p.ContentPermissionRepo, p.Log, p.SensitiveWordRepo,
 	)
 	p.CourseSvc = service.NewCourseService(
-		p.CourseRepo, p.CourseUnitRepo, p.ContentPermissionRepo, p.Log,
+		p.CourseRepo, p.CourseUnitRepo, p.ContentPermissionRepo, p.Log, p.SensitiveWordRepo,
 	)
 	p.StudyRecordSvc = service.NewStudyRecordService(p.StudyRecordRepo, p.CourseUnitRepo, p.Log)
 	p.CollectionSvc = service.NewCollectionService(p.CollectionRepo, p.Log)
 	p.LikeSvc = service.NewLikeService(p.LikeRepo, p.ArticleRepo, p.CourseRepo, p.Log)
-	p.CommentSvc = service.NewCommentService(p.CommentRepo, p.Log)
+	p.CommentSvc = service.NewCommentService(p.CommentRepo, p.Log, p.SensitiveWordRepo)
 	p.NotificationSvc = service.NewNotificationService(p.NotificationRepo, p.Log)
 	p.WechatConfigSvc = service.NewWechatConfigService(p.WechatConfigRepo, p.Log)
 	p.AuditLogSvc = service.NewAuditLogService(p.AuditLogRepo, p.Log)
