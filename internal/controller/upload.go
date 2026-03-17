@@ -534,9 +534,6 @@ func (c *UploadController) generatePresignUploadURL(ctx *gin.Context, businessTy
 			pattern = attachmentPattern
 		}
 		if !pattern.MatchString(ext) {
-			if strings.TrimSpace(extErrMsg) == "" {
-				extErrMsg = "附件扩展名不支持"
-			}
 			ctx.Error(apperrors.NewBadRequest(extErrMsg, nil))
 			return
 		}
