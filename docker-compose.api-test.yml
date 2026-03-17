@@ -31,6 +31,31 @@ services:
     networks:
       - api-test-network
 
+  redis:
+    image: redis:7-alpine
+    command: ["redis-server", "--save", "", "--appendonly", "no"]
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    networks:
+      - api-test-network
+
+  cos:
+    build:
+      context: .
+      dockerfile: tests/mock-server/cos/Dockerfile
+    environment:
+      COS_PORT: 9000
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:9000/health"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    networks:
+      - api-test-network
+
   # ---------------------------------------------------------------------------
   # Backend application
   # ---------------------------------------------------------------------------
@@ -52,7 +77,15 @@ services:
       APP_WECHAT_APP_ID: test-wechat-app-id
       APP_WECHAT_APP_SECRET: test-wechat-app-secret
       APP_UPLOAD_DIR: storage/uploads
-      APP_UPLOAD_BASE_URL: http://localhost:8080/static
+      APP_UPLOAD_BASE_URL: http://cos:9000
+      APP_UPLOAD_PROVIDER: cos
+      APP_UPLOAD_COS_ENDPOINT: http://cos:9000
+      APP_UPLOAD_COS_BUCKET: miniapp-test
+      APP_REDIS_HOST: redis
+      APP_REDIS_PORT: 6379
+      APP_RATE_LIMIT_ENABLED: "true"
+      APP_RATE_LIMIT_REQUESTS: 5000
+      APP_RATE_LIMIT_WINDOW_SECONDS: 60
       APP_DEBUG_ENABLE_TEST_TOKEN: "true"
     healthcheck:
       test: ["CMD", "wget", "-q", "--spider", "http://localhost:8080/health"]
@@ -62,6 +95,10 @@ services:
       retries: 12
     depends_on:
       mysql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      cos:
         condition: service_healthy
     networks:
       - api-test-network

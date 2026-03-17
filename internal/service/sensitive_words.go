@@ -65,3 +65,4 @@ func maskText(text string, words []string) string {
 	}
 	return masked
 }
+

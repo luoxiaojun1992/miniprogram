@@ -192,3 +192,42 @@ func (c *ArticleController) AdminPublish(ctx *gin.Context) {
 	}
 	response.Success(ctx, nil)
 }
+
+// AdminPin handles POST /admin/articles/:id/pin.
+func (c *ArticleController) AdminPin(ctx *gin.Context) {
+	id, err := strconv.ParseUint(ctx.Param("id"), 10, 64)
+	if err != nil {
+		ctx.Error(apperrors.NewBadRequest("无效的文章ID", err))
+		return
+	}
+	var req dto.PinArticleRequest
+	if err = ctx.ShouldBindJSON(&req); err != nil {
+		ctx.Error(apperrors.NewBadRequest("参数绑定失败", err))
+		return
+	}
+	if err = req.Validate(); err != nil {
+		ctx.Error(apperrors.NewValidation("参数校验失败", err))
+		return
+	}
+	if svcErr := c.svc.Pin(ctx, id, &req); svcErr != nil {
+		ctx.Error(svcErr)
+		return
+	}
+	response.Success(ctx, nil)
+}
+
+// AdminCopy handles POST /admin/articles/:id/copy.
+func (c *ArticleController) AdminCopy(ctx *gin.Context) {
+	id, err := strconv.ParseUint(ctx.Param("id"), 10, 64)
+	if err != nil {
+		ctx.Error(apperrors.NewBadRequest("无效的文章ID", err))
+		return
+	}
+	authorID, _ := middleware.GetCurrentUserID(ctx)
+	newID, svcErr := c.svc.Copy(ctx, id, authorID)
+	if svcErr != nil {
+		ctx.Error(svcErr)
+		return
+	}
+	response.SuccessWithStatus(ctx, http.StatusCreated, gin.H{"id": newID})
+}

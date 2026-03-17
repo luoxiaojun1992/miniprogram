@@ -1,6 +1,8 @@
 package app
 
 import (
+	"time"
+
 	"github.com/gin-gonic/gin"
 
 	"github.com/luoxiaojun1992/miniprogram/internal/middleware"
@@ -17,6 +19,14 @@ func InitRouter(p *Provider) *gin.Engine {
 	r.Use(middleware.CorsMiddleware())
 	r.Use(middleware.RequestIDMiddleware())
 	r.Use(middleware.LoggerMiddleware(p.Log))
+	if p.Config.RateLimit.Enabled {
+		r.Use(middleware.RateLimitMiddleware(
+			middleware.NewRedisRateLimitStore(p.Redis),
+			int64(p.Config.RateLimit.Requests),
+			time.Duration(p.Config.RateLimit.WindowSeconds)*time.Second,
+			p.Log,
+		))
+	}
 
 	// Health check
 	r.GET("/health", func(ctx *gin.Context) {
@@ -84,9 +94,12 @@ func InitRouter(p *Provider) *gin.Engine {
 		authRequired.PUT("/notifications/:id/read", p.NotificationCtrl.MarkRead)
 
 		// Upload
-		authRequired.POST("/upload/image", p.UploadCtrl.UploadImage)
-		authRequired.POST("/upload/video", p.UploadCtrl.UploadVideo)
+		authRequired.POST("/upload/avatar", p.UploadCtrl.UploadAvatar)
+		authRequired.GET("/download/course/video/:file_id", p.UploadCtrl.GenerateCourseVideoDownloadURL)
+		authRequired.GET("/download/article/attachment/:file_id", p.UploadCtrl.GenerateArticleAttachmentDownloadURL)
+		authRequired.GET("/download/course/attachment/:file_id", p.UploadCtrl.GenerateCourseAttachmentDownloadURL)
 	}
+	v1.GET("/download/static/:file_id", p.UploadCtrl.GenerateStaticMaterialURL)
 
 	// Comments (public read)
 	v1.GET("/comments/:content_type/:content_id", p.CommentCtrl.List)
@@ -133,6 +146,8 @@ func InitRouter(p *Provider) *gin.Engine {
 		admin.PUT("/articles/:id", p.ArticleCtrl.AdminUpdate)
 		admin.DELETE("/articles/:id", p.ArticleCtrl.AdminDelete)
 		admin.POST("/articles/:id/publish", p.ArticleCtrl.AdminPublish)
+		admin.POST("/articles/:id/pin", p.ArticleCtrl.AdminPin)
+		admin.POST("/articles/:id/copy", p.ArticleCtrl.AdminCopy)
 
 		// Courses
 		admin.GET("/courses", p.CourseCtrl.AdminList)
@@ -141,6 +156,8 @@ func InitRouter(p *Provider) *gin.Engine {
 		admin.PUT("/courses/:id", p.CourseCtrl.AdminUpdate)
 		admin.DELETE("/courses/:id", p.CourseCtrl.AdminDelete)
 		admin.POST("/courses/:id/publish", p.CourseCtrl.AdminPublish)
+		admin.POST("/courses/:id/pin", p.CourseCtrl.AdminPin)
+		admin.POST("/courses/:id/copy", p.CourseCtrl.AdminCopy)
 		admin.GET("/courses/:id/units", p.CourseCtrl.AdminGetUnits)
 		admin.POST("/courses/:id/units", p.CourseCtrl.AdminCreateUnit)
 		admin.PUT("/courses/:id/units/:unit_id", p.CourseCtrl.AdminUpdateUnit)
@@ -157,6 +174,9 @@ func InitRouter(p *Provider) *gin.Engine {
 		admin.GET("/audit-logs", p.SystemCtrl.ListAuditLogs)
 		admin.GET("/log-config", p.SystemCtrl.GetLogConfig)
 		admin.PUT("/log-config", p.SystemCtrl.UpdateLogConfig)
+
+		// Upload
+		admin.GET("/upload/files/presign", p.UploadCtrl.GenerateAdminUploadPresignURL)
 
 		// Attributes
 		admin.GET("/attributes", p.AttributeCtrl.List)

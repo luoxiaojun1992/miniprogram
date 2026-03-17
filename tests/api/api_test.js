@@ -38,6 +38,12 @@ function ok(r) {
   return r.status >= 200 && r.status < 300;
 }
 
+function multipartHeaders(token) {
+  const h = {};
+  if (token) h['Authorization'] = `Bearer ${token}`;
+  return { headers: h };
+}
+
 // ---------------------------------------------------------------------------
 // setup – runs once before any VU iteration
 // ---------------------------------------------------------------------------
@@ -314,6 +320,27 @@ export default function (data) {
     // Notifications – mark all read
     const readAllRes = http.put(`${BASE_URL}/v1/notifications/read-all`, null, userH);
     check(readAllRes, { 'PUT /v1/notifications/read-all: 2xx': (r) => ok(r) });
+
+    // Front user upload avatar image (COS-backed in docker API tests)
+    const uploadPayload = {
+      file: http.file(new Uint8Array([137, 80, 78, 71]), 'k6.png', 'image/png'),
+    };
+    const uploadRes = http.post(`${BASE_URL}/v1/upload/avatar`, uploadPayload, multipartHeaders(userToken));
+    check(uploadRes, {
+      'POST /v1/upload/avatar: 200': (r) => r.status === 200,
+      'POST /v1/upload/avatar: cos url': (r) => {
+        const url = r.json('data.url');
+        return typeof url === 'string' && url.indexOf('/miniapp-test/avatar/') !== -1;
+      },
+    });
+
+    // Admin gets unified file presign URL for protected course video upload
+    const presignRes = http.get(`${BASE_URL}/v1/admin/upload/files/presign?filename=k6-video.mp4&usage=protected&expires_in=600`, adminH);
+    check(presignRes, {
+      'GET /v1/admin/upload/files/presign: 200': (r) => r.status === 200,
+      'GET /v1/admin/upload/files/presign: has put_url': (r) => typeof r.json('data.put_url') === 'string',
+      'GET /v1/admin/upload/files/presign: has file_id': (r) => typeof r.json('data.file_id') === 'number',
+    });
   });
 
   // -------------------------------------------------------------------------

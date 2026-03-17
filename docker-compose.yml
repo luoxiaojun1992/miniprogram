@@ -20,10 +20,17 @@ services:
       - APP_LOG_LEVEL=debug
       - APP_UPLOAD_DIR=storage/uploads
       - APP_UPLOAD_BASE_URL=http://localhost:8080/static
+      - APP_REDIS_HOST=redis
+      - APP_REDIS_PORT=6379
+      - APP_RATE_LIMIT_ENABLED=true
+      - APP_RATE_LIMIT_REQUESTS=300
+      - APP_RATE_LIMIT_WINDOW_SECONDS=60
     volumes:
       - ./storage:/app/storage
     depends_on:
       mysql:
+        condition: service_healthy
+      redis:
         condition: service_healthy
     networks:
       - app-network
@@ -39,6 +46,19 @@ services:
       - mysql-data:/var/lib/mysql
     healthcheck:
       test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+    networks:
+      - app-network
+
+  redis:
+    image: redis:7-alpine
+    command: ["redis-server", "--save", "", "--appendonly", "no"]
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
       interval: 5s
       timeout: 3s
       retries: 5

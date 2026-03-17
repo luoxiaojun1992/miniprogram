@@ -244,6 +244,18 @@ func (r PublishArticleRequest) Validate() error {
 	)
 }
 
+// PinArticleRequest is the request body for pinning article order.
+type PinArticleRequest struct {
+	SortOrder int `json:"sort_order"`
+}
+
+// Validate validates PinArticleRequest.
+func (r PinArticleRequest) Validate() error {
+	return validation.ValidateStruct(&r,
+		validation.Field(&r.SortOrder, validation.Required),
+	)
+}
+
 // ==================== Course DTOs ====================
 
 // CreateCourseRequest is the request body for creating a course.
@@ -295,6 +307,18 @@ type PublishCourseRequest struct {
 func (r PublishCourseRequest) Validate() error {
 	return validation.ValidateStruct(&r,
 		validation.Field(&r.Status, validation.Required, validation.In(int8(0), int8(1))),
+	)
+}
+
+// PinCourseRequest is the request body for pinning course order.
+type PinCourseRequest struct {
+	SortOrder int `json:"sort_order"`
+}
+
+// Validate validates PinCourseRequest.
+func (r PinCourseRequest) Validate() error {
+	return validation.ValidateStruct(&r,
+		validation.Field(&r.SortOrder, validation.Required),
 	)
 }
 

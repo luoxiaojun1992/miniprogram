@@ -192,6 +192,45 @@ func (c *CourseController) AdminPublish(ctx *gin.Context) {
 	response.Success(ctx, nil)
 }
 
+// AdminPin handles POST /admin/courses/:id/pin.
+func (c *CourseController) AdminPin(ctx *gin.Context) {
+	id, err := strconv.ParseUint(ctx.Param("id"), 10, 64)
+	if err != nil {
+		ctx.Error(apperrors.NewBadRequest("无效的课程ID", err))
+		return
+	}
+	var req dto.PinCourseRequest
+	if err = ctx.ShouldBindJSON(&req); err != nil {
+		ctx.Error(apperrors.NewBadRequest("参数绑定失败", err))
+		return
+	}
+	if err = req.Validate(); err != nil {
+		ctx.Error(apperrors.NewValidation("参数校验失败", err))
+		return
+	}
+	if svcErr := c.svc.Pin(ctx, id, &req); svcErr != nil {
+		ctx.Error(svcErr)
+		return
+	}
+	response.Success(ctx, nil)
+}
+
+// AdminCopy handles POST /admin/courses/:id/copy.
+func (c *CourseController) AdminCopy(ctx *gin.Context) {
+	id, err := strconv.ParseUint(ctx.Param("id"), 10, 64)
+	if err != nil {
+		ctx.Error(apperrors.NewBadRequest("无效的课程ID", err))
+		return
+	}
+	authorID, _ := middleware.GetCurrentUserID(ctx)
+	newID, svcErr := c.svc.Copy(ctx, id, authorID)
+	if svcErr != nil {
+		ctx.Error(svcErr)
+		return
+	}
+	response.SuccessWithStatus(ctx, http.StatusCreated, gin.H{"id": newID})
+}
+
 // AdminGetUnits handles GET /admin/courses/:id/units.
 func (c *CourseController) AdminGetUnits(ctx *gin.Context) {
 	id, err := strconv.ParseUint(ctx.Param("id"), 10, 64)

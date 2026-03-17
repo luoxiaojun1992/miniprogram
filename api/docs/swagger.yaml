@@ -2625,12 +2625,12 @@ paths:
 
   # ==================== 文件上传 ====================
   
-  /upload/image:
+  /upload/avatar:
     post:
       tags:
         - 文件上传
-      summary: 上传图片
-      description: 支持jpg、png、gif，最大5MB
+      summary: 上传头像图片
+      description: 前台用户仅允许上传头像；支持jpg、png、gif，最大5MB
       security:
         - Bearer: []
       consumes:
@@ -2640,13 +2640,7 @@ paths:
           in: formData
           type: file
           required: true
-          description: 图片文件
-        - name: type
-          in: formData
-          type: string
-          enum: ["avatar", "article", "course", "cover"]
-          default: "article"
-          description: 图片用途，影响存储路径和压缩策略
+          description: 头像图片文件
       responses:
         200:
           description: 上传成功
@@ -2663,40 +2657,103 @@ paths:
                       key:
                         type: string
                         description: 存储Key
-                        
-  /upload/video:
-    post:
+
+  /admin/upload/files/presign:
+    get:
       tags:
         - 文件上传
-      summary: 上传视频
-      description: 支持mp4，最大500MB，建议先获取预签名URL后直传对象存储
+      summary: 获取后台素材上传预签名URL（管理员统一接口）
+      description: 返回 file_id 与 put_url；若 usage=embedded 且为图片/视频，则同时返回 static_url 可直接用于富文本
       security:
         - Bearer: []
-      consumes:
-        - multipart/form-data
       parameters:
-        - name: file
-          in: formData
-          type: file
+        - name: filename
+          in: query
+          type: string
+          required: true
+          description: 原始文件名（按扩展名自动识别 image/video/attachment）
+        - name: usage
+          in: query
+          type: string
+          required: false
+          default: protected
+          enum: [embedded, protected]
+          description: embedded(内嵌素材，图片/视频可返回静态链接) 或 protected(受保护素材，需要JWT临时下载链接)
+        - name: expires_in
+          in: query
+          type: integer
+          required: false
+          default: 900
+      responses:
+        200:
+          $ref: "#/responses/Success"
+
+  /download/static/{file_id}:
+    get:
+      tags:
+        - 文件上传
+      summary: 获取内嵌素材静态下载链接（仅非权限图片/视频）
+      parameters:
+        - name: file_id
+          in: path
+          type: string
           required: true
       responses:
         200:
-          description: 上传成功
-          schema:
-            allOf:
-              - $ref: "#/definitions/ApiResponse"
-              - properties:
-                  data:
-                    type: object
-                    properties:
-                      url:
-                        type: string
-                      duration:
-                        type: integer
-                        description: 视频时长（秒）
-                      cover_url:
-                        type: string
-                        description: 自动生成的封面图
+          $ref: "#/responses/Success"
+
+  /download/course/video/{file_id}:
+    get:
+      tags:
+        - 文件上传
+      summary: 获取课程视频临时下载链接（JWT）
+      security:
+        - Bearer: []
+      parameters:
+        - name: file_id
+          in: path
+          type: string
+          required: true
+        - name: expires_in
+          in: query
+          type: integer
+          required: false
+          default: 300
+      responses:
+        200:
+          $ref: "#/responses/Success"
+
+  /download/article/attachment/{file_id}:
+    get:
+      tags:
+        - 文件上传
+      summary: 获取文章附件临时下载链接（JWT）
+      security:
+        - Bearer: []
+      parameters:
+        - name: file_id
+          in: path
+          type: string
+          required: true
+      responses:
+        200:
+          $ref: "#/responses/Success"
+
+  /download/course/attachment/{file_id}:
+    get:
+      tags:
+        - 文件上传
+      summary: 获取课程附件临时下载链接（JWT）
+      security:
+        - Bearer: []
+      parameters:
+        - name: file_id
+          in: path
+          type: string
+          required: true
+      responses:
+        200:
+          $ref: "#/responses/Success"
 
 # 扩展字段说明（x- 字段）
 # x-permission: 接口所需的权限编码，用于前端权限控制和后端拦截器

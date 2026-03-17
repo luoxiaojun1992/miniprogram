@@ -23,4 +23,13 @@ INSERT INTO `user_roles` (`user_id`, `role_id`) VALUES (1, 1);
 INSERT INTO `users` (`id`, `open_id`, `nickname`, `user_type`, `status`, `created_at`, `updated_at`)
 VALUES (2, 'test_regular_user_openid', 'Test User', 1, 1, NOW(), NOW());
 
+-- Assign front-user role so permission endpoints return stable role/permission data in tests
+INSERT IGNORE INTO `user_roles` (`user_id`, `role_id`) VALUES (2, 4);
+
+-- Front-user defaults used in API/UI tests
+INSERT IGNORE INTO `role_permissions` (`role_id`, `permission_id`) VALUES
+  (4, 14), -- article:view
+  (4, 19), -- course:view
+  (4, 25); -- comment:view
+
 SET FOREIGN_KEY_CHECKS = 1;

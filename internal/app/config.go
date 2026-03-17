@@ -8,13 +8,15 @@ import (
 
 // Config holds the application configuration.
 type Config struct {
-	Server   ServerConfig   `mapstructure:"server"`
-	Database DatabaseConfig `mapstructure:"database"`
-	JWT      JWTConfig      `mapstructure:"jwt"`
-	Log      LogConfig      `mapstructure:"log"`
-	Wechat   WechatConfig   `mapstructure:"wechat"`
-	Upload   UploadConfig   `mapstructure:"upload"`
-	Debug    DebugConfig    `mapstructure:"debug"`
+	Server    ServerConfig    `mapstructure:"server"`
+	Database  DatabaseConfig  `mapstructure:"database"`
+	JWT       JWTConfig       `mapstructure:"jwt"`
+	Log       LogConfig       `mapstructure:"log"`
+	Wechat    WechatConfig    `mapstructure:"wechat"`
+	Upload    UploadConfig    `mapstructure:"upload"`
+	Redis     RedisConfig     `mapstructure:"redis"`
+	RateLimit RateLimitConfig `mapstructure:"rate_limit"`
+	Debug     DebugConfig     `mapstructure:"debug"`
 }
 
 // ServerConfig holds server configuration.
@@ -51,8 +53,26 @@ type WechatConfig struct {
 
 // UploadConfig holds upload configuration.
 type UploadConfig struct {
-	Dir     string `mapstructure:"dir"`
-	BaseURL string `mapstructure:"base_url"`
+	Dir         string `mapstructure:"dir"`
+	BaseURL     string `mapstructure:"base_url"`
+	Provider    string `mapstructure:"provider"`
+	COSEndpoint string `mapstructure:"cos_endpoint"`
+	COSBucket   string `mapstructure:"cos_bucket"`
+}
+
+// RedisConfig holds redis configuration.
+type RedisConfig struct {
+	Host     string `mapstructure:"host"`
+	Port     int    `mapstructure:"port"`
+	Password string `mapstructure:"password"`
+	DB       int    `mapstructure:"db"`
+}
+
+// RateLimitConfig holds request rate-limit configuration.
+type RateLimitConfig struct {
+	Enabled       bool `mapstructure:"enabled"`
+	Requests      int  `mapstructure:"requests"`
+	WindowSeconds int  `mapstructure:"window_seconds"`
 }
 
 // DebugConfig holds debug/development configuration.
@@ -89,6 +109,16 @@ func InitConfig(configPath string) (*Config, error) {
 	v.SetDefault("wechat.app_secret", "")
 	v.SetDefault("upload.dir", "storage/uploads")
 	v.SetDefault("upload.base_url", "")
+	v.SetDefault("upload.provider", "local")
+	v.SetDefault("upload.cos_endpoint", "")
+	v.SetDefault("upload.cos_bucket", "")
+	v.SetDefault("redis.host", "localhost")
+	v.SetDefault("redis.port", 6379)
+	v.SetDefault("redis.password", "")
+	v.SetDefault("redis.db", 0)
+	v.SetDefault("rate_limit.enabled", true)
+	v.SetDefault("rate_limit.requests", 300)
+	v.SetDefault("rate_limit.window_seconds", 60)
 	v.SetDefault("debug.enable_test_token", false)
 
 	if configPath != "" {
