@@ -170,6 +170,22 @@ test.describe('Admin Portal', () => {
       await expect(page.locator('h3, .page-title').first()).toContainText(/审计日志/);
     });
 
+    test('admin write action appears in audit logs', async ({ page }) => {
+      await page.locator('.sidebar-menu .menu-item').filter({ hasText: '内容管理' }).click();
+      await page.locator('.submenu .menu-item').filter({ hasText: '模块管理' }).click();
+      await expect(page.locator('h3, .page-title').first()).toContainText(/模块管理/);
+
+      await page.getByRole('button', { name: /新增模块/ }).click();
+      await page.locator('.modal-body input.form-control').first().fill(`UI Audit Module ${Date.now()}-${Math.floor(Math.random() * 100000)}`);
+      await page.getByRole('button', { name: /^保存$/ }).click();
+
+      await page.locator('.sidebar-menu .menu-item').filter({ hasText: '系统管理' }).click();
+      await page.locator('.submenu .menu-item').filter({ hasText: '审计日志' }).click();
+      await expect(page.locator('h3, .page-title').first()).toContainText(/审计日志/);
+      await expect(page.getByText('modules').first()).toBeVisible({ timeout: 15000 });
+      await expect(page.getByText('create').first()).toBeVisible();
+    });
+
     test('logout returns to login page', async ({ page }) => {
       await page.getByRole('button', { name: /退出登录/ }).click();
       await expect(page.locator('h1')).toContainText('知识库管理后台');

@@ -218,6 +218,29 @@ export default function (data) {
   });
 
   // -------------------------------------------------------------------------
+  group('Audit Logs', () => {
+    const uniqueTitle = `K6 Audit Module ${Date.now()}`;
+    const writeRes = http.post(
+      `${BASE_URL}/v1/admin/modules`,
+      JSON.stringify({ title: uniqueTitle, description: 'audit test', sort_order: 777 }),
+      adminH,
+    );
+    check(writeRes, { 'POST /v1/admin/modules (audit seed): 201': (r) => r.status === 201 });
+
+    const logsRes = http.get(
+      `${BASE_URL}/v1/admin/audit-logs?page=1&page_size=20&module=modules&action=create`,
+      adminH,
+    );
+    check(logsRes, {
+      'GET /v1/admin/audit-logs: 200': (r) => r.status === 200,
+      'audit logs contains create/modules entry': (r) => {
+        const list = r.json('data.list') || [];
+        return list.length > 0 && list.some((x) => x.module === 'modules' && x.action === 'create');
+      },
+    });
+  });
+
+  // -------------------------------------------------------------------------
   group('User', () => {
     // Get profile
     const profileRes = http.get(`${BASE_URL}/v1/users/profile`, userH);

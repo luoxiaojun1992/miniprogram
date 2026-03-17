@@ -107,7 +107,12 @@ func InitRouter(p *Provider) *gin.Engine {
 	v1.GET("/comments/:content_type/:content_id", p.CommentCtrl.List)
 
 	// ==================== Admin ====================
-	admin := v1.Group("/admin", middleware.JWTAuthMiddleware(p.Config.JWT.Secret), middleware.RequireAdmin())
+	admin := v1.Group(
+		"/admin",
+		middleware.JWTAuthMiddleware(p.Config.JWT.Secret),
+		middleware.RequireAdmin(),
+		middleware.AuditLogMiddleware(p.AuditLogSvc),
+	)
 	{
 		// Users
 		admin.GET("/users", p.UserCtrl.AdminListUsers)
