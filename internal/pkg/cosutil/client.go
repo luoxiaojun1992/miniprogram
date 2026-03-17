@@ -79,7 +79,7 @@ func (c *Client) PresignPutURL(key string, expiresIn int) string {
 	if c.secretID == "" || c.secretKey == "" {
 		return fmt.Sprintf("%s/%s/%s?expires_in=%d", c.baseURL, url.PathEscape(c.bucket), escapeObjectKey(key), expiresIn)
 	}
-	u, err := c.client.Object.GetPresignedURL(context.Background(), http.MethodPut, key, c.secretID, c.secretKey, time.Now().Add(time.Duration(expiresIn)*time.Second), nil)
+	u, err := c.client.Object.GetPresignedURL(context.Background(), http.MethodPut, key, c.secretID, c.secretKey, time.Duration(expiresIn)*time.Second, nil)
 	if err != nil {
 		return ""
 	}
@@ -94,7 +94,7 @@ func (c *Client) PresignGetURL(key string, expiresIn int) string {
 	if c.secretID == "" || c.secretKey == "" {
 		return fmt.Sprintf("%s/%s/%s?expires_in=%d", c.baseURL, url.PathEscape(c.bucket), escapeObjectKey(key), expiresIn)
 	}
-	u, err := c.client.Object.GetPresignedURL(context.Background(), http.MethodGet, key, c.secretID, c.secretKey, time.Now().Add(time.Duration(expiresIn)*time.Second), nil)
+	u, err := c.client.Object.GetPresignedURL(context.Background(), http.MethodGet, key, c.secretID, c.secretKey, time.Duration(expiresIn)*time.Second, nil)
 	if err != nil {
 		return ""
 	}
@@ -119,7 +119,11 @@ func (c *Client) IsStaticMediaObject(ctx context.Context, key string) (bool, err
 }
 
 func normalizeObjectKey(key string) string {
-	clean := path.Clean("/" + strings.TrimSpace(key))
+	raw := strings.TrimSpace(key)
+	if raw == "" || strings.Contains(raw, "..") {
+		return ""
+	}
+	clean := path.Clean("/" + raw)
 	if clean == "/" {
 		return ""
 	}

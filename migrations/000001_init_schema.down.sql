@@ -12,6 +12,7 @@ DROP TABLE IF EXISTS `course_units`;
 DROP TABLE IF EXISTS `courses`;
 DROP TABLE IF EXISTS `files`;
 DROP TABLE IF EXISTS `articles`;
+DROP TABLE IF EXISTS `banners`;
 DROP TABLE IF EXISTS `module_pages`;
 DROP TABLE IF EXISTS `modules`;
 DROP TABLE IF EXISTS `user_attributes`;

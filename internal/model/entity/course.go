@@ -8,7 +8,6 @@ type Course struct {
 	Title             string       `gorm:"size:200;not null;comment:标题" json:"title"`
 	Description       string       `gorm:"type:text;comment:描述" json:"description"`
 	CoverImage        string       `gorm:"size:255;comment:封面图" json:"cover_image"`
-	VideoFileID       *uint64      `gorm:"comment:视频文件ID" json:"video_file_id,omitempty"`
 	Duration          uint         `gorm:"comment:总课时分钟" json:"duration"`
 	AuthorID          uint64       `gorm:"comment:作者ID" json:"author_id"`
 	ModuleID          uint         `gorm:"comment:模块ID" json:"module_id"`

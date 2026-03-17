@@ -31,6 +31,7 @@ type Provider struct {
 	PermissionRepo        repository.PermissionRepository
 	ModuleRepo            repository.ModuleRepository
 	ModulePageRepo        repository.ModulePageRepository
+	BannerRepo            repository.BannerRepository
 	ArticleRepo           repository.ArticleRepository
 	CourseRepo            repository.CourseRepository
 	CourseUnitRepo        repository.CourseUnitRepository
@@ -56,6 +57,7 @@ type Provider struct {
 	RoleSvc         service.RoleService
 	PermissionSvc   service.PermissionService
 	ModuleSvc       service.ModuleService
+	BannerSvc       service.BannerService
 	ArticleSvc      service.ArticleService
 	CourseSvc       service.CourseService
 	StudyRecordSvc  service.StudyRecordService
@@ -75,6 +77,7 @@ type Provider struct {
 	RoleCtrl         *controller.RoleController
 	PermissionCtrl   *controller.PermissionController
 	ModuleCtrl       *controller.ModuleController
+	BannerCtrl       *controller.BannerController
 	ArticleCtrl      *controller.ArticleController
 	CourseCtrl       *controller.CourseController
 	StudyRecordCtrl  *controller.StudyRecordController
@@ -164,6 +167,7 @@ func (p *Provider) initRepositories() {
 	p.PermissionRepo = repository.NewPermissionRepository(p.DB)
 	p.ModuleRepo = repository.NewModuleRepository(p.DB)
 	p.ModulePageRepo = repository.NewModulePageRepository(p.DB)
+	p.BannerRepo = repository.NewBannerRepository(p.DB)
 	p.ArticleRepo = repository.NewArticleRepository(p.DB)
 	p.CourseRepo = repository.NewCourseRepository(p.DB)
 	p.CourseUnitRepo = repository.NewCourseUnitRepository(p.DB)
@@ -198,11 +202,12 @@ func (p *Provider) initServices() {
 	p.RoleSvc = service.NewRoleService(p.RoleRepo, p.Log)
 	p.PermissionSvc = service.NewPermissionService(p.PermissionRepo, p.Log)
 	p.ModuleSvc = service.NewModuleService(p.ModuleRepo, p.ModulePageRepo, p.Log)
+	p.BannerSvc = service.NewBannerService(p.BannerRepo, p.Log, p.FileRepo)
 	p.ArticleSvc = service.NewArticleService(
-		p.ArticleRepo, p.ContentPermissionRepo, p.Log, p.SensitiveWordRepo, p.ArticleAttachmentRepo,
+		p.ArticleRepo, p.ContentPermissionRepo, p.Log, p.SensitiveWordRepo, p.ArticleAttachmentRepo, p.RoleRepo,
 	)
 	p.CourseSvc = service.NewCourseService(
-		p.CourseRepo, p.CourseUnitRepo, p.ContentPermissionRepo, p.Log, p.SensitiveWordRepo, p.CourseAttachmentRepo,
+		p.CourseRepo, p.CourseUnitRepo, p.ContentPermissionRepo, p.Log, p.SensitiveWordRepo, p.CourseAttachmentRepo, p.RoleRepo,
 	)
 	p.StudyRecordSvc = service.NewStudyRecordService(p.StudyRecordRepo, p.CourseUnitRepo, p.Log)
 	p.CollectionSvc = service.NewCollectionService(p.CollectionRepo, p.Log)
@@ -235,6 +240,7 @@ func (p *Provider) initControllers() {
 	p.RoleCtrl = controller.NewRoleController(p.RoleSvc, p.Log)
 	p.PermissionCtrl = controller.NewPermissionController(p.PermissionSvc, p.Log)
 	p.ModuleCtrl = controller.NewModuleController(p.ModuleSvc, p.Log)
+	p.BannerCtrl = controller.NewBannerController(p.BannerSvc, p.Log)
 	p.ArticleCtrl = controller.NewArticleController(p.ArticleSvc, p.Log)
 	p.CourseCtrl = controller.NewCourseController(p.CourseSvc, p.Log)
 	p.StudyRecordCtrl = controller.NewStudyRecordController(p.StudyRecordSvc, p.Log)

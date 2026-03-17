@@ -1079,3 +1079,73 @@ func TestCourseService_DeleteUnit_DBError(t *testing.T) {
 	err := svc.DeleteUnit(context.Background(), 1, 1)
 	require.Error(t, err)
 }
+
+func TestArticleService_GetByID_DefaultPublicWithoutPermissions(t *testing.T) {
+	repo := &testutil.MockArticleRepository{
+		GetByIDFn: func(_ context.Context, id uint64) (*entity.Article, error) {
+			return &entity.Article{ID: id, Status: 1}, nil
+		},
+		IncrViewCountFn: func(_ context.Context, id uint64) error { return nil },
+	}
+	permRepo := &testutil.MockContentPermissionRepository{
+		GetByContentFn: func(_ context.Context, contentType int8, contentID uint64) ([]*entity.ContentPermission, error) {
+			return nil, nil
+		},
+	}
+	svc := NewArticleService(repo, permRepo, logrus.New(), &testutil.MockRoleRepository{})
+	uid := uint64(100)
+	_, err := svc.GetByID(context.Background(), 1, &uid)
+	require.NoError(t, err)
+}
+
+func TestCourseService_GetByID_DeniedWhenRoleNotMatched(t *testing.T) {
+	repo := &testutil.MockCourseRepository{
+		GetByIDFn: func(_ context.Context, id uint64) (*entity.Course, error) {
+			return &entity.Course{ID: id, Status: 1}, nil
+		},
+		IncrViewCountFn: func(_ context.Context, id uint64) error { return nil },
+	}
+	permRepo := &testutil.MockContentPermissionRepository{
+		GetByContentFn: func(_ context.Context, contentType int8, contentID uint64) ([]*entity.ContentPermission, error) {
+			roleID := uint(2)
+			return []*entity.ContentPermission{{RoleID: &roleID}}, nil
+		},
+	}
+	roleRepo := &testutil.MockRoleRepository{
+		GetUserRolesFn: func(_ context.Context, userID uint64) ([]*entity.Role, error) {
+			return []*entity.Role{{ID: 1}}, nil
+		},
+	}
+	svc := NewCourseService(repo, &testutil.MockCourseUnitRepository{}, permRepo, logrus.New(), roleRepo)
+	uid := uint64(100)
+	_, err := svc.GetByID(context.Background(), 1, &uid)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "无权限")
+}
+
+func TestCourseService_GetByID_AllowsByRoleHierarchy(t *testing.T) {
+	repo := &testutil.MockCourseRepository{
+		GetByIDFn: func(_ context.Context, id uint64) (*entity.Course, error) {
+			return &entity.Course{ID: id, Status: 1}, nil
+		},
+		IncrViewCountFn: func(_ context.Context, id uint64) error { return nil },
+	}
+	permRepo := &testutil.MockContentPermissionRepository{
+		GetByContentFn: func(_ context.Context, contentType int8, contentID uint64) ([]*entity.ContentPermission, error) {
+			roleID := uint(1)
+			return []*entity.ContentPermission{{RoleID: &roleID}}, nil
+		},
+	}
+	roleRepo := &testutil.MockRoleRepository{
+		GetUserRolesFn: func(_ context.Context, userID uint64) ([]*entity.Role, error) {
+			return []*entity.Role{{ID: 2, ParentID: 1}}, nil
+		},
+		ListFn: func(_ context.Context) ([]*entity.Role, error) {
+			return []*entity.Role{{ID: 1, ParentID: 0}, {ID: 2, ParentID: 1}}, nil
+		},
+	}
+	svc := NewCourseService(repo, &testutil.MockCourseUnitRepository{}, permRepo, logrus.New(), roleRepo)
+	uid := uint64(100)
+	_, err := svc.GetByID(context.Background(), 1, &uid)
+	require.NoError(t, err)
+}

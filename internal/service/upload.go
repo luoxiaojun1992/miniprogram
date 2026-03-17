@@ -20,7 +20,8 @@ import (
 
 type UploadFileService interface {
 	GenerateAdminPresign(ctx context.Context, userID uint64, filename, usage, expiresInRaw string) (*AdminPresignResult, error)
-	GenerateBusinessDownload(ctx context.Context, fileID uint64, expectedCategory, expiresInRaw string) (*BusinessDownloadResult, error)
+	GenerateProtectedBusinessPresign(ctx context.Context, userID uint64, filename, business, expiresInRaw string, allowedCategories []string) (*AdminPresignResult, error)
+	GenerateBusinessDownload(ctx context.Context, fileID uint64, allowedCategories []string, expiresInRaw string) (*BusinessDownloadResult, error)
 	GenerateStaticURL(ctx context.Context, fileID uint64) (*StaticURLResult, error)
 }
 
@@ -114,7 +115,48 @@ func (s *uploadFileService) GenerateAdminPresign(ctx context.Context, userID uin
 	}, nil
 }
 
-func (s *uploadFileService) GenerateBusinessDownload(ctx context.Context, fileID uint64, expectedCategory, expiresInRaw string) (*BusinessDownloadResult, error) {
+func (s *uploadFileService) GenerateProtectedBusinessPresign(ctx context.Context, userID uint64, filename, business, expiresInRaw string, allowedCategories []string) (*AdminPresignResult, error) {
+	if s.cos == nil {
+		return nil, errors.NewBadRequest("当前存储不支持预签名上传", nil)
+	}
+	filename = strings.TrimSpace(filename)
+	if filename == "" {
+		return nil, errors.NewBadRequest("filename不能为空", nil)
+	}
+	ext := strings.ToLower(filepath.Ext(filename))
+	category := classifyFileCategory(ext)
+	if category == "" {
+		return nil, errors.NewBadRequest("不支持的文件扩展名", nil)
+	}
+	if !containsCategory(allowedCategories, category) {
+		return nil, errors.NewBadRequest("该业务仅支持图片或视频文件", nil)
+	}
+	expiresIn, err := parseExpiresIn(expiresInRaw, 900)
+	if err != nil {
+		return nil, err
+	}
+	key := generateObjectKey("protected-"+category, ext)
+	file := &entity.File{
+		Key:       key,
+		Filename:  filename,
+		Usage:     "protected",
+		Category:  category,
+		Business:  business,
+		CreatedBy: userID,
+	}
+	if createErr := s.fileRepo.Create(ctx, file); createErr != nil {
+		return nil, createErr
+	}
+	return &AdminPresignResult{
+		FileID:    file.ID,
+		Key:       key,
+		PutURL:    s.cos.PresignPutURL(key, expiresIn),
+		ExpiresIn: expiresIn,
+		ExpireAt:  time.Now().Add(time.Duration(expiresIn) * time.Second).Unix(),
+	}, nil
+}
+
+func (s *uploadFileService) GenerateBusinessDownload(ctx context.Context, fileID uint64, allowedCategories []string, expiresInRaw string) (*BusinessDownloadResult, error) {
 	if s.cos == nil {
 		return nil, errors.NewBadRequest("当前存储不支持临时下载链接", nil)
 	}
@@ -128,7 +170,7 @@ func (s *uploadFileService) GenerateBusinessDownload(ctx context.Context, fileID
 	if file.Usage != "protected" {
 		return nil, errors.NewForbidden("该文件无需临时链接下载", nil)
 	}
-	if file.Category != expectedCategory {
+	if !containsCategory(allowedCategories, file.Category) {
 		return nil, errors.NewForbidden("文件类型与业务不匹配", nil)
 	}
 	expiresIn, parseErr := parseExpiresIn(expiresInRaw, 300)
@@ -169,6 +211,18 @@ func (s *uploadFileService) GenerateStaticURL(ctx context.Context, fileID uint64
 		StaticURL: s.cos.ObjectURL(file.Key),
 		Category:  file.Category,
 	}, nil
+}
+
+func containsCategory(allowed []string, category string) bool {
+	if len(allowed) == 0 {
+		return false
+	}
+	for _, item := range allowed {
+		if strings.EqualFold(strings.TrimSpace(item), category) {
+			return true
+		}
+	}
+	return false
 }
 
 var fileAttachmentTypePattern = regexp.MustCompile(`^\.(pdf|doc|docx|xls|xlsx|ppt|pptx|zip|rar|7z|txt)$`)

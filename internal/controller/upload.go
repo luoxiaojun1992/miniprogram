@@ -26,6 +26,7 @@ import (
 	apperrors "github.com/luoxiaojun1992/miniprogram/internal/pkg/errors"
 	"github.com/luoxiaojun1992/miniprogram/internal/pkg/response"
 	"github.com/luoxiaojun1992/miniprogram/internal/repository"
+	"github.com/luoxiaojun1992/miniprogram/internal/service"
 )
 
 // UploadController handles file upload requests.
@@ -104,7 +105,70 @@ func (c *UploadController) GenerateAdminUploadPresignURL(ctx *gin.Context) {
 		return
 	}
 	if c.uploadSvc == nil {
-		ctx.Error(apperrors.NewBadRequest("上传服务未初始化", nil))
+		if c.cos == nil {
+			ctx.Error(apperrors.NewBadRequest("当前存储不支持预签名上传", nil))
+			return
+		}
+		filename := strings.TrimSpace(ctx.Query("filename"))
+		if filename == "" {
+			ctx.Error(apperrors.NewBadRequest("filename不能为空", nil))
+			return
+		}
+		usage := strings.ToLower(strings.TrimSpace(ctx.DefaultQuery("usage", "protected")))
+		if usage != "embedded" && usage != "protected" {
+			ctx.Error(apperrors.NewBadRequest("usage仅支持embedded或protected", nil))
+			return
+		}
+		ext := strings.ToLower(filepath.Ext(filename))
+		category := classifyFileCategory(ext)
+		if category == "" {
+			ctx.Error(apperrors.NewBadRequest("不支持的文件扩展名", nil))
+			return
+		}
+		if usage == "embedded" && category == "attachment" {
+			ctx.Error(apperrors.NewBadRequest("内嵌素材仅支持图片或视频", nil))
+			return
+		}
+		expiresIn := 900
+		if raw := strings.TrimSpace(ctx.Query("expires_in")); raw != "" {
+			v, convErr := strconv.Atoi(raw)
+			if convErr != nil || v < 60 || v > 3600 {
+				ctx.Error(apperrors.NewBadRequest("expires_in必须在60-3600秒之间", convErr))
+				return
+			}
+			expiresIn = v
+		}
+		prefix := usage + "-" + category
+		key := generateObjectKey(prefix, ext)
+		staticURL := ""
+		if usage == "embedded" {
+			staticURL = c.cos.objectURL(key)
+		}
+		payload := fileRecordPayload{
+			Key:       key,
+			Filename:  filename,
+			Usage:     usage,
+			Category:  category,
+			StaticURL: staticURL,
+			ExpiresIn: expiresIn,
+			Protected: usage == "protected",
+		}
+		fileID, recordErr := c.recordFileUpload(ctx, payload)
+		if recordErr != nil {
+			ctx.Error(recordErr)
+			return
+		}
+		resp := gin.H{
+			"file_id":    fileID,
+			"key":        key,
+			"put_url":    c.cos.presignPutURL(key, expiresIn),
+			"expires_in": expiresIn,
+			"expire_at":  time.Now().Add(time.Duration(expiresIn) * time.Second).Unix(),
+		}
+		if staticURL != "" {
+			resp["static_url"] = staticURL
+		}
+		response.Success(ctx, resp)
 		return
 	}
 	userID, _ := middleware.GetCurrentUserID(ctx)
@@ -141,6 +205,38 @@ func (c *UploadController) GenerateCourseVideoPresignURL(ctx *gin.Context) {
 	c.generatePresignUploadURL(ctx, "course-video", ".mp4")
 }
 
+// GenerateBannerMediaPresignURL handles GET /upload/banner/media/presign.
+func (c *UploadController) GenerateBannerMediaPresignURL(ctx *gin.Context) {
+	if !isAdminUser(ctx) {
+		ctx.Error(apperrors.NewForbidden("仅管理员可上传轮播素材", nil))
+		return
+	}
+	if c.uploadSvc == nil {
+		ctx.Error(apperrors.NewBadRequest("上传服务未初始化", nil))
+		return
+	}
+	userID, _ := middleware.GetCurrentUserID(ctx)
+	result, err := c.uploadSvc.GenerateProtectedBusinessPresign(
+		ctx.Request.Context(),
+		userID,
+		ctx.Query("filename"),
+		"banner_media",
+		ctx.Query("expires_in"),
+		[]string{"image", "video"},
+	)
+	if err != nil {
+		ctx.Error(err)
+		return
+	}
+	response.Success(ctx, gin.H{
+		"file_id":    result.FileID,
+		"key":        result.Key,
+		"put_url":    result.PutURL,
+		"expires_in": result.ExpiresIn,
+		"expire_at":  result.ExpireAt,
+	})
+}
+
 // GenerateArticleAttachmentPresignURL handles GET /upload/article/attachment/presign.
 func (c *UploadController) GenerateArticleAttachmentPresignURL(ctx *gin.Context) {
 	if !isAdminUser(ctx) {
@@ -161,23 +257,70 @@ func (c *UploadController) GenerateCourseAttachmentPresignURL(ctx *gin.Context) 
 
 // GenerateCourseVideoDownloadURL handles GET /download/course/video.
 func (c *UploadController) GenerateCourseVideoDownloadURL(ctx *gin.Context) {
+	if c.uploadSvc == nil {
+		c.generateBusinessTemporaryDownloadURL(ctx, "course_video", "video")
+		return
+	}
 	c.generateServiceBusinessDownloadURL(ctx, "video")
 }
 
 // GenerateArticleAttachmentDownloadURL handles GET /download/article/attachment.
 func (c *UploadController) GenerateArticleAttachmentDownloadURL(ctx *gin.Context) {
+	if c.uploadSvc == nil {
+		c.generateBusinessTemporaryDownloadURL(ctx, "article_attachment", "attachment")
+		return
+	}
 	c.generateServiceBusinessDownloadURL(ctx, "attachment")
 }
 
 // GenerateCourseAttachmentDownloadURL handles GET /download/course/attachment.
 func (c *UploadController) GenerateCourseAttachmentDownloadURL(ctx *gin.Context) {
+	if c.uploadSvc == nil {
+		c.generateBusinessTemporaryDownloadURL(ctx, "course_attachment", "attachment")
+		return
+	}
 	c.generateServiceBusinessDownloadURL(ctx, "attachment")
+}
+
+// GenerateBannerMediaDownloadURL handles GET /download/banner/media/:file_id.
+func (c *UploadController) GenerateBannerMediaDownloadURL(ctx *gin.Context) {
+	if c.uploadSvc == nil {
+		ctx.Error(apperrors.NewBadRequest("上传服务未初始化", nil))
+		return
+	}
+	c.generateServiceBusinessDownloadURL(ctx, "image", "video")
 }
 
 // GenerateStaticMaterialURL handles GET /download/static/:file_id.
 func (c *UploadController) GenerateStaticMaterialURL(ctx *gin.Context) {
 	if c.uploadSvc == nil {
-		ctx.Error(apperrors.NewBadRequest("上传服务未初始化", nil))
+		file, payload, err := c.loadFileRecord(ctx)
+		if err != nil {
+			ctx.Error(err)
+			return
+		}
+		if payload.Protected || payload.Usage != "embedded" || (payload.Category != "image" && payload.Category != "video") {
+			ctx.Error(apperrors.NewForbidden("该文件不支持静态访问", nil))
+			return
+		}
+		if c.cos == nil {
+			ctx.Error(apperrors.NewBadRequest("当前存储不支持静态链接校验", nil))
+			return
+		}
+		ok, checkErr := c.cos.isStaticMediaObject(ctx.Request.Context(), payload.Key)
+		if checkErr != nil {
+			ctx.Error(apperrors.NewInternal("校验文件类型失败", checkErr))
+			return
+		}
+		if !ok {
+			ctx.Error(apperrors.NewForbidden("静态访问仅支持图片和视频文件", nil))
+			return
+		}
+		response.Success(ctx, gin.H{
+			"file_id":    file.ID,
+			"static_url": c.cos.objectURL(payload.Key),
+			"category":   payload.Category,
+		})
 		return
 	}
 	fileID, err := strconv.ParseUint(strings.TrimSpace(ctx.Param("file_id")), 10, 64)
@@ -197,7 +340,7 @@ func (c *UploadController) GenerateStaticMaterialURL(ctx *gin.Context) {
 	})
 }
 
-func (c *UploadController) generateServiceBusinessDownloadURL(ctx *gin.Context, expectedCategory string) {
+func (c *UploadController) generateServiceBusinessDownloadURL(ctx *gin.Context, expectedCategories ...string) {
 	if c.uploadSvc == nil {
 		ctx.Error(apperrors.NewBadRequest("上传服务未初始化", nil))
 		return
@@ -207,7 +350,7 @@ func (c *UploadController) generateServiceBusinessDownloadURL(ctx *gin.Context, 
 		ctx.Error(apperrors.NewBadRequest("file_id不合法", err))
 		return
 	}
-	result, svcErr := c.uploadSvc.GenerateBusinessDownload(ctx.Request.Context(), fileID, expectedCategory, ctx.Query("expires_in"))
+	result, svcErr := c.uploadSvc.GenerateBusinessDownload(ctx.Request.Context(), fileID, expectedCategories, ctx.Query("expires_in"))
 	if svcErr != nil {
 		ctx.Error(svcErr)
 		return

@@ -51,6 +51,7 @@ type PermissionRepository interface {
 	List(ctx context.Context) ([]*entity.Permission, error)
 	GetByID(ctx context.Context, id uint) (*entity.Permission, error)
 	GetUserPermissions(ctx context.Context, userID uint64) ([]*entity.Permission, error)
+	GetPermissionsByRoleIDs(ctx context.Context, roleIDs []uint) ([]*entity.Permission, error)
 }
 
 // ModuleRepository defines the interface for module data access.
@@ -69,6 +70,15 @@ type ModulePageRepository interface {
 	Create(ctx context.Context, page *entity.ModulePage) error
 	Update(ctx context.Context, page *entity.ModulePage) error
 	Delete(ctx context.Context, id uint) error
+}
+
+// BannerRepository defines the interface for banner data access.
+type BannerRepository interface {
+	GetByID(ctx context.Context, id uint64) (*entity.Banner, error)
+	List(ctx context.Context, status *int8) ([]*entity.Banner, error)
+	Create(ctx context.Context, banner *entity.Banner) error
+	Update(ctx context.Context, banner *entity.Banner) error
+	Delete(ctx context.Context, id uint64) error
 }
 
 // ArticleRepository defines the interface for article data access.

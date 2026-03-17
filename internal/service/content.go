@@ -3,6 +3,7 @@ package service
 import (
 	"context"
 	"fmt"
+	"reflect"
 	"time"
 
 	"github.com/sirupsen/logrus"
@@ -130,6 +131,7 @@ type articleService struct {
 	articleRepo       repository.ArticleRepository
 	attachmentRepo    repository.ArticleAttachmentRepository
 	contentPermRepo   repository.ContentPermissionRepository
+	roleRepo          repository.RoleRepository
 	sensitiveWordRepo repository.SensitiveWordRepository
 	log               *logrus.Logger
 }
@@ -143,18 +145,22 @@ func NewArticleService(
 ) ArticleService {
 	var swRepo repository.SensitiveWordRepository
 	var attachmentRepo repository.ArticleAttachmentRepository
+	var roleRepo repository.RoleRepository
 	for _, dep := range deps {
 		switch v := dep.(type) {
 		case repository.SensitiveWordRepository:
 			swRepo = v
 		case repository.ArticleAttachmentRepository:
 			attachmentRepo = v
+		case repository.RoleRepository:
+			roleRepo = v
 		}
 	}
 	return &articleService{
 		articleRepo:       articleRepo,
 		attachmentRepo:    attachmentRepo,
-		contentPermRepo:   contentPermRepo,
+		contentPermRepo:   normalizeContentPermRepo(contentPermRepo),
+		roleRepo:          roleRepo,
 		sensitiveWordRepo: swRepo,
 		log:               log,
 	}
@@ -175,6 +181,13 @@ func (s *articleService) GetByID(ctx context.Context, id uint64, userID *uint64)
 	}
 	if article.Status != 1 {
 		return nil, errors.NewNotFound("文章不存在", nil)
+	}
+	allowed, accessErr := s.canAccessContent(ctx, 1, id, userID)
+	if accessErr != nil {
+		return nil, accessErr
+	}
+	if !allowed {
+		return nil, errors.NewForbidden("无权限访问该内容", nil)
 	}
 	go func() {
 		_ = s.articleRepo.IncrViewCount(context.Background(), id)
@@ -356,6 +369,7 @@ type courseService struct {
 	courseUnitRepo    repository.CourseUnitRepository
 	attachmentRepo    repository.CourseAttachmentRepository
 	contentPermRepo   repository.ContentPermissionRepository
+	roleRepo          repository.RoleRepository
 	sensitiveWordRepo repository.SensitiveWordRepository
 	log               *logrus.Logger
 }
@@ -370,19 +384,23 @@ func NewCourseService(
 ) CourseService {
 	var swRepo repository.SensitiveWordRepository
 	var attachmentRepo repository.CourseAttachmentRepository
+	var roleRepo repository.RoleRepository
 	for _, dep := range deps {
 		switch v := dep.(type) {
 		case repository.SensitiveWordRepository:
 			swRepo = v
 		case repository.CourseAttachmentRepository:
 			attachmentRepo = v
+		case repository.RoleRepository:
+			roleRepo = v
 		}
 	}
 	return &courseService{
 		courseRepo:        courseRepo,
 		courseUnitRepo:    courseUnitRepo,
 		attachmentRepo:    attachmentRepo,
-		contentPermRepo:   contentPermRepo,
+		contentPermRepo:   normalizeContentPermRepo(contentPermRepo),
+		roleRepo:          roleRepo,
 		sensitiveWordRepo: swRepo,
 		log:               log,
 	}
@@ -403,6 +421,13 @@ func (s *courseService) GetByID(ctx context.Context, id uint64, userID *uint64) 
 	}
 	if course.Status != 1 {
 		return nil, errors.NewNotFound("课程不存在", nil)
+	}
+	allowed, accessErr := s.canAccessContent(ctx, 2, id, userID)
+	if accessErr != nil {
+		return nil, accessErr
+	}
+	if !allowed {
+		return nil, errors.NewForbidden("无权限访问该内容", nil)
 	}
 	go func() {
 		_ = s.courseRepo.IncrViewCount(context.Background(), id)
@@ -537,7 +562,6 @@ func (s *courseService) Copy(ctx context.Context, id uint64, authorID uint64) (u
 		Title:       fmt.Sprintf("%s-副本", course.Title),
 		Description: course.Description,
 		CoverImage:  course.CoverImage,
-		VideoFileID: course.VideoFileID,
 		Duration:    course.Duration,
 		AuthorID:    authorID,
 		ModuleID:    course.ModuleID,
@@ -642,6 +666,112 @@ func toOptionalUint64(v uint64) *uint64 {
 		return nil
 	}
 	return &v
+}
+
+func normalizeContentPermRepo(repo repository.ContentPermissionRepository) repository.ContentPermissionRepository {
+	if repo == nil {
+		return nil
+	}
+	rv := reflect.ValueOf(repo)
+	if rv.Kind() == reflect.Ptr && rv.IsNil() {
+		return nil
+	}
+	return repo
+}
+
+func (s *articleService) canAccessContent(ctx context.Context, contentType int8, contentID uint64, userID *uint64) (bool, error) {
+	return canAccessContentByRole(ctx, s.contentPermRepo, s.roleRepo, contentType, contentID, userID)
+}
+
+func (s *courseService) canAccessContent(ctx context.Context, contentType int8, contentID uint64, userID *uint64) (bool, error) {
+	return canAccessContentByRole(ctx, s.contentPermRepo, s.roleRepo, contentType, contentID, userID)
+}
+
+func canAccessContentByRole(
+	ctx context.Context,
+	contentPermRepo repository.ContentPermissionRepository,
+	roleRepo repository.RoleRepository,
+	contentType int8,
+	contentID uint64,
+	userID *uint64,
+) (bool, error) {
+	if contentPermRepo == nil {
+		return true, nil
+	}
+	perms, err := contentPermRepo.GetByContent(ctx, contentType, contentID)
+	if err != nil {
+		return false, err
+	}
+	if len(perms) == 0 {
+		return true, nil
+	}
+	allowedRoles := map[uint]struct{}{}
+	for _, perm := range perms {
+		if perm.RoleID == nil {
+			return true, nil
+		}
+		allowedRoles[*perm.RoleID] = struct{}{}
+	}
+	if len(allowedRoles) == 0 {
+		return true, nil
+	}
+	if userID == nil || *userID == 0 || roleRepo == nil {
+		return false, nil
+	}
+	roles, roleErr := roleRepo.GetUserRoles(ctx, *userID)
+	if roleErr != nil {
+		return false, roleErr
+	}
+	userRoleIDs := map[uint]struct{}{}
+	for _, role := range roles {
+		userRoleIDs[role.ID] = struct{}{}
+	}
+	for roleID := range userRoleIDs {
+		if _, ok := allowedRoles[roleID]; ok {
+			return true, nil
+		}
+	}
+	allRoles, listErr := roleRepo.List(ctx)
+	if listErr != nil {
+		return false, listErr
+	}
+	if hasRoleHierarchyMatch(userRoleIDs, allowedRoles, allRoles) {
+		return true, nil
+	}
+	return false, nil
+}
+
+func hasRoleHierarchyMatch(userRoleIDs, allowedRoles map[uint]struct{}, allRoles []*entity.Role) bool {
+	parentByRole := make(map[uint]uint, len(allRoles))
+	childrenByRole := make(map[uint][]uint, len(allRoles))
+	for _, role := range allRoles {
+		parentByRole[role.ID] = role.ParentID
+		if role.ParentID > 0 {
+			childrenByRole[role.ParentID] = append(childrenByRole[role.ParentID], role.ID)
+		}
+	}
+	visited := map[uint]struct{}{}
+	stack := make([]uint, 0, len(userRoleIDs))
+	for roleID := range userRoleIDs {
+		stack = append(stack, roleID)
+	}
+	for len(stack) > 0 {
+		n := len(stack) - 1
+		roleID := stack[n]
+		stack = stack[:n]
+		if _, seen := visited[roleID]; seen {
+			continue
+		}
+		visited[roleID] = struct{}{}
+		if _, ok := allowedRoles[roleID]; ok {
+			return true
+		}
+		if parentID, ok := parentByRole[roleID]; ok && parentID > 0 {
+			stack = append(stack, parentID)
+		}
+		stack = append(stack, childrenByRole[roleID]...)
+	}
+	return false
 }
 
 func (s *courseService) DeleteUnit(ctx context.Context, courseID, unitID uint64) error {

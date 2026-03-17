@@ -121,7 +121,7 @@ export function setup() {
 
   const unitRes = http.post(
     `${BASE_URL}/v1/admin/courses/${courseId}/units`,
-    JSON.stringify({ title: 'K6 Test Unit', video_url: 'http://example.com/video.mp4', duration: 30, sort_order: 1 }),
+    JSON.stringify({ title: 'K6 Test Unit', video_file_id: 1, duration: 30, sort_order: 1 }),
     headers(adminToken),
   );
   check(unitRes, { 'setup | create unit: 201': (r) => r.status === 201 });

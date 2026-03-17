@@ -184,6 +184,27 @@ func (r CreateModulePageRequest) Validate() error {
 	)
 }
 
+// ==================== Banner DTOs ====================
+
+// CreateBannerRequest is the request body for creating/updating a banner.
+type CreateBannerRequest struct {
+	Title       string `json:"title"`
+	ImageFileID uint64 `json:"image_file_id"`
+	LinkURL     string `json:"link_url"`
+	SortOrder   int    `json:"sort_order"`
+	Status      int8   `json:"status"`
+}
+
+// Validate validates CreateBannerRequest.
+func (r CreateBannerRequest) Validate() error {
+	return validation.ValidateStruct(&r,
+		validation.Field(&r.Title, validation.Required, validation.Length(1, 128)),
+		validation.Field(&r.ImageFileID, validation.Required, validation.Min(uint64(1))),
+		validation.Field(&r.Status, validation.In(int8(0), int8(1))),
+		validation.Field(&r.LinkURL, validation.Length(0, 255)),
+	)
+}
+
 // ==================== Article DTOs ====================
 
 // CreateArticleRequest is the request body for creating an article.

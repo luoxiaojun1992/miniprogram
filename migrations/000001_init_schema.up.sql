@@ -191,6 +191,20 @@ CREATE TABLE IF NOT EXISTS `module_pages` (
     INDEX `idx_module_sort` (`module_id`, `sort_order`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='模块页面表';
 
+-- 轮播图表
+CREATE TABLE IF NOT EXISTS `banners` (
+    `id` BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    `title` VARCHAR(128),
+    `image_file_id` BIGINT UNSIGNED,
+    `link_url` VARCHAR(255),
+    `sort_order` INT DEFAULT 0,
+    `status` TINYINT DEFAULT 1 COMMENT '0禁用 1启用',
+    `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP,
+    `updated_at` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    INDEX `idx_image_file` (`image_file_id`),
+    INDEX `idx_status_sort` (`status`, `sort_order`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='轮播图表';
+
 -- 文章表
 CREATE TABLE IF NOT EXISTS `articles` (
     `id` BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
@@ -240,7 +254,6 @@ CREATE TABLE IF NOT EXISTS `courses` (
     `title` VARCHAR(200) NOT NULL,
     `description` TEXT,
     `cover_image` VARCHAR(255),
-    `video_file_id` BIGINT UNSIGNED,
     `duration` INT UNSIGNED COMMENT '总课时(分钟)',
     `author_id` BIGINT UNSIGNED,
     `module_id` INT UNSIGNED,
@@ -258,7 +271,6 @@ CREATE TABLE IF NOT EXISTS `courses` (
     `updated_at` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     FOREIGN KEY (`author_id`) REFERENCES `users`(`id`),
     FOREIGN KEY (`module_id`) REFERENCES `modules`(`id`),
-    FOREIGN KEY (`video_file_id`) REFERENCES `files`(`id`),
     INDEX `idx_status_time` (`status`, `publish_time`),
     INDEX `idx_module` (`module_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='课程表';

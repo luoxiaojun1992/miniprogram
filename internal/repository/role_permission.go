@@ -171,3 +171,19 @@ func (r *permissionRepository) GetUserPermissions(ctx context.Context, userID ui
 	}
 	return perms, nil
 }
+
+func (r *permissionRepository) GetPermissionsByRoleIDs(ctx context.Context, roleIDs []uint) ([]*entity.Permission, error) {
+	if len(roleIDs) == 0 {
+		return []*entity.Permission{}, nil
+	}
+	var perms []*entity.Permission
+	err := r.db.WithContext(ctx).Raw(`
+		SELECT DISTINCT p.* FROM permissions p
+		JOIN role_permissions rp ON rp.permission_id = p.id
+		WHERE rp.role_id IN ?
+	`, roleIDs).Scan(&perms).Error
+	if err != nil {
+		return nil, errors.NewInternal("按角色查询权限失败", err)
+	}
+	return perms, nil
+}
