@@ -146,6 +146,8 @@ func InitRouter(p *Provider) *gin.Engine {
 		admin.PUT("/articles/:id", p.ArticleCtrl.AdminUpdate)
 		admin.DELETE("/articles/:id", p.ArticleCtrl.AdminDelete)
 		admin.POST("/articles/:id/publish", p.ArticleCtrl.AdminPublish)
+		admin.POST("/articles/:id/pin", p.ArticleCtrl.AdminPin)
+		admin.POST("/articles/:id/copy", p.ArticleCtrl.AdminCopy)
 
 		// Courses
 		admin.GET("/courses", p.CourseCtrl.AdminList)
@@ -154,6 +156,8 @@ func InitRouter(p *Provider) *gin.Engine {
 		admin.PUT("/courses/:id", p.CourseCtrl.AdminUpdate)
 		admin.DELETE("/courses/:id", p.CourseCtrl.AdminDelete)
 		admin.POST("/courses/:id/publish", p.CourseCtrl.AdminPublish)
+		admin.POST("/courses/:id/pin", p.CourseCtrl.AdminPin)
+		admin.POST("/courses/:id/copy", p.CourseCtrl.AdminCopy)
 		admin.GET("/courses/:id/units", p.CourseCtrl.AdminGetUnits)
 		admin.POST("/courses/:id/units", p.CourseCtrl.AdminCreateUnit)
 		admin.PUT("/courses/:id/units/:unit_id", p.CourseCtrl.AdminUpdateUnit)

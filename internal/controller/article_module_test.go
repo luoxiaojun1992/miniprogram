@@ -256,6 +256,24 @@ func TestArticleCtrl_AdminPublish_SvcErr(t *testing.T) {
 	assert.Equal(t, 404, doRequest(r, "POST", "/admin/articles/1/publish", `{"status":1}`).Code)
 }
 
+func TestArticleCtrl_AdminPin_OK(t *testing.T) {
+	svc := &testutil.MockArticleService{
+		PinFn: func(_ context.Context, id uint64, req *dto.PinArticleRequest) error { return nil },
+	}
+	r := newTestRouter()
+	r.POST("/admin/articles/:id/pin", artCtrl(svc).AdminPin)
+	assert.Equal(t, 200, doRequest(r, "POST", "/admin/articles/1/pin", `{"sort_order":999}`).Code)
+}
+
+func TestArticleCtrl_AdminCopy_OK(t *testing.T) {
+	svc := &testutil.MockArticleService{
+		CopyFn: func(_ context.Context, id uint64, authorID uint64) (uint64, error) { return 88, nil },
+	}
+	r := newTestRouter()
+	r.POST("/admin/articles/:id/copy", artCtrl(svc).AdminCopy)
+	assert.Equal(t, 201, doRequest(r, "POST", "/admin/articles/1/copy", "").Code)
+}
+
 // ── ModuleController ──────────────────────────────────────────────────────────
 
 func TestModuleCtrl_List_OK(t *testing.T) {

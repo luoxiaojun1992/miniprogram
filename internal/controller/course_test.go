@@ -254,6 +254,24 @@ func TestCourseCtrl_AdminPublish_SvcErr(t *testing.T) {
 	assert.Equal(t, 404, doRequest(r, "POST", "/admin/courses/1/publish", `{"status":1}`).Code)
 }
 
+func TestCourseCtrl_AdminPin_OK(t *testing.T) {
+	svc := &testutil.MockCourseService{
+		PinFn: func(_ context.Context, id uint64, req *dto.PinCourseRequest) error { return nil },
+	}
+	r := newTestRouter()
+	r.POST("/admin/courses/:id/pin", crsCtrl(svc).AdminPin)
+	assert.Equal(t, 200, doRequest(r, "POST", "/admin/courses/1/pin", `{"sort_order":999}`).Code)
+}
+
+func TestCourseCtrl_AdminCopy_OK(t *testing.T) {
+	svc := &testutil.MockCourseService{
+		CopyFn: func(_ context.Context, id uint64, authorID uint64) (uint64, error) { return 66, nil },
+	}
+	r := newTestRouter()
+	r.POST("/admin/courses/:id/copy", crsCtrl(svc).AdminCopy)
+	assert.Equal(t, 201, doRequest(r, "POST", "/admin/courses/1/copy", "").Code)
+}
+
 func TestCourseCtrl_AdminGetUnits_OK(t *testing.T) {
 	svc := &testutil.MockCourseService{
 		GetUnitsFn: func(_ context.Context, cid uint64) ([]*entity.CourseUnit, error) {

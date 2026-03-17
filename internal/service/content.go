@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	"github.com/sirupsen/logrus"
@@ -182,10 +183,13 @@ func (s *articleService) AdminGetByID(ctx context.Context, id uint64) (*entity.A
 }
 
 func (s *articleService) Create(ctx context.Context, req *dto.CreateArticleRequest, authorID uint64) (uint64, error) {
+	title, _ := maskSensitiveText(req.Title)
+	summary, _ := maskSensitiveText(req.Summary)
+	content, _ := maskSensitiveText(req.Content)
 	article := &entity.Article{
-		Title:       req.Title,
-		Summary:     req.Summary,
-		Content:     req.Content,
+		Title:       title,
+		Summary:     summary,
+		Content:     content,
 		ContentType: req.ContentType,
 		CoverImage:  req.CoverImage,
 		AuthorID:    authorID,
@@ -219,9 +223,9 @@ func (s *articleService) Update(ctx context.Context, id uint64, req *dto.UpdateA
 	if article == nil {
 		return errors.NewNotFound("文章不存在", nil)
 	}
-	article.Title = req.Title
-	article.Summary = req.Summary
-	article.Content = req.Content
+	article.Title, _ = maskSensitiveText(req.Title)
+	article.Summary, _ = maskSensitiveText(req.Summary)
+	article.Content, _ = maskSensitiveText(req.Content)
 	article.ContentType = req.ContentType
 	article.CoverImage = req.CoverImage
 	article.ModuleID = req.ModuleID
@@ -258,6 +262,59 @@ func (s *articleService) Publish(ctx context.Context, id uint64, req *dto.Publis
 		article.PublishTime = &now
 	}
 	return s.articleRepo.Update(ctx, article)
+}
+
+func (s *articleService) Pin(ctx context.Context, id uint64, req *dto.PinArticleRequest) error {
+	article, err := s.articleRepo.GetByID(ctx, id)
+	if err != nil {
+		return err
+	}
+	if article == nil {
+		return errors.NewNotFound("文章不存在", nil)
+	}
+	article.SortOrder = req.SortOrder
+	return s.articleRepo.Update(ctx, article)
+}
+
+func (s *articleService) Copy(ctx context.Context, id uint64, authorID uint64) (uint64, error) {
+	article, err := s.articleRepo.GetByID(ctx, id)
+	if err != nil {
+		return 0, err
+	}
+	if article == nil {
+		return 0, errors.NewNotFound("文章不存在", nil)
+	}
+	now := time.Now()
+	dup := &entity.Article{
+		Title:       fmt.Sprintf("%s-副本", article.Title),
+		Summary:     article.Summary,
+		Content:     article.Content,
+		ContentType: article.ContentType,
+		CoverImage:  article.CoverImage,
+		AuthorID:    authorID,
+		ModuleID:    article.ModuleID,
+		Status:      0,
+		PublishTime: nil,
+		SortOrder:   article.SortOrder,
+		CreatedAt:   now,
+		UpdatedAt:   now,
+	}
+	if err = s.articleRepo.Create(ctx, dup); err != nil {
+		return 0, err
+	}
+	roles, permErr := s.contentPermRepo.GetByContent(ctx, 1, id)
+	if permErr == nil && len(roles) > 0 {
+		roleIDs := make([]uint, 0, len(roles))
+		for _, r := range roles {
+			if r.RoleID != nil {
+				roleIDs = append(roleIDs, *r.RoleID)
+			}
+		}
+		if len(roleIDs) > 0 {
+			_ = s.contentPermRepo.SetContentPermissions(ctx, 1, dup.ID, roleIDs)
+		}
+	}
+	return dup.ID, nil
 }
 
 // ==================== Course Service ====================
@@ -393,6 +450,70 @@ func (s *courseService) Publish(ctx context.Context, id uint64, req *dto.Publish
 		course.PublishTime = &now
 	}
 	return s.courseRepo.Update(ctx, course)
+}
+
+func (s *courseService) Pin(ctx context.Context, id uint64, req *dto.PinCourseRequest) error {
+	course, err := s.courseRepo.GetByID(ctx, id)
+	if err != nil {
+		return err
+	}
+	if course == nil {
+		return errors.NewNotFound("课程不存在", nil)
+	}
+	course.SortOrder = req.SortOrder
+	return s.courseRepo.Update(ctx, course)
+}
+
+func (s *courseService) Copy(ctx context.Context, id uint64, authorID uint64) (uint64, error) {
+	course, err := s.courseRepo.GetByID(ctx, id)
+	if err != nil {
+		return 0, err
+	}
+	if course == nil {
+		return 0, errors.NewNotFound("课程不存在", nil)
+	}
+	dup := &entity.Course{
+		Title:       fmt.Sprintf("%s-副本", course.Title),
+		Description: course.Description,
+		CoverImage:  course.CoverImage,
+		VideoURL:    course.VideoURL,
+		Duration:    course.Duration,
+		AuthorID:    authorID,
+		ModuleID:    course.ModuleID,
+		Status:      0,
+		PublishTime: nil,
+		Price:       course.Price,
+		SortOrder:   course.SortOrder,
+	}
+	if err = s.courseRepo.Create(ctx, dup); err != nil {
+		return 0, err
+	}
+	units, unitErr := s.courseUnitRepo.ListByCourseID(ctx, id)
+	if unitErr == nil {
+		for _, unit := range units {
+			_ = s.courseUnitRepo.Create(ctx, &entity.CourseUnit{
+				CourseID:  dup.ID,
+				Title:     unit.Title,
+				VideoURL:  unit.VideoURL,
+				Duration:  unit.Duration,
+				SortOrder: unit.SortOrder,
+				Status:    unit.Status,
+			})
+		}
+	}
+	roles, permErr := s.contentPermRepo.GetByContent(ctx, 2, id)
+	if permErr == nil && len(roles) > 0 {
+		roleIDs := make([]uint, 0, len(roles))
+		for _, r := range roles {
+			if r.RoleID != nil {
+				roleIDs = append(roleIDs, *r.RoleID)
+			}
+		}
+		if len(roleIDs) > 0 {
+			_ = s.contentPermRepo.SetContentPermissions(ctx, 2, dup.ID, roleIDs)
+		}
+	}
+	return dup.ID, nil
 }
 
 func (s *courseService) GetUnits(ctx context.Context, courseID uint64) ([]*entity.CourseUnit, error) {

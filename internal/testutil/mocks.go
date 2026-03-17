@@ -915,6 +915,8 @@ type MockArticleService struct {
 	UpdateFn      func(ctx context.Context, id uint64, req *dto.UpdateArticleRequest) error
 	DeleteFn      func(ctx context.Context, id uint64) error
 	PublishFn     func(ctx context.Context, id uint64, req *dto.PublishArticleRequest) error
+	PinFn         func(ctx context.Context, id uint64, req *dto.PinArticleRequest) error
+	CopyFn        func(ctx context.Context, id uint64, authorID uint64) (uint64, error)
 }
 
 func (m *MockArticleService) List(ctx context.Context, page, pageSize int, keyword string, moduleID *uint, sort string, userID *uint64) ([]*entity.Article, int64, error) {
@@ -965,6 +967,18 @@ func (m *MockArticleService) Publish(ctx context.Context, id uint64, req *dto.Pu
 		}
 		return nil
 }
+func (m *MockArticleService) Pin(ctx context.Context, id uint64, req *dto.PinArticleRequest) error {
+	if m.PinFn != nil {
+		return m.PinFn(ctx, id, req)
+	}
+	return nil
+}
+func (m *MockArticleService) Copy(ctx context.Context, id uint64, authorID uint64) (uint64, error) {
+	if m.CopyFn != nil {
+		return m.CopyFn(ctx, id, authorID)
+	}
+	return 0, nil
+}
 
 // MockCourseService is a test double for service.CourseService.
 type MockCourseService struct {
@@ -976,6 +990,8 @@ type MockCourseService struct {
 	UpdateFn       func(ctx context.Context, id uint64, req *dto.UpdateCourseRequest) error
 	DeleteFn       func(ctx context.Context, id uint64) error
 	PublishFn      func(ctx context.Context, id uint64, req *dto.PublishCourseRequest) error
+	PinFn          func(ctx context.Context, id uint64, req *dto.PinCourseRequest) error
+	CopyFn         func(ctx context.Context, id uint64, authorID uint64) (uint64, error)
 	GetUnitsFn     func(ctx context.Context, courseID uint64) ([]*entity.CourseUnit, error)
 	CreateUnitFn   func(ctx context.Context, courseID uint64, req *dto.CreateCourseUnitRequest) (uint64, error)
 	UpdateUnitFn   func(ctx context.Context, courseID, unitID uint64, req *dto.CreateCourseUnitRequest) error
@@ -1029,6 +1045,18 @@ func (m *MockCourseService) Publish(ctx context.Context, id uint64, req *dto.Pub
 			return m.PublishFn(ctx, id, req)
 		}
 		return nil
+}
+func (m *MockCourseService) Pin(ctx context.Context, id uint64, req *dto.PinCourseRequest) error {
+	if m.PinFn != nil {
+		return m.PinFn(ctx, id, req)
+	}
+	return nil
+}
+func (m *MockCourseService) Copy(ctx context.Context, id uint64, authorID uint64) (uint64, error) {
+	if m.CopyFn != nil {
+		return m.CopyFn(ctx, id, authorID)
+	}
+	return 0, nil
 }
 func (m *MockCourseService) GetUnits(ctx context.Context, courseID uint64) ([]*entity.CourseUnit, error) {
 		if m.GetUnitsFn != nil {

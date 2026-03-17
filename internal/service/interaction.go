@@ -143,12 +143,13 @@ func (s *commentService) List(ctx context.Context, contentType int8, contentID u
 }
 
 func (s *commentService) Create(ctx context.Context, userID uint64, contentType int8, contentID uint64, req *dto.CreateCommentRequest) (*entity.Comment, error) {
+	maskedContent, _ := maskSensitiveText(req.Content)
 	c := &entity.Comment{
 		UserID:      userID,
 		ContentType: contentType,
 		ContentID:   contentID,
 		ParentID:    req.ParentID,
-		Content:     req.Content,
+		Content:     maskedContent,
 		Status:      1,
 	}
 	if err := s.commentRepo.Create(ctx, c); err != nil {

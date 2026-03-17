@@ -65,6 +65,8 @@ type ArticleService interface {
 	Update(ctx context.Context, id uint64, req *dto.UpdateArticleRequest) error
 	Delete(ctx context.Context, id uint64) error
 	Publish(ctx context.Context, id uint64, req *dto.PublishArticleRequest) error
+	Pin(ctx context.Context, id uint64, req *dto.PinArticleRequest) error
+	Copy(ctx context.Context, id uint64, authorID uint64) (uint64, error)
 }
 
 // CourseService handles course operations.
@@ -77,6 +79,8 @@ type CourseService interface {
 	Update(ctx context.Context, id uint64, req *dto.UpdateCourseRequest) error
 	Delete(ctx context.Context, id uint64) error
 	Publish(ctx context.Context, id uint64, req *dto.PublishCourseRequest) error
+	Pin(ctx context.Context, id uint64, req *dto.PinCourseRequest) error
+	Copy(ctx context.Context, id uint64, authorID uint64) (uint64, error)
 	GetUnits(ctx context.Context, courseID uint64) ([]*entity.CourseUnit, error)
 	CreateUnit(ctx context.Context, courseID uint64, req *dto.CreateCourseUnitRequest) (uint64, error)
 	UpdateUnit(ctx context.Context, courseID, unitID uint64, req *dto.CreateCourseUnitRequest) error
