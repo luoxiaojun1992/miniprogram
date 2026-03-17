@@ -40,11 +40,13 @@ func normalizeSensitiveWords(words []string) []string {
 		return nil
 	}
 	out := make([]string, 0, len(uniq))
+	lengths := make(map[string]int, len(uniq))
 	for word := range uniq {
 		out = append(out, word)
+		lengths[word] = len([]rune(word))
 	}
 	sort.Slice(out, func(i, j int) bool {
-		return len([]rune(out[i])) > len([]rune(out[j]))
+		return lengths[out[i]] > lengths[out[j]]
 	})
 	return out
 }
