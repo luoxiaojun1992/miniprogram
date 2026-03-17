@@ -390,6 +390,31 @@ func TestArticleService_Create_Error(t *testing.T) {
 	require.Error(t, err)
 }
 
+func TestArticleService_Create_MaskSensitiveWords(t *testing.T) {
+	repo := &testutil.MockArticleRepository{
+		CreateFn: func(_ context.Context, a *entity.Article) error {
+			a.ID = 3
+			assert.Equal(t, "含***标题", a.Title)
+			assert.Equal(t, "摘要***", a.Summary)
+			assert.Equal(t, "正文***内容", a.Content)
+			return nil
+		},
+	}
+	wordsRepo := &testutil.MockSensitiveWordRepository{
+		ListEnabledWordsFn: func(_ context.Context) ([]string, error) {
+			return []string{"敏感词"}, nil
+		},
+	}
+	svc := NewArticleService(repo, nil, logrus.New(), wordsRepo)
+	id, err := svc.Create(context.Background(), &dto.CreateArticleRequest{
+		Title:   "含敏感词标题",
+		Summary: "摘要敏感词",
+		Content: "正文敏感词内容",
+	}, 1)
+	require.NoError(t, err)
+	assert.Equal(t, uint64(3), id)
+}
+
 func TestArticleService_Update_Success(t *testing.T) {
 	article := &entity.Article{ID: 1}
 	repo := &testutil.MockArticleRepository{
@@ -637,6 +662,29 @@ func TestCourseService_Create_NoPermissions(t *testing.T) {
 	id, err := svc.Create(context.Background(), &dto.CreateCourseRequest{Title: "Course 1"}, 1)
 	require.NoError(t, err)
 	assert.Equal(t, uint64(2), id)
+}
+
+func TestCourseService_Create_MaskSensitiveWords(t *testing.T) {
+	repo := &testutil.MockCourseRepository{
+		CreateFn: func(_ context.Context, c *entity.Course) error {
+			c.ID = 3
+			assert.Equal(t, "***课程", c.Title)
+			assert.Equal(t, "课程***简介", c.Description)
+			return nil
+		},
+	}
+	wordsRepo := &testutil.MockSensitiveWordRepository{
+		ListEnabledWordsFn: func(_ context.Context) ([]string, error) {
+			return []string{"敏感词"}, nil
+		},
+	}
+	svc := NewCourseService(repo, nil, nil, logrus.New(), wordsRepo)
+	id, err := svc.Create(context.Background(), &dto.CreateCourseRequest{
+		Title:       "敏感词课程",
+		Description: "课程敏感词简介",
+	}, 1)
+	require.NoError(t, err)
+	assert.Equal(t, uint64(3), id)
 }
 
 func TestCourseService_Update_Success(t *testing.T) {

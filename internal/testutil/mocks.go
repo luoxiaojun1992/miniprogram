@@ -580,6 +580,18 @@ func (m *MockCommentRepository) Delete(ctx context.Context, id uint64) error {
 		return nil
 }
 
+// MockSensitiveWordRepository is a test double for repository.SensitiveWordRepository.
+type MockSensitiveWordRepository struct {
+	ListEnabledWordsFn func(ctx context.Context) ([]string, error)
+}
+
+func (m *MockSensitiveWordRepository) ListEnabledWords(ctx context.Context) ([]string, error) {
+	if m.ListEnabledWordsFn != nil {
+		return m.ListEnabledWordsFn(ctx)
+	}
+	return nil, nil
+}
+
 // MockNotificationRepository is a test double for repository.NotificationRepository.
 type MockNotificationRepository struct {
 	GetByIDFn    func(ctx context.Context, id uint64) (*entity.Notification, error)

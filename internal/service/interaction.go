@@ -129,13 +129,22 @@ func (s *likeService) Remove(ctx context.Context, userID uint64, contentType int
 // ==================== Comment Service ====================
 
 type commentService struct {
-	commentRepo repository.CommentRepository
-	log         *logrus.Logger
+	commentRepo       repository.CommentRepository
+	sensitiveWordRepo repository.SensitiveWordRepository
+	log               *logrus.Logger
 }
 
 // NewCommentService creates a new CommentService.
-func NewCommentService(commentRepo repository.CommentRepository, log *logrus.Logger) CommentService {
-	return &commentService{commentRepo: commentRepo, log: log}
+func NewCommentService(
+	commentRepo repository.CommentRepository,
+	log *logrus.Logger,
+	sensitiveWordRepo ...repository.SensitiveWordRepository,
+) CommentService {
+	var swRepo repository.SensitiveWordRepository
+	if len(sensitiveWordRepo) > 0 {
+		swRepo = sensitiveWordRepo[0]
+	}
+	return &commentService{commentRepo: commentRepo, sensitiveWordRepo: swRepo, log: log}
 }
 
 func (s *commentService) List(ctx context.Context, contentType int8, contentID uint64, page, pageSize int) ([]*entity.Comment, int64, error) {
@@ -146,13 +155,13 @@ func (s *commentService) Create(ctx context.Context, userID uint64, contentType 
 	if hasHTMLTag(req.Content) {
 		return nil, errors.NewValidation("评论内容不允许包含HTML标签", nil)
 	}
-	maskedContent, _ := maskSensitiveText(req.Content)
+	words := loadSensitiveWords(ctx, s.sensitiveWordRepo, s.log)
 	c := &entity.Comment{
 		UserID:      userID,
 		ContentType: contentType,
 		ContentID:   contentID,
 		ParentID:    req.ParentID,
-		Content:     maskedContent,
+		Content:     maskText(req.Content, words),
 		Status:      1,
 	}
 	if err := s.commentRepo.Create(ctx, c); err != nil {
