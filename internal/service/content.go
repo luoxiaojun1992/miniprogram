@@ -74,6 +74,13 @@ func (s *moduleService) Delete(ctx context.Context, id uint) error {
 	if m == nil {
 		return errors.NewNotFound("模块不存在", nil)
 	}
+	hasAssociations, err := s.moduleRepo.HasAssociations(ctx, id)
+	if err != nil {
+		return err
+	}
+	if hasAssociations {
+		return errors.NewBadRequest("模块存在关联内容，禁止删除", nil)
+	}
 	return s.moduleRepo.Delete(ctx, id)
 }
 
@@ -283,6 +290,13 @@ func (s *articleService) Delete(ctx context.Context, id uint64) error {
 	}
 	if article == nil {
 		return errors.NewNotFound("文章不存在", nil)
+	}
+	hasAssociations, err := s.articleRepo.HasAssociations(ctx, id)
+	if err != nil {
+		return err
+	}
+	if hasAssociations {
+		return errors.NewBadRequest("文章存在关联互动数据，禁止删除", nil)
 	}
 	return s.articleRepo.Delete(ctx, id)
 }
@@ -518,6 +532,13 @@ func (s *courseService) Delete(ctx context.Context, id uint64) error {
 	}
 	if course == nil {
 		return errors.NewNotFound("课程不存在", nil)
+	}
+	hasAssociations, err := s.courseRepo.HasAssociations(ctx, id)
+	if err != nil {
+		return err
+	}
+	if hasAssociations {
+		return errors.NewBadRequest("课程存在关联数据，禁止删除", nil)
 	}
 	return s.courseRepo.Delete(ctx, id)
 }
@@ -781,6 +802,13 @@ func (s *courseService) DeleteUnit(ctx context.Context, courseID, unitID uint64)
 	}
 	if unit == nil || unit.CourseID != courseID {
 		return errors.NewNotFound("课程单元不存在", nil)
+	}
+	hasStudyRecords, err := s.courseUnitRepo.HasStudyRecords(ctx, unitID)
+	if err != nil {
+		return err
+	}
+	if hasStudyRecords {
+		return errors.NewBadRequest("课程单元存在学习记录，禁止删除", nil)
 	}
 	return s.courseUnitRepo.Delete(ctx, unitID)
 }

@@ -225,6 +225,13 @@ func (s *userService) DeleteUser(ctx context.Context, id uint64) error {
 	if user == nil {
 		return errors.NewNotFound("用户不存在", nil)
 	}
+	hasAssociations, err := s.userRepo.HasAssociations(ctx, id)
+	if err != nil {
+		return err
+	}
+	if hasAssociations {
+		return errors.NewBadRequest("用户存在关联数据，禁止删除", nil)
+	}
 	return s.userRepo.Delete(ctx, id)
 }
 

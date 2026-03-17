@@ -75,3 +75,10 @@ func (r *notificationRepository) MarkAllRead(ctx context.Context, userID uint64)
 	}
 	return nil
 }
+
+func (r *notificationRepository) Create(ctx context.Context, notification *entity.Notification) error {
+	if err := r.db.WithContext(ctx).Create(notification).Error; err != nil {
+		return errors.NewInternal("创建通知失败", err)
+	}
+	return nil
+}

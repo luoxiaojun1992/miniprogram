@@ -83,6 +83,78 @@ func (r *courseRepository) IncrViewCount(ctx context.Context, id uint64) error {
 	return nil
 }
 
+func (r *courseRepository) IncrLikeCount(ctx context.Context, id uint64) error {
+	if err := r.db.WithContext(ctx).Exec("UPDATE courses SET like_count = like_count + 1 WHERE id = ?", id).Error; err != nil {
+		return errors.NewInternal("更新点赞数失败", err)
+	}
+	return nil
+}
+
+func (r *courseRepository) DecrLikeCount(ctx context.Context, id uint64) error {
+	if err := r.db.WithContext(ctx).Exec("UPDATE courses SET like_count = CASE WHEN like_count > 0 THEN like_count - 1 ELSE 0 END WHERE id = ?", id).Error; err != nil {
+		return errors.NewInternal("更新点赞数失败", err)
+	}
+	return nil
+}
+
+func (r *courseRepository) IncrCollectCount(ctx context.Context, id uint64) error {
+	if err := r.db.WithContext(ctx).Exec("UPDATE courses SET collect_count = collect_count + 1 WHERE id = ?", id).Error; err != nil {
+		return errors.NewInternal("更新收藏数失败", err)
+	}
+	return nil
+}
+
+func (r *courseRepository) DecrCollectCount(ctx context.Context, id uint64) error {
+	if err := r.db.WithContext(ctx).Exec("UPDATE courses SET collect_count = CASE WHEN collect_count > 0 THEN collect_count - 1 ELSE 0 END WHERE id = ?", id).Error; err != nil {
+		return errors.NewInternal("更新收藏数失败", err)
+	}
+	return nil
+}
+
+func (r *courseRepository) IncrCommentCount(ctx context.Context, id uint64) error {
+	if err := r.db.WithContext(ctx).Exec("UPDATE courses SET comment_count = comment_count + 1 WHERE id = ?", id).Error; err != nil {
+		return errors.NewInternal("更新评论数失败", err)
+	}
+	return nil
+}
+
+func (r *courseRepository) DecrCommentCount(ctx context.Context, id uint64) error {
+	if err := r.db.WithContext(ctx).Exec("UPDATE courses SET comment_count = CASE WHEN comment_count > 0 THEN comment_count - 1 ELSE 0 END WHERE id = ?", id).Error; err != nil {
+		return errors.NewInternal("更新评论数失败", err)
+	}
+	return nil
+}
+
+func (r *courseRepository) IncrShareCount(ctx context.Context, id uint64) error {
+	if err := r.db.WithContext(ctx).Exec("UPDATE courses SET share_count = share_count + 1 WHERE id = ?", id).Error; err != nil {
+		return errors.NewInternal("更新分享数失败", err)
+	}
+	return nil
+}
+
+func (r *courseRepository) IncrStudyCount(ctx context.Context, id uint64) error {
+	if err := r.db.WithContext(ctx).Exec("UPDATE courses SET study_count = study_count + 1 WHERE id = ?", id).Error; err != nil {
+		return errors.NewInternal("更新学习人数失败", err)
+	}
+	return nil
+}
+
+func (r *courseRepository) HasAssociations(ctx context.Context, id uint64) (bool, error) {
+	var count int64
+	if err := r.db.WithContext(ctx).Raw(`
+		SELECT (
+			(SELECT COUNT(1) FROM course_units WHERE course_id = ?) +
+			(SELECT COUNT(1) FROM likes WHERE content_type = 2 AND content_id = ?) +
+			(SELECT COUNT(1) FROM collections WHERE content_type = 2 AND content_id = ?) +
+			(SELECT COUNT(1) FROM comments WHERE content_type = 2 AND content_id = ?) +
+			(SELECT COUNT(1) FROM user_study_records WHERE course_id = ?)
+		) AS cnt
+	`, id, id, id, id, id).Scan(&count).Error; err != nil {
+		return false, errors.NewInternal("查询课程关联失败", err)
+	}
+	return count > 0, nil
+}
+
 // ==================== CourseUnit Repository ====================
 
 type courseUnitRepository struct {
@@ -133,4 +205,12 @@ func (r *courseUnitRepository) Delete(ctx context.Context, id uint64) error {
 		return errors.NewInternal("删除课程单元失败", err)
 	}
 	return nil
+}
+
+func (r *courseUnitRepository) HasStudyRecords(ctx context.Context, id uint64) (bool, error) {
+	var count int64
+	if err := r.db.WithContext(ctx).Model(&entity.UserStudyRecord{}).Where("unit_id = ?", id).Count(&count).Error; err != nil {
+		return false, errors.NewInternal("查询课程单元关联失败", err)
+	}
+	return count > 0, nil
 }

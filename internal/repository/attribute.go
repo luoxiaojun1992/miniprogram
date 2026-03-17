@@ -62,6 +62,14 @@ func (r *attributeRepository) Delete(ctx context.Context, id uint) error {
 	return nil
 }
 
+func (r *attributeRepository) HasUserAssociations(ctx context.Context, id uint) (bool, error) {
+	var count int64
+	if err := r.db.WithContext(ctx).Model(&entity.UserAttribute{}).Where("attribute_id = ?", id).Count(&count).Error; err != nil {
+		return false, errors.NewInternal("查询属性关联失败", err)
+	}
+	return count > 0, nil
+}
+
 // ==================== UserAttribute Repository ====================
 
 type userAttributeRepository struct {

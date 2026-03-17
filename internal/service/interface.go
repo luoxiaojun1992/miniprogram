@@ -129,6 +129,7 @@ type NotificationService interface {
 	List(ctx context.Context, userID uint64, page, pageSize int, isRead *bool) ([]*entity.Notification, int64, int64, error)
 	MarkRead(ctx context.Context, id uint64) error
 	MarkAllRead(ctx context.Context, userID uint64) error
+	Send(ctx context.Context, notification *entity.Notification) error
 }
 
 // WechatConfigService handles wechat config operations.

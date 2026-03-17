@@ -63,6 +63,20 @@ func (r *moduleRepository) Delete(ctx context.Context, id uint) error {
 	return nil
 }
 
+func (r *moduleRepository) HasAssociations(ctx context.Context, id uint) (bool, error) {
+	var count int64
+	if err := r.db.WithContext(ctx).Raw(`
+		SELECT (
+			(SELECT COUNT(1) FROM module_pages WHERE module_id = ?) +
+			(SELECT COUNT(1) FROM articles WHERE module_id = ?) +
+			(SELECT COUNT(1) FROM courses WHERE module_id = ?)
+		) AS cnt
+	`, id, id, id).Scan(&count).Error; err != nil {
+		return false, errors.NewInternal("查询模块关联失败", err)
+	}
+	return count > 0, nil
+}
+
 // ==================== ModulePage Repository ====================
 
 type modulePageRepository struct {

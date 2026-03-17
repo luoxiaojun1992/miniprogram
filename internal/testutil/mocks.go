@@ -12,13 +12,14 @@ import (
 
 // MockUserRepository is a test double for repository.UserRepository.
 type MockUserRepository struct {
-	GetByIDFn     func(ctx context.Context, id uint64) (*entity.User, error)
-	GetByOpenIDFn func(ctx context.Context, openID string) (*entity.User, error)
-	CreateFn      func(ctx context.Context, user *entity.User) error
-	UpdateFn      func(ctx context.Context, user *entity.User) error
-	DeleteFn      func(ctx context.Context, id uint64) error
-	ListFn        func(ctx context.Context, page, pageSize int, keyword string, userType, status *int8) ([]*entity.User, int64, error)
-	GetWithTagsFn func(ctx context.Context, id uint64) (*entity.User, error)
+	GetByIDFn         func(ctx context.Context, id uint64) (*entity.User, error)
+	GetByOpenIDFn     func(ctx context.Context, openID string) (*entity.User, error)
+	CreateFn          func(ctx context.Context, user *entity.User) error
+	UpdateFn          func(ctx context.Context, user *entity.User) error
+	DeleteFn          func(ctx context.Context, id uint64) error
+	ListFn            func(ctx context.Context, page, pageSize int, keyword string, userType, status *int8) ([]*entity.User, int64, error)
+	GetWithTagsFn     func(ctx context.Context, id uint64) (*entity.User, error)
+	HasAssociationsFn func(ctx context.Context, id uint64) (bool, error)
 }
 
 func (m *MockUserRepository) GetByID(ctx context.Context, id uint64) (*entity.User, error) {
@@ -62,6 +63,12 @@ func (m *MockUserRepository) GetWithTags(ctx context.Context, id uint64) (*entit
 		return m.GetWithTagsFn(ctx, id)
 	}
 	return nil, nil
+}
+func (m *MockUserRepository) HasAssociations(ctx context.Context, id uint64) (bool, error) {
+	if m.HasAssociationsFn != nil {
+		return m.HasAssociationsFn(ctx, id)
+	}
+	return false, nil
 }
 
 // MockAdminUserRepository is a test double for repository.AdminUserRepository.
@@ -227,11 +234,12 @@ func (m *MockPermissionRepository) GetPermissionsByRoleIDs(ctx context.Context, 
 
 // MockModuleRepository is a test double for repository.ModuleRepository.
 type MockModuleRepository struct {
-	GetByIDFn func(ctx context.Context, id uint) (*entity.Module, error)
-	ListFn    func(ctx context.Context, status *int8) ([]*entity.Module, error)
-	CreateFn  func(ctx context.Context, module *entity.Module) error
-	UpdateFn  func(ctx context.Context, module *entity.Module) error
-	DeleteFn  func(ctx context.Context, id uint) error
+	GetByIDFn         func(ctx context.Context, id uint) (*entity.Module, error)
+	ListFn            func(ctx context.Context, status *int8) ([]*entity.Module, error)
+	CreateFn          func(ctx context.Context, module *entity.Module) error
+	UpdateFn          func(ctx context.Context, module *entity.Module) error
+	DeleteFn          func(ctx context.Context, id uint) error
+	HasAssociationsFn func(ctx context.Context, id uint) (bool, error)
 }
 
 func (m *MockModuleRepository) GetByID(ctx context.Context, id uint) (*entity.Module, error) {
@@ -263,6 +271,12 @@ func (m *MockModuleRepository) Delete(ctx context.Context, id uint) error {
 		return m.DeleteFn(ctx, id)
 	}
 	return nil
+}
+func (m *MockModuleRepository) HasAssociations(ctx context.Context, id uint) (bool, error) {
+	if m.HasAssociationsFn != nil {
+		return m.HasAssociationsFn(ctx, id)
+	}
+	return false, nil
 }
 
 // MockModulePageRepository is a test double for repository.ModulePageRepository.
@@ -307,12 +321,20 @@ func (m *MockModulePageRepository) Delete(ctx context.Context, id uint) error {
 
 // MockArticleRepository is a test double for repository.ArticleRepository.
 type MockArticleRepository struct {
-	GetByIDFn       func(ctx context.Context, id uint64) (*entity.Article, error)
-	ListFn          func(ctx context.Context, page, pageSize int, keyword string, moduleID *uint, status *int8, sort string) ([]*entity.Article, int64, error)
-	CreateFn        func(ctx context.Context, article *entity.Article) error
-	UpdateFn        func(ctx context.Context, article *entity.Article) error
-	DeleteFn        func(ctx context.Context, id uint64) error
-	IncrViewCountFn func(ctx context.Context, id uint64) error
+	GetByIDFn          func(ctx context.Context, id uint64) (*entity.Article, error)
+	ListFn             func(ctx context.Context, page, pageSize int, keyword string, moduleID *uint, status *int8, sort string) ([]*entity.Article, int64, error)
+	CreateFn           func(ctx context.Context, article *entity.Article) error
+	UpdateFn           func(ctx context.Context, article *entity.Article) error
+	DeleteFn           func(ctx context.Context, id uint64) error
+	IncrViewCountFn    func(ctx context.Context, id uint64) error
+	IncrLikeCountFn    func(ctx context.Context, id uint64) error
+	DecrLikeCountFn    func(ctx context.Context, id uint64) error
+	IncrCollectCountFn func(ctx context.Context, id uint64) error
+	DecrCollectCountFn func(ctx context.Context, id uint64) error
+	IncrCommentCountFn func(ctx context.Context, id uint64) error
+	DecrCommentCountFn func(ctx context.Context, id uint64) error
+	IncrShareCountFn   func(ctx context.Context, id uint64) error
+	HasAssociationsFn  func(ctx context.Context, id uint64) (bool, error)
 }
 
 func (m *MockArticleRepository) GetByID(ctx context.Context, id uint64) (*entity.Article, error) {
@@ -351,15 +373,72 @@ func (m *MockArticleRepository) IncrViewCount(ctx context.Context, id uint64) er
 	}
 	return nil
 }
+func (m *MockArticleRepository) IncrLikeCount(ctx context.Context, id uint64) error {
+	if m.IncrLikeCountFn != nil {
+		return m.IncrLikeCountFn(ctx, id)
+	}
+	return nil
+}
+func (m *MockArticleRepository) DecrLikeCount(ctx context.Context, id uint64) error {
+	if m.DecrLikeCountFn != nil {
+		return m.DecrLikeCountFn(ctx, id)
+	}
+	return nil
+}
+func (m *MockArticleRepository) IncrCollectCount(ctx context.Context, id uint64) error {
+	if m.IncrCollectCountFn != nil {
+		return m.IncrCollectCountFn(ctx, id)
+	}
+	return nil
+}
+func (m *MockArticleRepository) DecrCollectCount(ctx context.Context, id uint64) error {
+	if m.DecrCollectCountFn != nil {
+		return m.DecrCollectCountFn(ctx, id)
+	}
+	return nil
+}
+func (m *MockArticleRepository) IncrCommentCount(ctx context.Context, id uint64) error {
+	if m.IncrCommentCountFn != nil {
+		return m.IncrCommentCountFn(ctx, id)
+	}
+	return nil
+}
+func (m *MockArticleRepository) DecrCommentCount(ctx context.Context, id uint64) error {
+	if m.DecrCommentCountFn != nil {
+		return m.DecrCommentCountFn(ctx, id)
+	}
+	return nil
+}
+func (m *MockArticleRepository) IncrShareCount(ctx context.Context, id uint64) error {
+	if m.IncrShareCountFn != nil {
+		return m.IncrShareCountFn(ctx, id)
+	}
+	return nil
+}
+func (m *MockArticleRepository) HasAssociations(ctx context.Context, id uint64) (bool, error) {
+	if m.HasAssociationsFn != nil {
+		return m.HasAssociationsFn(ctx, id)
+	}
+	return false, nil
+}
 
 // MockCourseRepository is a test double for repository.CourseRepository.
 type MockCourseRepository struct {
-	GetByIDFn       func(ctx context.Context, id uint64) (*entity.Course, error)
-	ListFn          func(ctx context.Context, page, pageSize int, keyword string, moduleID *uint, status *int8, isFree *bool) ([]*entity.Course, int64, error)
-	CreateFn        func(ctx context.Context, course *entity.Course) error
-	UpdateFn        func(ctx context.Context, course *entity.Course) error
-	DeleteFn        func(ctx context.Context, id uint64) error
-	IncrViewCountFn func(ctx context.Context, id uint64) error
+	GetByIDFn          func(ctx context.Context, id uint64) (*entity.Course, error)
+	ListFn             func(ctx context.Context, page, pageSize int, keyword string, moduleID *uint, status *int8, isFree *bool) ([]*entity.Course, int64, error)
+	CreateFn           func(ctx context.Context, course *entity.Course) error
+	UpdateFn           func(ctx context.Context, course *entity.Course) error
+	DeleteFn           func(ctx context.Context, id uint64) error
+	IncrViewCountFn    func(ctx context.Context, id uint64) error
+	IncrLikeCountFn    func(ctx context.Context, id uint64) error
+	DecrLikeCountFn    func(ctx context.Context, id uint64) error
+	IncrCollectCountFn func(ctx context.Context, id uint64) error
+	DecrCollectCountFn func(ctx context.Context, id uint64) error
+	IncrCommentCountFn func(ctx context.Context, id uint64) error
+	DecrCommentCountFn func(ctx context.Context, id uint64) error
+	IncrShareCountFn   func(ctx context.Context, id uint64) error
+	IncrStudyCountFn   func(ctx context.Context, id uint64) error
+	HasAssociationsFn  func(ctx context.Context, id uint64) (bool, error)
 }
 
 func (m *MockCourseRepository) GetByID(ctx context.Context, id uint64) (*entity.Course, error) {
@@ -398,14 +477,69 @@ func (m *MockCourseRepository) IncrViewCount(ctx context.Context, id uint64) err
 	}
 	return nil
 }
+func (m *MockCourseRepository) IncrLikeCount(ctx context.Context, id uint64) error {
+	if m.IncrLikeCountFn != nil {
+		return m.IncrLikeCountFn(ctx, id)
+	}
+	return nil
+}
+func (m *MockCourseRepository) DecrLikeCount(ctx context.Context, id uint64) error {
+	if m.DecrLikeCountFn != nil {
+		return m.DecrLikeCountFn(ctx, id)
+	}
+	return nil
+}
+func (m *MockCourseRepository) IncrCollectCount(ctx context.Context, id uint64) error {
+	if m.IncrCollectCountFn != nil {
+		return m.IncrCollectCountFn(ctx, id)
+	}
+	return nil
+}
+func (m *MockCourseRepository) DecrCollectCount(ctx context.Context, id uint64) error {
+	if m.DecrCollectCountFn != nil {
+		return m.DecrCollectCountFn(ctx, id)
+	}
+	return nil
+}
+func (m *MockCourseRepository) IncrCommentCount(ctx context.Context, id uint64) error {
+	if m.IncrCommentCountFn != nil {
+		return m.IncrCommentCountFn(ctx, id)
+	}
+	return nil
+}
+func (m *MockCourseRepository) DecrCommentCount(ctx context.Context, id uint64) error {
+	if m.DecrCommentCountFn != nil {
+		return m.DecrCommentCountFn(ctx, id)
+	}
+	return nil
+}
+func (m *MockCourseRepository) IncrShareCount(ctx context.Context, id uint64) error {
+	if m.IncrShareCountFn != nil {
+		return m.IncrShareCountFn(ctx, id)
+	}
+	return nil
+}
+func (m *MockCourseRepository) IncrStudyCount(ctx context.Context, id uint64) error {
+	if m.IncrStudyCountFn != nil {
+		return m.IncrStudyCountFn(ctx, id)
+	}
+	return nil
+}
+func (m *MockCourseRepository) HasAssociations(ctx context.Context, id uint64) (bool, error) {
+	if m.HasAssociationsFn != nil {
+		return m.HasAssociationsFn(ctx, id)
+	}
+	return false, nil
+}
 
 // MockCourseUnitRepository is a test double for repository.CourseUnitRepository.
 type MockCourseUnitRepository struct {
-	GetByIDFn        func(ctx context.Context, id uint64) (*entity.CourseUnit, error)
-	ListByCourseIDFn func(ctx context.Context, courseID uint64) ([]*entity.CourseUnit, error)
-	CreateFn         func(ctx context.Context, unit *entity.CourseUnit) error
-	UpdateFn         func(ctx context.Context, unit *entity.CourseUnit) error
-	DeleteFn         func(ctx context.Context, id uint64) error
+	GetByIDFn         func(ctx context.Context, id uint64) (*entity.CourseUnit, error)
+	ListByCourseIDFn  func(ctx context.Context, courseID uint64) ([]*entity.CourseUnit, error)
+	CreateFn          func(ctx context.Context, unit *entity.CourseUnit) error
+	UpdateFn          func(ctx context.Context, unit *entity.CourseUnit) error
+	DeleteFn          func(ctx context.Context, id uint64) error
+	HasStudyRecordsFn func(ctx context.Context, id uint64) (bool, error)
 }
 
 func (m *MockCourseUnitRepository) GetByID(ctx context.Context, id uint64) (*entity.CourseUnit, error) {
@@ -437,6 +571,12 @@ func (m *MockCourseUnitRepository) Delete(ctx context.Context, id uint64) error 
 		return m.DeleteFn(ctx, id)
 	}
 	return nil
+}
+func (m *MockCourseUnitRepository) HasStudyRecords(ctx context.Context, id uint64) (bool, error) {
+	if m.HasStudyRecordsFn != nil {
+		return m.HasStudyRecordsFn(ctx, id)
+	}
+	return false, nil
 }
 
 // MockContentPermissionRepository is a test double for repository.ContentPermissionRepository.
@@ -548,6 +688,7 @@ type MockCommentRepository struct {
 	CreateFn       func(ctx context.Context, comment *entity.Comment) error
 	UpdateStatusFn func(ctx context.Context, id uint64, status int8) error
 	DeleteFn       func(ctx context.Context, id uint64) error
+	HasRepliesFn   func(ctx context.Context, id uint64) (bool, error)
 }
 
 func (m *MockCommentRepository) GetByID(ctx context.Context, id uint64) (*entity.Comment, error) {
@@ -586,6 +727,12 @@ func (m *MockCommentRepository) Delete(ctx context.Context, id uint64) error {
 	}
 	return nil
 }
+func (m *MockCommentRepository) HasReplies(ctx context.Context, id uint64) (bool, error) {
+	if m.HasRepliesFn != nil {
+		return m.HasRepliesFn(ctx, id)
+	}
+	return false, nil
+}
 
 // MockSensitiveWordRepository is a test double for repository.SensitiveWordRepository.
 type MockSensitiveWordRepository struct {
@@ -606,6 +753,7 @@ type MockNotificationRepository struct {
 	UnreadCountFn func(ctx context.Context, userID uint64) (int64, error)
 	MarkReadFn    func(ctx context.Context, id uint64) error
 	MarkAllReadFn func(ctx context.Context, userID uint64) error
+	CreateFn      func(ctx context.Context, notification *entity.Notification) error
 }
 
 func (m *MockNotificationRepository) GetByID(ctx context.Context, id uint64) (*entity.Notification, error) {
@@ -635,6 +783,12 @@ func (m *MockNotificationRepository) MarkRead(ctx context.Context, id uint64) er
 func (m *MockNotificationRepository) MarkAllRead(ctx context.Context, userID uint64) error {
 	if m.MarkAllReadFn != nil {
 		return m.MarkAllReadFn(ctx, userID)
+	}
+	return nil
+}
+func (m *MockNotificationRepository) Create(ctx context.Context, notification *entity.Notification) error {
+	if m.CreateFn != nil {
+		return m.CreateFn(ctx, notification)
 	}
 	return nil
 }
@@ -1211,6 +1365,7 @@ type MockNotificationService struct {
 	ListFn        func(ctx context.Context, userID uint64, page, pageSize int, isRead *bool) ([]*entity.Notification, int64, int64, error)
 	MarkReadFn    func(ctx context.Context, id uint64) error
 	MarkAllReadFn func(ctx context.Context, userID uint64) error
+	SendFn        func(ctx context.Context, notification *entity.Notification) error
 }
 
 func (m *MockNotificationService) List(ctx context.Context, userID uint64, page, pageSize int, isRead *bool) ([]*entity.Notification, int64, int64, error) {
@@ -1228,6 +1383,12 @@ func (m *MockNotificationService) MarkRead(ctx context.Context, id uint64) error
 func (m *MockNotificationService) MarkAllRead(ctx context.Context, userID uint64) error {
 	if m.MarkAllReadFn != nil {
 		return m.MarkAllReadFn(ctx, userID)
+	}
+	return nil
+}
+func (m *MockNotificationService) Send(ctx context.Context, notification *entity.Notification) error {
+	if m.SendFn != nil {
+		return m.SendFn(ctx, notification)
 	}
 	return nil
 }
@@ -1293,11 +1454,12 @@ func (m *MockLogConfigService) Update(ctx context.Context, req *dto.UpdateLogCon
 
 // MockAttributeRepository is a test double for repository.AttributeRepository.
 type MockAttributeRepository struct {
-	GetByIDFn func(ctx context.Context, id uint) (*entity.Attribute, error)
-	ListFn    func(ctx context.Context) ([]*entity.Attribute, error)
-	CreateFn  func(ctx context.Context, attr *entity.Attribute) error
-	UpdateFn  func(ctx context.Context, attr *entity.Attribute) error
-	DeleteFn  func(ctx context.Context, id uint) error
+	GetByIDFn             func(ctx context.Context, id uint) (*entity.Attribute, error)
+	ListFn                func(ctx context.Context) ([]*entity.Attribute, error)
+	CreateFn              func(ctx context.Context, attr *entity.Attribute) error
+	UpdateFn              func(ctx context.Context, attr *entity.Attribute) error
+	DeleteFn              func(ctx context.Context, id uint) error
+	HasUserAssociationsFn func(ctx context.Context, id uint) (bool, error)
 }
 
 func (m *MockAttributeRepository) GetByID(ctx context.Context, id uint) (*entity.Attribute, error) {
@@ -1329,6 +1491,12 @@ func (m *MockAttributeRepository) Delete(ctx context.Context, id uint) error {
 		return m.DeleteFn(ctx, id)
 	}
 	return nil
+}
+func (m *MockAttributeRepository) HasUserAssociations(ctx context.Context, id uint) (bool, error) {
+	if m.HasUserAssociationsFn != nil {
+		return m.HasUserAssociationsFn(ctx, id)
+	}
+	return false, nil
 }
 
 // MockUserAttributeRepository is a test double for repository.UserAttributeRepository.

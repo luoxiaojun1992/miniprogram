@@ -267,5 +267,39 @@ test.describe('Miniprogram Simulator', () => {
       await expect(page.getByText('小程序模拟器').first()).toBeVisible();
       await expect(page.getByRole('button', { name: /微信模拟登录/ })).toBeVisible();
     });
+
+    test('notifications page shows like/comment notifications after interactions', async ({ page, request }) => {
+      const adminTokenRes = await request.post(`${APP_BASE_URL}/v1/debug/token`, { data: { user_id: 1, user_type: 3 } });
+      const adminBody = await adminTokenRes.json();
+      const adminToken = adminBody.data?.access_token ?? '';
+      const userToken = await getUserToken(request);
+
+      const articleRes = await request.post(`${APP_BASE_URL}/v1/admin/articles`, {
+        headers: { Authorization: `Bearer ${adminToken}` },
+        data: { title: `UI Notif ${Date.now()}`, summary: 's', content: 'c', content_type: 1, module_id: 1 },
+      });
+      const articleBody = await articleRes.json();
+      const articleId = articleBody.data?.id;
+      await request.post(`${APP_BASE_URL}/v1/admin/articles/${articleId}/publish`, {
+        headers: { Authorization: `Bearer ${adminToken}` },
+        data: { status: 1 },
+      });
+      await request.post(`${APP_BASE_URL}/v1/likes/1/${articleId}`, { headers: { Authorization: `Bearer ${userToken}` } });
+      await request.post(`${APP_BASE_URL}/v1/comments/1/${articleId}`, {
+        headers: { Authorization: `Bearer ${userToken}` },
+        data: { content: `ui-comment-${Date.now()}` },
+      });
+
+      await page.goto(`${UI_BASE_URL}/miniprogram/index.html`);
+      await page.evaluate(([t, base]) => {
+        localStorage.setItem('mp_token', t);
+        localStorage.setItem('mp_api_base', base + '/v1');
+        localStorage.setItem('mp_user', JSON.stringify({ nickname: 'Admin User' }));
+      }, [adminToken, APP_BASE_URL]);
+      await page.reload();
+      await page.locator('.tab-item').filter({ hasText: '我的' }).click();
+      await page.getByText('我的通知').click();
+      await expect(page.getByText(/收到新的点赞|收到新的评论/).first()).toBeVisible({ timeout: 15000 });
+    });
   });
 });

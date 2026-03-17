@@ -209,10 +209,10 @@ func (p *Provider) initServices() {
 	p.CourseSvc = service.NewCourseService(
 		p.CourseRepo, p.CourseUnitRepo, p.ContentPermissionRepo, p.Log, p.SensitiveWordRepo, p.CourseAttachmentRepo, p.RoleRepo,
 	)
-	p.StudyRecordSvc = service.NewStudyRecordService(p.StudyRecordRepo, p.CourseUnitRepo, p.Log)
-	p.CollectionSvc = service.NewCollectionService(p.CollectionRepo, p.Log)
-	p.LikeSvc = service.NewLikeService(p.LikeRepo, p.ArticleRepo, p.CourseRepo, p.Log)
-	p.CommentSvc = service.NewCommentService(p.CommentRepo, p.Log, p.SensitiveWordRepo)
+	p.StudyRecordSvc = service.NewStudyRecordService(p.StudyRecordRepo, p.CourseUnitRepo, p.CourseRepo, p.Log)
+	p.CollectionSvc = service.NewCollectionService(p.CollectionRepo, p.ArticleRepo, p.CourseRepo, p.Log)
+	p.LikeSvc = service.NewLikeService(p.LikeRepo, p.ArticleRepo, p.CourseRepo, p.NotificationRepo, p.Log)
+	p.CommentSvc = service.NewCommentService(p.CommentRepo, p.ArticleRepo, p.CourseRepo, p.NotificationRepo, p.Log, p.SensitiveWordRepo)
 	p.NotificationSvc = service.NewNotificationService(p.NotificationRepo, p.Log)
 	p.WechatConfigSvc = service.NewWechatConfigService(p.WechatConfigRepo, p.Log)
 	p.AuditLogSvc = service.NewAuditLogService(p.AuditLogRepo, p.Log)

@@ -288,6 +288,10 @@ export default function (data) {
 
   // -------------------------------------------------------------------------
   group('User Interactions', () => {
+    const articleBefore = http.get(`${BASE_URL}/v1/articles/${articleId}`);
+    const likeCountBefore = articleBefore.json('data.like_count') || 0;
+    const commentCountBefore = articleBefore.json('data.comment_count') || 0;
+
     // Study records – list
     const studyListRes = http.get(`${BASE_URL}/v1/study-records`, userH);
     check(studyListRes, { 'GET /v1/study-records: 200': (r) => r.status === 200 });
@@ -316,6 +320,11 @@ export default function (data) {
     const likeAddRes = http.post(`${BASE_URL}/v1/likes/1/${articleId}`, null, userH);
     check(likeAddRes, { 'POST /v1/likes/1/:id: 2xx': (r) => ok(r) });
 
+    const articleAfterLike = http.get(`${BASE_URL}/v1/articles/${articleId}`);
+    check(articleAfterLike, {
+      'like increments article like_count': (r) => (r.json('data.like_count') || 0) >= likeCountBefore + 1,
+    });
+
     // Likes – remove
     const likeDelRes = http.del(`${BASE_URL}/v1/likes/1/${articleId}`, null, userH);
     check(likeDelRes, { 'DELETE /v1/likes/1/:id: 2xx': (r) => ok(r) });
@@ -327,6 +336,25 @@ export default function (data) {
       userH,
     );
     check(createCommentRes, { 'POST /v1/comments/1/:id: 2xx': (r) => ok(r) });
+    const userCommentId = createCommentRes.json('data.id');
+
+    const articleAfterComment = http.get(`${BASE_URL}/v1/articles/${articleId}`);
+    check(articleAfterComment, {
+      'comment increments article comment_count': (r) => (r.json('data.comment_count') || 0) >= commentCountBefore + 1,
+    });
+
+    const adminNotifRes = http.get(`${BASE_URL}/v1/notifications`, adminH);
+    check(adminNotifRes, {
+      'interaction creates like/comment notifications': (r) => {
+        const list = r.json('data.list') || [];
+        return Array.isArray(list) && list.some((x) => x.type === 2 || x.type === 4);
+      },
+    });
+
+    if (userCommentId) {
+      const cleanupCommentRes = http.del(`${BASE_URL}/v1/admin/comments/${userCommentId}`, null, adminH);
+      check(cleanupCommentRes, { 'cleanup created comment: 2xx': (r) => ok(r) });
+    }
 
     // Notifications – list
     const notifListRes = http.get(`${BASE_URL}/v1/notifications`, userH);
@@ -437,6 +465,9 @@ export default function (data) {
 
   // -------------------------------------------------------------------------
   group('Admin – Modules', () => {
+    const deleteRes = http.del(`${BASE_URL}/v1/admin/modules/${moduleId}`, null, adminH);
+    check(deleteRes, { 'DELETE /v1/admin/modules/:id blocked when has associations': (r) => r.status >= 400 });
+
     // Update module
     const updateRes = http.put(
       `${BASE_URL}/v1/admin/modules/${moduleId}`,

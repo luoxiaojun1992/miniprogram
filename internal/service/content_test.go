@@ -108,6 +108,16 @@ func TestModuleService_Delete_NotFound(t *testing.T) {
 	require.Error(t, err)
 }
 
+func TestModuleService_Delete_WithAssociations(t *testing.T) {
+	repo := &testutil.MockModuleRepository{
+		GetByIDFn:         func(_ context.Context, id uint) (*entity.Module, error) { return &entity.Module{ID: id}, nil },
+		HasAssociationsFn: func(_ context.Context, id uint) (bool, error) { return true, nil },
+	}
+	svc := newModuleService(repo, nil)
+	err := svc.Delete(context.Background(), 1)
+	require.Error(t, err)
+}
+
 func TestModuleService_GetPages(t *testing.T) {
 	pages := []*entity.ModulePage{{ID: 1, Title: "P1"}}
 	pageRepo := &testutil.MockModulePageRepository{
@@ -482,6 +492,16 @@ func TestArticleService_Delete_NotFound(t *testing.T) {
 	require.Error(t, err)
 }
 
+func TestArticleService_Delete_WithAssociations(t *testing.T) {
+	repo := &testutil.MockArticleRepository{
+		GetByIDFn:         func(_ context.Context, id uint64) (*entity.Article, error) { return &entity.Article{ID: id}, nil },
+		HasAssociationsFn: func(_ context.Context, id uint64) (bool, error) { return true, nil },
+	}
+	svc := newArticleService(repo, nil)
+	err := svc.Delete(context.Background(), 1)
+	require.Error(t, err)
+}
+
 func TestArticleService_Publish_Success(t *testing.T) {
 	article := &entity.Article{ID: 1, Status: 0}
 	repo := &testutil.MockArticleRepository{
@@ -743,6 +763,16 @@ func TestCourseService_Delete_NotFound(t *testing.T) {
 	require.Error(t, err)
 }
 
+func TestCourseService_Delete_WithAssociations(t *testing.T) {
+	repo := &testutil.MockCourseRepository{
+		GetByIDFn:         func(_ context.Context, id uint64) (*entity.Course, error) { return &entity.Course{ID: id}, nil },
+		HasAssociationsFn: func(_ context.Context, id uint64) (bool, error) { return true, nil },
+	}
+	svc := newCourseService(repo, nil, nil)
+	err := svc.Delete(context.Background(), 1)
+	require.Error(t, err)
+}
+
 func TestCourseService_Publish_Success(t *testing.T) {
 	repo := &testutil.MockCourseRepository{
 		GetByIDFn: func(_ context.Context, id uint64) (*entity.Course, error) {
@@ -876,6 +906,18 @@ func TestCourseService_DeleteUnit_NotFound(t *testing.T) {
 		GetByIDFn: func(_ context.Context, id uint64) (*entity.CourseUnit, error) {
 			return nil, nil
 		},
+	}
+	svc := newCourseService(nil, unitRepo, nil)
+	err := svc.DeleteUnit(context.Background(), 1, 1)
+	require.Error(t, err)
+}
+
+func TestCourseService_DeleteUnit_HasStudyRecords(t *testing.T) {
+	unitRepo := &testutil.MockCourseUnitRepository{
+		GetByIDFn: func(_ context.Context, id uint64) (*entity.CourseUnit, error) {
+			return &entity.CourseUnit{ID: id, CourseID: 1}, nil
+		},
+		HasStudyRecordsFn: func(_ context.Context, id uint64) (bool, error) { return true, nil },
 	}
 	svc := newCourseService(nil, unitRepo, nil)
 	err := svc.DeleteUnit(context.Background(), 1, 1)
