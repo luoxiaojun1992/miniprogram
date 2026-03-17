@@ -128,6 +128,7 @@ func (s *moduleService) DeletePage(ctx context.Context, moduleID, pageID uint) e
 
 type articleService struct {
 	articleRepo       repository.ArticleRepository
+	attachmentRepo    repository.ArticleAttachmentRepository
 	contentPermRepo   repository.ContentPermissionRepository
 	sensitiveWordRepo repository.SensitiveWordRepository
 	log               *logrus.Logger
@@ -138,14 +139,21 @@ func NewArticleService(
 	articleRepo repository.ArticleRepository,
 	contentPermRepo repository.ContentPermissionRepository,
 	log *logrus.Logger,
-	sensitiveWordRepo ...repository.SensitiveWordRepository,
+	deps ...interface{},
 ) ArticleService {
 	var swRepo repository.SensitiveWordRepository
-	if len(sensitiveWordRepo) > 0 {
-		swRepo = sensitiveWordRepo[0]
+	var attachmentRepo repository.ArticleAttachmentRepository
+	for _, dep := range deps {
+		switch v := dep.(type) {
+		case repository.SensitiveWordRepository:
+			swRepo = v
+		case repository.ArticleAttachmentRepository:
+			attachmentRepo = v
+		}
 	}
 	return &articleService{
 		articleRepo:       articleRepo,
+		attachmentRepo:    attachmentRepo,
 		contentPermRepo:   contentPermRepo,
 		sensitiveWordRepo: swRepo,
 		log:               log,
@@ -171,6 +179,7 @@ func (s *articleService) GetByID(ctx context.Context, id uint64, userID *uint64)
 	go func() {
 		_ = s.articleRepo.IncrViewCount(context.Background(), id)
 	}()
+	s.bindArticleAttachmentIDs(ctx, article)
 	return article, nil
 }
 
@@ -186,6 +195,7 @@ func (s *articleService) AdminGetByID(ctx context.Context, id uint64) (*entity.A
 	if article == nil {
 		return nil, errors.NewNotFound("文章不存在", nil)
 	}
+	s.bindArticleAttachmentIDs(ctx, article)
 	return article, nil
 }
 
@@ -211,6 +221,11 @@ func (s *articleService) Create(ctx context.Context, req *dto.CreateArticleReque
 	}
 	if err := s.articleRepo.Create(ctx, article); err != nil {
 		return 0, err
+	}
+	if s.attachmentRepo != nil {
+		if err := s.attachmentRepo.Replace(ctx, article.ID, req.AttachmentFileIDs); err != nil {
+			return 0, err
+		}
 	}
 	if len(req.RolePermissions) > 0 {
 		if err := s.contentPermRepo.SetContentPermissions(ctx, 1, article.ID, req.RolePermissions); err != nil {
@@ -239,6 +254,11 @@ func (s *articleService) Update(ctx context.Context, id uint64, req *dto.UpdateA
 	article.PublishTime = req.PublishTime
 	if err = s.articleRepo.Update(ctx, article); err != nil {
 		return err
+	}
+	if s.attachmentRepo != nil {
+		if err := s.attachmentRepo.Replace(ctx, article.ID, req.AttachmentFileIDs); err != nil {
+			return err
+		}
 	}
 	return s.contentPermRepo.SetContentPermissions(ctx, 1, id, req.RolePermissions)
 }
@@ -308,6 +328,12 @@ func (s *articleService) Copy(ctx context.Context, id uint64, authorID uint64) (
 	if err = s.articleRepo.Create(ctx, dup); err != nil {
 		return 0, err
 	}
+	if s.attachmentRepo != nil {
+		attachmentIDs, listErr := s.attachmentRepo.ListFileIDs(ctx, id)
+		if listErr == nil {
+			_ = s.attachmentRepo.Replace(ctx, dup.ID, attachmentIDs)
+		}
+	}
 	roles, permErr := s.contentPermRepo.GetByContent(ctx, 1, id)
 	if permErr == nil && len(roles) > 0 {
 		roleIDs := make([]uint, 0, len(roles))
@@ -328,6 +354,7 @@ func (s *articleService) Copy(ctx context.Context, id uint64, authorID uint64) (
 type courseService struct {
 	courseRepo        repository.CourseRepository
 	courseUnitRepo    repository.CourseUnitRepository
+	attachmentRepo    repository.CourseAttachmentRepository
 	contentPermRepo   repository.ContentPermissionRepository
 	sensitiveWordRepo repository.SensitiveWordRepository
 	log               *logrus.Logger
@@ -339,15 +366,22 @@ func NewCourseService(
 	courseUnitRepo repository.CourseUnitRepository,
 	contentPermRepo repository.ContentPermissionRepository,
 	log *logrus.Logger,
-	sensitiveWordRepo ...repository.SensitiveWordRepository,
+	deps ...interface{},
 ) CourseService {
 	var swRepo repository.SensitiveWordRepository
-	if len(sensitiveWordRepo) > 0 {
-		swRepo = sensitiveWordRepo[0]
+	var attachmentRepo repository.CourseAttachmentRepository
+	for _, dep := range deps {
+		switch v := dep.(type) {
+		case repository.SensitiveWordRepository:
+			swRepo = v
+		case repository.CourseAttachmentRepository:
+			attachmentRepo = v
+		}
 	}
 	return &courseService{
 		courseRepo:        courseRepo,
 		courseUnitRepo:    courseUnitRepo,
+		attachmentRepo:    attachmentRepo,
 		contentPermRepo:   contentPermRepo,
 		sensitiveWordRepo: swRepo,
 		log:               log,
@@ -373,6 +407,7 @@ func (s *courseService) GetByID(ctx context.Context, id uint64, userID *uint64) 
 	go func() {
 		_ = s.courseRepo.IncrViewCount(context.Background(), id)
 	}()
+	s.bindCourseAttachmentIDs(ctx, course)
 	return course, nil
 }
 
@@ -388,6 +423,7 @@ func (s *courseService) AdminGetByID(ctx context.Context, id uint64) (*entity.Co
 	if course == nil {
 		return nil, errors.NewNotFound("课程不存在", nil)
 	}
+	s.bindCourseAttachmentIDs(ctx, course)
 	return course, nil
 }
 
@@ -409,6 +445,11 @@ func (s *courseService) Create(ctx context.Context, req *dto.CreateCourseRequest
 	}
 	if err := s.courseRepo.Create(ctx, course); err != nil {
 		return 0, err
+	}
+	if s.attachmentRepo != nil {
+		if err := s.attachmentRepo.Replace(ctx, course.ID, req.AttachmentFileIDs); err != nil {
+			return 0, err
+		}
 	}
 	if len(req.RolePermissions) > 0 {
 		if err := s.contentPermRepo.SetContentPermissions(ctx, 2, course.ID, req.RolePermissions); err != nil {
@@ -436,6 +477,11 @@ func (s *courseService) Update(ctx context.Context, id uint64, req *dto.UpdateCo
 	course.PublishTime = req.PublishTime
 	if err = s.courseRepo.Update(ctx, course); err != nil {
 		return err
+	}
+	if s.attachmentRepo != nil {
+		if err := s.attachmentRepo.Replace(ctx, course.ID, req.AttachmentFileIDs); err != nil {
+			return err
+		}
 	}
 	return s.contentPermRepo.SetContentPermissions(ctx, 2, id, req.RolePermissions)
 }
@@ -491,7 +537,7 @@ func (s *courseService) Copy(ctx context.Context, id uint64, authorID uint64) (u
 		Title:       fmt.Sprintf("%s-副本", course.Title),
 		Description: course.Description,
 		CoverImage:  course.CoverImage,
-		VideoURL:    course.VideoURL,
+		VideoFileID: course.VideoFileID,
 		Duration:    course.Duration,
 		AuthorID:    authorID,
 		ModuleID:    course.ModuleID,
@@ -507,13 +553,19 @@ func (s *courseService) Copy(ctx context.Context, id uint64, authorID uint64) (u
 	if unitErr == nil {
 		for _, unit := range units {
 			_ = s.courseUnitRepo.Create(ctx, &entity.CourseUnit{
-				CourseID:  dup.ID,
-				Title:     unit.Title,
-				VideoURL:  unit.VideoURL,
-				Duration:  unit.Duration,
-				SortOrder: unit.SortOrder,
-				Status:    unit.Status,
+				CourseID:    dup.ID,
+				Title:       unit.Title,
+				VideoFileID: unit.VideoFileID,
+				Duration:    unit.Duration,
+				SortOrder:   unit.SortOrder,
+				Status:      unit.Status,
 			})
+		}
+	}
+	if s.attachmentRepo != nil {
+		attachmentIDs, listErr := s.attachmentRepo.ListFileIDs(ctx, id)
+		if listErr == nil {
+			_ = s.attachmentRepo.Replace(ctx, dup.ID, attachmentIDs)
 		}
 	}
 	roles, permErr := s.contentPermRepo.GetByContent(ctx, 2, id)
@@ -537,12 +589,12 @@ func (s *courseService) GetUnits(ctx context.Context, courseID uint64) ([]*entit
 
 func (s *courseService) CreateUnit(ctx context.Context, courseID uint64, req *dto.CreateCourseUnitRequest) (uint64, error) {
 	unit := &entity.CourseUnit{
-		CourseID:  courseID,
-		Title:     req.Title,
-		VideoURL:  req.VideoURL,
-		Duration:  req.Duration,
-		SortOrder: req.SortOrder,
-		Status:    1,
+		CourseID:    courseID,
+		Title:       req.Title,
+		VideoFileID: toOptionalUint64(req.VideoFileID),
+		Duration:    req.Duration,
+		SortOrder:   req.SortOrder,
+		Status:      1,
 	}
 	if err := s.courseUnitRepo.Create(ctx, unit); err != nil {
 		return 0, err
@@ -559,10 +611,37 @@ func (s *courseService) UpdateUnit(ctx context.Context, courseID, unitID uint64,
 		return errors.NewNotFound("课程单元不存在", nil)
 	}
 	unit.Title = req.Title
-	unit.VideoURL = req.VideoURL
+	unit.VideoFileID = toOptionalUint64(req.VideoFileID)
 	unit.Duration = req.Duration
 	unit.SortOrder = req.SortOrder
 	return s.courseUnitRepo.Update(ctx, unit)
+}
+
+func (s *articleService) bindArticleAttachmentIDs(ctx context.Context, article *entity.Article) {
+	if article == nil || s.attachmentRepo == nil {
+		return
+	}
+	ids, err := s.attachmentRepo.ListFileIDs(ctx, article.ID)
+	if err == nil {
+		article.AttachmentFileIDs = ids
+	}
+}
+
+func (s *courseService) bindCourseAttachmentIDs(ctx context.Context, course *entity.Course) {
+	if course == nil || s.attachmentRepo == nil {
+		return
+	}
+	ids, err := s.attachmentRepo.ListFileIDs(ctx, course.ID)
+	if err == nil {
+		course.AttachmentFileIDs = ids
+	}
+}
+
+func toOptionalUint64(v uint64) *uint64 {
+	if v == 0 {
+		return nil
+	}
+	return &v
 }
 
 func (s *courseService) DeleteUnit(ctx context.Context, courseID, unitID uint64) error {

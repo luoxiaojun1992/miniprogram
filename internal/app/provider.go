@@ -10,6 +10,7 @@ import (
 	gormlogger "gorm.io/gorm/logger"
 
 	"github.com/luoxiaojun1992/miniprogram/internal/controller"
+	"github.com/luoxiaojun1992/miniprogram/internal/pkg/cosutil"
 	"github.com/luoxiaojun1992/miniprogram/internal/pkg/wechat"
 	"github.com/luoxiaojun1992/miniprogram/internal/repository"
 	"github.com/luoxiaojun1992/miniprogram/internal/service"
@@ -33,6 +34,9 @@ type Provider struct {
 	ArticleRepo           repository.ArticleRepository
 	CourseRepo            repository.CourseRepository
 	CourseUnitRepo        repository.CourseUnitRepository
+	FileRepo              repository.FileRepository
+	ArticleAttachmentRepo repository.ArticleAttachmentRepository
+	CourseAttachmentRepo  repository.CourseAttachmentRepository
 	ContentPermissionRepo repository.ContentPermissionRepository
 	StudyRecordRepo       repository.StudyRecordRepository
 	CollectionRepo        repository.CollectionRepository
@@ -63,6 +67,7 @@ type Provider struct {
 	AuditLogSvc     service.AuditLogService
 	LogConfigSvc    service.LogConfigService
 	AttributeSvc    service.AttributeService
+	UploadFileSvc   service.UploadFileService
 
 	// Controllers
 	AuthCtrl         *controller.AuthController
@@ -162,6 +167,9 @@ func (p *Provider) initRepositories() {
 	p.ArticleRepo = repository.NewArticleRepository(p.DB)
 	p.CourseRepo = repository.NewCourseRepository(p.DB)
 	p.CourseUnitRepo = repository.NewCourseUnitRepository(p.DB)
+	p.FileRepo = repository.NewFileRepository(p.DB)
+	p.ArticleAttachmentRepo = repository.NewArticleAttachmentRepository(p.DB)
+	p.CourseAttachmentRepo = repository.NewCourseAttachmentRepository(p.DB)
 	p.ContentPermissionRepo = repository.NewContentPermissionRepository(p.DB)
 	p.StudyRecordRepo = repository.NewStudyRecordRepository(p.DB)
 	p.CollectionRepo = repository.NewCollectionRepository(p.DB)
@@ -191,10 +199,10 @@ func (p *Provider) initServices() {
 	p.PermissionSvc = service.NewPermissionService(p.PermissionRepo, p.Log)
 	p.ModuleSvc = service.NewModuleService(p.ModuleRepo, p.ModulePageRepo, p.Log)
 	p.ArticleSvc = service.NewArticleService(
-		p.ArticleRepo, p.ContentPermissionRepo, p.Log, p.SensitiveWordRepo,
+		p.ArticleRepo, p.ContentPermissionRepo, p.Log, p.SensitiveWordRepo, p.ArticleAttachmentRepo,
 	)
 	p.CourseSvc = service.NewCourseService(
-		p.CourseRepo, p.CourseUnitRepo, p.ContentPermissionRepo, p.Log, p.SensitiveWordRepo,
+		p.CourseRepo, p.CourseUnitRepo, p.ContentPermissionRepo, p.Log, p.SensitiveWordRepo, p.CourseAttachmentRepo,
 	)
 	p.StudyRecordSvc = service.NewStudyRecordService(p.StudyRecordRepo, p.CourseUnitRepo, p.Log)
 	p.CollectionSvc = service.NewCollectionService(p.CollectionRepo, p.Log)
@@ -205,6 +213,20 @@ func (p *Provider) initServices() {
 	p.AuditLogSvc = service.NewAuditLogService(p.AuditLogRepo, p.Log)
 	p.LogConfigSvc = service.NewLogConfigService(p.LogConfigRepo, p.Log)
 	p.AttributeSvc = service.NewAttributeService(p.AttributeRepo, p.UserAttributeRepo, p.UserRepo, p.Log)
+	if p.Config.Upload.Provider == "cos" && p.Config.Upload.COSEndpoint != "" && p.Config.Upload.COSBucket != "" {
+		cosClient, err := cosutil.NewClient(
+			p.Config.Upload.COSEndpoint,
+			p.Config.Upload.BaseURL,
+			p.Config.Upload.COSBucket,
+			p.Config.Upload.COSSecretID,
+			p.Config.Upload.COSSecretKey,
+		)
+		if err != nil {
+			p.Log.WithError(err).Warn("初始化COS SDK失败")
+		} else {
+			p.UploadFileSvc = service.NewUploadFileService(p.FileRepo, cosClient, p.Log)
+		}
+	}
 }
 
 func (p *Provider) initControllers() {
@@ -228,11 +250,11 @@ func (p *Provider) initControllers() {
 			p.Config.Upload.COSEndpoint,
 			p.Config.Upload.COSBucket,
 			p.Log,
-		).WithAuditRepo(p.AuditLogRepo)
+		).WithAuditRepo(p.AuditLogRepo).WithUploadService(p.UploadFileSvc)
 	} else {
 		p.UploadCtrl = controller.NewUploadController(
 			p.Config.Upload.Dir, p.Config.Upload.BaseURL, p.Log,
-		).WithAuditRepo(p.AuditLogRepo)
+		).WithAuditRepo(p.AuditLogRepo).WithUploadService(p.UploadFileSvc)
 	}
 	p.DebugCtrl = controller.NewDebugController(
 		p.UserRepo, p.Config.JWT.Secret, p.Config.JWT.Expiry, p.Log,

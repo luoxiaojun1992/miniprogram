@@ -100,6 +100,24 @@ type CourseUnitRepository interface {
 	Delete(ctx context.Context, id uint64) error
 }
 
+// FileRepository defines the interface for file metadata access.
+type FileRepository interface {
+	GetByID(ctx context.Context, id uint64) (*entity.File, error)
+	Create(ctx context.Context, file *entity.File) error
+}
+
+// ArticleAttachmentRepository defines article attachment relation access.
+type ArticleAttachmentRepository interface {
+	ListFileIDs(ctx context.Context, articleID uint64) ([]uint64, error)
+	Replace(ctx context.Context, articleID uint64, fileIDs []uint64) error
+}
+
+// CourseAttachmentRepository defines course attachment relation access.
+type CourseAttachmentRepository interface {
+	ListFileIDs(ctx context.Context, courseID uint64) ([]uint64, error)
+	Replace(ctx context.Context, courseID uint64, fileIDs []uint64) error
+}
+
 // ContentPermissionRepository defines the interface for content permission data access.
 type ContentPermissionRepository interface {
 	GetByContent(ctx context.Context, contentType int8, contentID uint64) ([]*entity.ContentPermission, error)
