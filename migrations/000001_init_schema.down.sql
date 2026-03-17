@@ -21,5 +21,6 @@ DROP TABLE IF EXISTS `roles`;
 DROP TABLE IF EXISTS `admin_users`;
 DROP TABLE IF EXISTS `users`;
 DROP TABLE IF EXISTS `log_configs`;
+DROP TABLE IF EXISTS `sensitive_words`;
 DROP TABLE IF EXISTS `wechat_configs`;
 SET FOREIGN_KEY_CHECKS = 1;

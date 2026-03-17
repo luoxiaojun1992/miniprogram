@@ -36,6 +36,16 @@ CREATE TABLE IF NOT EXISTS `log_configs` (
     `updated_at` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='日志配置表';
 
+-- 敏感词表
+CREATE TABLE IF NOT EXISTS `sensitive_words` (
+    `id` BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    `word` VARCHAR(128) NOT NULL COMMENT '敏感词',
+    `status` TINYINT DEFAULT 1 COMMENT '0禁用 1启用',
+    `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP,
+    `updated_at` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    UNIQUE KEY `uk_word` (`word`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='敏感词表';
+
 -- 插入默认日志配置
 INSERT INTO `log_configs` (`retention_days`) VALUES (90);
 
@@ -420,5 +430,13 @@ INSERT INTO `role_permissions` (`role_id`, `permission_id`) VALUES
 (3, 14), (3, 15), (3, 16), (3, 18),
 (3, 19), (3, 20), (3, 21), (3, 23),
 (3, 25), (3, 26);
+
+-- 初始化敏感词（可在后台继续维护）
+INSERT INTO `sensitive_words` (`word`, `status`) VALUES
+('色情', 1),
+('赌博', 1),
+('诈骗', 1),
+('暴力', 1),
+('违禁', 1);
 
 SET FOREIGN_KEY_CHECKS = 1;
