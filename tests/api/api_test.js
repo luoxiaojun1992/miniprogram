@@ -316,6 +316,12 @@ export default function (data) {
     const colDelRes = http.del(`${BASE_URL}/v1/collections/1/${articleId}`, null, userH);
     check(colDelRes, { 'DELETE /v1/collections/1/:id: 2xx': (r) => ok(r) });
 
+    // Collections – add/remove for course
+    const colCourseAddRes = http.post(`${BASE_URL}/v1/collections/2/${courseId}`, null, userH);
+    check(colCourseAddRes, { 'POST /v1/collections/2/:id: 2xx': (r) => ok(r) });
+    const colCourseDelRes = http.del(`${BASE_URL}/v1/collections/2/${courseId}`, null, userH);
+    check(colCourseDelRes, { 'DELETE /v1/collections/2/:id: 2xx': (r) => ok(r) });
+
     // Likes – add
     const likeAddRes = http.post(`${BASE_URL}/v1/likes/1/${articleId}`, null, userH);
     check(likeAddRes, { 'POST /v1/likes/1/:id: 2xx': (r) => ok(r) });
@@ -328,6 +334,12 @@ export default function (data) {
     // Likes – remove
     const likeDelRes = http.del(`${BASE_URL}/v1/likes/1/${articleId}`, null, userH);
     check(likeDelRes, { 'DELETE /v1/likes/1/:id: 2xx': (r) => ok(r) });
+
+    // Likes – add/remove for course
+    const likeCourseAddRes = http.post(`${BASE_URL}/v1/likes/2/${courseId}`, null, userH);
+    check(likeCourseAddRes, { 'POST /v1/likes/2/:id: 2xx': (r) => ok(r) });
+    const likeCourseDelRes = http.del(`${BASE_URL}/v1/likes/2/${courseId}`, null, userH);
+    check(likeCourseDelRes, { 'DELETE /v1/likes/2/:id: 2xx': (r) => ok(r) });
 
     // Comments – create (as regular user)
     const createCommentRes = http.post(
@@ -354,6 +366,19 @@ export default function (data) {
     if (userCommentId) {
       const cleanupCommentRes = http.del(`${BASE_URL}/v1/admin/comments/${userCommentId}`, null, adminH);
       check(cleanupCommentRes, { 'cleanup created comment: 2xx': (r) => ok(r) });
+    }
+
+    // Comments – create on course then cleanup
+    const createCourseCommentRes = http.post(
+      `${BASE_URL}/v1/comments/2/${courseId}`,
+      JSON.stringify({ content: 'k6 course comment' }),
+      userH,
+    );
+    check(createCourseCommentRes, { 'POST /v1/comments/2/:id: 2xx': (r) => ok(r) });
+    const userCourseCommentId = createCourseCommentRes.json('data.id');
+    if (userCourseCommentId) {
+      const cleanupCourseCommentRes = http.del(`${BASE_URL}/v1/admin/comments/${userCourseCommentId}`, null, adminH);
+      check(cleanupCourseCommentRes, { 'cleanup course comment: 2xx': (r) => ok(r) });
     }
 
     // Notifications – list
@@ -491,6 +516,10 @@ export default function (data) {
 
   // -------------------------------------------------------------------------
   group('Admin – Articles', () => {
+    // Should be blocked if associated interaction data exists
+    const deleteBlockedRes = http.del(`${BASE_URL}/v1/admin/articles/${articleId}`, null, adminH);
+    check(deleteBlockedRes, { 'DELETE /v1/admin/articles/:id blocked when associated': (r) => r.status >= 400 });
+
     // List
     const listRes = http.get(`${BASE_URL}/v1/admin/articles?page=1&page_size=10`, adminH);
     check(listRes, { 'GET /v1/admin/articles: 200': (r) => r.status === 200 });
@@ -523,6 +552,10 @@ export default function (data) {
 
   // -------------------------------------------------------------------------
   group('Admin – Courses', () => {
+    // Should be blocked if associated unit/interaction data exists
+    const deleteBlockedRes = http.del(`${BASE_URL}/v1/admin/courses/${courseId}`, null, adminH);
+    check(deleteBlockedRes, { 'DELETE /v1/admin/courses/:id blocked when associated': (r) => r.status >= 400 });
+
     // List
     const listRes = http.get(`${BASE_URL}/v1/admin/courses?page=1&page_size=10`, adminH);
     check(listRes, { 'GET /v1/admin/courses: 200': (r) => r.status === 200 });

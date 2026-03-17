@@ -288,6 +288,46 @@ type MockModulePageRepository struct {
 	DeleteFn         func(ctx context.Context, id uint) error
 }
 
+// MockBannerRepository is a test double for repository.BannerRepository.
+type MockBannerRepository struct {
+	GetByIDFn func(ctx context.Context, id uint64) (*entity.Banner, error)
+	ListFn    func(ctx context.Context, status *int8) ([]*entity.Banner, error)
+	CreateFn  func(ctx context.Context, banner *entity.Banner) error
+	UpdateFn  func(ctx context.Context, banner *entity.Banner) error
+	DeleteFn  func(ctx context.Context, id uint64) error
+}
+
+func (m *MockBannerRepository) GetByID(ctx context.Context, id uint64) (*entity.Banner, error) {
+	if m.GetByIDFn != nil {
+		return m.GetByIDFn(ctx, id)
+	}
+	return nil, nil
+}
+func (m *MockBannerRepository) List(ctx context.Context, status *int8) ([]*entity.Banner, error) {
+	if m.ListFn != nil {
+		return m.ListFn(ctx, status)
+	}
+	return nil, nil
+}
+func (m *MockBannerRepository) Create(ctx context.Context, banner *entity.Banner) error {
+	if m.CreateFn != nil {
+		return m.CreateFn(ctx, banner)
+	}
+	return nil
+}
+func (m *MockBannerRepository) Update(ctx context.Context, banner *entity.Banner) error {
+	if m.UpdateFn != nil {
+		return m.UpdateFn(ctx, banner)
+	}
+	return nil
+}
+func (m *MockBannerRepository) Delete(ctx context.Context, id uint64) error {
+	if m.DeleteFn != nil {
+		return m.DeleteFn(ctx, id)
+	}
+	return nil
+}
+
 func (m *MockModulePageRepository) GetByID(ctx context.Context, id uint) (*entity.ModulePage, error) {
 	if m.GetByIDFn != nil {
 		return m.GetByIDFn(ctx, id)
@@ -540,6 +580,25 @@ type MockCourseUnitRepository struct {
 	UpdateFn          func(ctx context.Context, unit *entity.CourseUnit) error
 	DeleteFn          func(ctx context.Context, id uint64) error
 	HasStudyRecordsFn func(ctx context.Context, id uint64) (bool, error)
+}
+
+// MockFileRepository is a test double for repository.FileRepository.
+type MockFileRepository struct {
+	GetByIDFn func(ctx context.Context, id uint64) (*entity.File, error)
+	CreateFn  func(ctx context.Context, file *entity.File) error
+}
+
+func (m *MockFileRepository) GetByID(ctx context.Context, id uint64) (*entity.File, error) {
+	if m.GetByIDFn != nil {
+		return m.GetByIDFn(ctx, id)
+	}
+	return nil, nil
+}
+func (m *MockFileRepository) Create(ctx context.Context, file *entity.File) error {
+	if m.CreateFn != nil {
+		return m.CreateFn(ctx, file)
+	}
+	return nil
 }
 
 func (m *MockCourseUnitRepository) GetByID(ctx context.Context, id uint64) (*entity.CourseUnit, error) {

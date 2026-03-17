@@ -924,6 +924,84 @@ func TestCourseService_DeleteUnit_HasStudyRecords(t *testing.T) {
 	require.Error(t, err)
 }
 
+func TestArticleService_Pin_Success(t *testing.T) {
+	repo := &testutil.MockArticleRepository{
+		GetByIDFn: func(_ context.Context, id uint64) (*entity.Article, error) {
+			return &entity.Article{ID: id}, nil
+		},
+		UpdateFn: func(_ context.Context, a *entity.Article) error { return nil },
+	}
+	svc := newArticleService(repo, &testutil.MockContentPermissionRepository{
+		SetContentPermsFn: func(_ context.Context, contentType int8, contentID uint64, roleIDs []uint) error { return nil },
+	})
+	err := svc.Pin(context.Background(), 1, &dto.PinArticleRequest{SortOrder: 100})
+	require.NoError(t, err)
+}
+
+func TestArticleService_Copy_Success(t *testing.T) {
+	repo := &testutil.MockArticleRepository{
+		GetByIDFn: func(_ context.Context, id uint64) (*entity.Article, error) {
+			return &entity.Article{ID: id, Title: "A", AuthorID: 1, ModuleID: 1, ContentType: 1}, nil
+		},
+		CreateFn: func(_ context.Context, a *entity.Article) error {
+			a.ID = 99
+			return nil
+		},
+	}
+	permRepo := &testutil.MockContentPermissionRepository{
+		GetByContentFn: func(_ context.Context, contentType int8, contentID uint64) ([]*entity.ContentPermission, error) {
+			return nil, nil
+		},
+		SetContentPermsFn: func(_ context.Context, contentType int8, contentID uint64, roleIDs []uint) error { return nil },
+	}
+	svc := newArticleService(repo, permRepo)
+	id, err := svc.Copy(context.Background(), 1, 2)
+	require.NoError(t, err)
+	assert.Equal(t, uint64(99), id)
+}
+
+func TestCourseService_Pin_Success(t *testing.T) {
+	repo := &testutil.MockCourseRepository{
+		GetByIDFn: func(_ context.Context, id uint64) (*entity.Course, error) {
+			return &entity.Course{ID: id}, nil
+		},
+		UpdateFn: func(_ context.Context, c *entity.Course) error { return nil },
+	}
+	svc := newCourseService(repo, nil, &testutil.MockContentPermissionRepository{
+		SetContentPermsFn: func(_ context.Context, contentType int8, contentID uint64, roleIDs []uint) error { return nil },
+	})
+	err := svc.Pin(context.Background(), 1, &dto.PinCourseRequest{SortOrder: 100})
+	require.NoError(t, err)
+}
+
+func TestCourseService_Copy_Success(t *testing.T) {
+	repo := &testutil.MockCourseRepository{
+		GetByIDFn: func(_ context.Context, id uint64) (*entity.Course, error) {
+			return &entity.Course{ID: id, Title: "C", AuthorID: 1, ModuleID: 1}, nil
+		},
+		CreateFn: func(_ context.Context, c *entity.Course) error {
+			c.ID = 88
+			return nil
+		},
+	}
+	unitRepo := &testutil.MockCourseUnitRepository{
+		ListByCourseIDFn: func(_ context.Context, courseID uint64) ([]*entity.CourseUnit, error) {
+			return []*entity.CourseUnit{{ID: 1, CourseID: courseID, Title: "U1"}}, nil
+		},
+		CreateFn: func(_ context.Context, unit *entity.CourseUnit) error { return nil },
+	}
+	permRepo := &testutil.MockContentPermissionRepository{
+		GetByContentFn: func(_ context.Context, contentType int8, contentID uint64) ([]*entity.ContentPermission, error) {
+			return nil, nil
+		},
+		SetContentPermsFn: func(_ context.Context, contentType int8, contentID uint64, roleIDs []uint) error { return nil },
+	}
+	svc := newCourseService(repo, unitRepo, permRepo)
+	id, err := svc.Copy(context.Background(), 1, 2)
+	require.NoError(t, err)
+	assert.Equal(t, uint64(88), id)
+}
+
 // ==================== Missing module/article/course error paths ====================
 
 func TestModuleService_Create_Error(t *testing.T) {

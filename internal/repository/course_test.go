@@ -346,3 +346,77 @@ func TestCourseUnitRepository_Delete_Error(t *testing.T) {
 	err := repo.Delete(context.Background(), 1)
 	assert.Error(t, err)
 }
+
+func TestCourseRepository_IncrLikeCount_Success(t *testing.T) {
+	db, mock := newTestDB(t)
+	repo := NewCourseRepository(db)
+	mock.ExpectExec("UPDATE courses SET like_count").WillReturnResult(sqlmock.NewResult(1, 1))
+	require.NoError(t, repo.IncrLikeCount(context.Background(), 1))
+}
+
+func TestCourseRepository_DecrLikeCount_Success(t *testing.T) {
+	db, mock := newTestDB(t)
+	repo := NewCourseRepository(db)
+	mock.ExpectExec("UPDATE courses SET like_count = CASE").WillReturnResult(sqlmock.NewResult(1, 1))
+	require.NoError(t, repo.DecrLikeCount(context.Background(), 1))
+}
+
+func TestCourseRepository_IncrCollectCount_Success(t *testing.T) {
+	db, mock := newTestDB(t)
+	repo := NewCourseRepository(db)
+	mock.ExpectExec("UPDATE courses SET collect_count").WillReturnResult(sqlmock.NewResult(1, 1))
+	require.NoError(t, repo.IncrCollectCount(context.Background(), 1))
+}
+
+func TestCourseRepository_DecrCollectCount_Success(t *testing.T) {
+	db, mock := newTestDB(t)
+	repo := NewCourseRepository(db)
+	mock.ExpectExec("UPDATE courses SET collect_count = CASE").WillReturnResult(sqlmock.NewResult(1, 1))
+	require.NoError(t, repo.DecrCollectCount(context.Background(), 1))
+}
+
+func TestCourseRepository_IncrCommentCount_Success(t *testing.T) {
+	db, mock := newTestDB(t)
+	repo := NewCourseRepository(db)
+	mock.ExpectExec("UPDATE courses SET comment_count").WillReturnResult(sqlmock.NewResult(1, 1))
+	require.NoError(t, repo.IncrCommentCount(context.Background(), 1))
+}
+
+func TestCourseRepository_DecrCommentCount_Success(t *testing.T) {
+	db, mock := newTestDB(t)
+	repo := NewCourseRepository(db)
+	mock.ExpectExec("UPDATE courses SET comment_count = CASE").WillReturnResult(sqlmock.NewResult(1, 1))
+	require.NoError(t, repo.DecrCommentCount(context.Background(), 1))
+}
+
+func TestCourseRepository_IncrShareCount_Success(t *testing.T) {
+	db, mock := newTestDB(t)
+	repo := NewCourseRepository(db)
+	mock.ExpectExec("UPDATE courses SET share_count").WillReturnResult(sqlmock.NewResult(1, 1))
+	require.NoError(t, repo.IncrShareCount(context.Background(), 1))
+}
+
+func TestCourseRepository_IncrStudyCount_Success(t *testing.T) {
+	db, mock := newTestDB(t)
+	repo := NewCourseRepository(db)
+	mock.ExpectExec("UPDATE courses SET study_count").WillReturnResult(sqlmock.NewResult(1, 1))
+	require.NoError(t, repo.IncrStudyCount(context.Background(), 1))
+}
+
+func TestCourseRepository_HasAssociations_Success(t *testing.T) {
+	db, mock := newTestDB(t)
+	repo := NewCourseRepository(db)
+	mock.ExpectQuery("SELECT").WillReturnRows(sqlmock.NewRows([]string{"cnt"}).AddRow(3))
+	ok, err := repo.HasAssociations(context.Background(), 1)
+	require.NoError(t, err)
+	assert.True(t, ok)
+}
+
+func TestCourseUnitRepository_HasStudyRecords_Success(t *testing.T) {
+	db, mock := newTestDB(t)
+	repo := NewCourseUnitRepository(db)
+	mock.ExpectQuery("SELECT count").WillReturnRows(sqlmock.NewRows([]string{"count"}).AddRow(1))
+	ok, err := repo.HasStudyRecords(context.Background(), 1)
+	require.NoError(t, err)
+	assert.True(t, ok)
+}

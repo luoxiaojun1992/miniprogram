@@ -450,3 +450,13 @@ func TestUserTagRepository_Delete_Error(t *testing.T) {
 	err := repo.Delete(context.Background(), 1)
 	assert.Error(t, err)
 }
+
+func TestUserRepository_HasAssociations_Success(t *testing.T) {
+	db, mock := newTestDB(t)
+	repo := NewUserRepository(db)
+
+	mock.ExpectQuery("SELECT").WillReturnRows(sqlmock.NewRows([]string{"cnt"}).AddRow(4))
+	ok, err := repo.HasAssociations(context.Background(), 1)
+	require.NoError(t, err)
+	assert.True(t, ok)
+}

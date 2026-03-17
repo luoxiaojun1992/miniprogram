@@ -157,6 +157,20 @@ func TestCollectionService_Add_IncrArticleCollectCount(t *testing.T) {
 	require.NoError(t, svc.Add(context.Background(), 1, 1, 8))
 }
 
+func TestCollectionService_Remove_DecrCourseCollectCount(t *testing.T) {
+	repo := &testutil.MockCollectionRepository{
+		DeleteFn: func(_ context.Context, userID uint64, contentType int8, contentID uint64) error { return nil },
+	}
+	courseRepo := &testutil.MockCourseRepository{
+		DecrCollectCountFn: func(_ context.Context, id uint64) error {
+			assert.Equal(t, uint64(11), id)
+			return nil
+		},
+	}
+	svc := NewCollectionService(repo, nil, courseRepo, logrus.New())
+	require.NoError(t, svc.Remove(context.Background(), 1, 2, 11))
+}
+
 // ==================== LikeService ====================
 
 func TestLikeService_Add_Success(t *testing.T) {
@@ -234,6 +248,20 @@ func TestLikeService_Add_SendsNotificationAndIncrArticleLikeCount(t *testing.T) 
 	}
 	svc := NewLikeService(likeRepo, articleRepo, nil, notifRepo, logrus.New())
 	require.NoError(t, svc.Add(context.Background(), 1, 1, 9))
+}
+
+func TestLikeService_Remove_DecrCourseLikeCount(t *testing.T) {
+	likeRepo := &testutil.MockLikeRepository{
+		DeleteFn: func(_ context.Context, userID uint64, contentType int8, contentID uint64) error { return nil },
+	}
+	courseRepo := &testutil.MockCourseRepository{
+		DecrLikeCountFn: func(_ context.Context, id uint64) error {
+			assert.Equal(t, uint64(7), id)
+			return nil
+		},
+	}
+	svc := NewLikeService(likeRepo, nil, courseRepo, nil, logrus.New())
+	require.NoError(t, svc.Remove(context.Background(), 1, 2, 7))
 }
 
 // ==================== NotificationService ====================
@@ -580,6 +608,25 @@ func TestCommentService_Create_IncrCountAndNotify(t *testing.T) {
 	require.NoError(t, err)
 }
 
+func TestCommentService_Create_ReplyNotifyParent(t *testing.T) {
+	repo := &testutil.MockCommentRepository{
+		CreateFn: func(_ context.Context, c *entity.Comment) error { return nil },
+		GetByIDFn: func(_ context.Context, id uint64) (*entity.Comment, error) {
+			return &entity.Comment{ID: id, UserID: 3}, nil
+		},
+	}
+	notifRepo := &testutil.MockNotificationRepository{
+		CreateFn: func(_ context.Context, n *entity.Notification) error {
+			require.NotNil(t, n.UserID)
+			assert.Equal(t, uint64(3), *n.UserID)
+			return nil
+		},
+	}
+	svc := NewCommentService(repo, nil, nil, notifRepo, logrus.New())
+	_, err := svc.Create(context.Background(), 1, 1, 10, &dto.CreateCommentRequest{Content: "reply", ParentID: 99})
+	require.NoError(t, err)
+}
+
 func TestCommentService_Create_Err(t *testing.T) {
 	repo := &testutil.MockCommentRepository{
 		CreateFn: func(_ context.Context, c *entity.Comment) error { return apperrors.NewInternal("db", nil) },
@@ -688,4 +735,23 @@ func TestCommentService_Delete_HasReplies(t *testing.T) {
 	svc := NewCommentService(repo, nil, nil, nil, logrus.New())
 	err := svc.Delete(context.Background(), 1)
 	require.Error(t, err)
+}
+
+func TestCommentService_Delete_DecrCourseCommentCount(t *testing.T) {
+	repo := &testutil.MockCommentRepository{
+		GetByIDFn: func(_ context.Context, id uint64) (*entity.Comment, error) {
+			return &entity.Comment{ID: id, ContentType: 2, ContentID: 5}, nil
+		},
+		HasRepliesFn: func(_ context.Context, id uint64) (bool, error) { return false, nil },
+		DeleteFn:     func(_ context.Context, id uint64) error { return nil },
+	}
+	courseRepo := &testutil.MockCourseRepository{
+		DecrCommentCountFn: func(_ context.Context, id uint64) error {
+			assert.Equal(t, uint64(5), id)
+			return nil
+		},
+	}
+	svc := NewCommentService(repo, nil, courseRepo, nil, logrus.New())
+	err := svc.Delete(context.Background(), 1)
+	require.NoError(t, err)
 }

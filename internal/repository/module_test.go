@@ -300,3 +300,13 @@ func TestModulePageRepository_Delete_Error(t *testing.T) {
 	err := repo.Delete(context.Background(), 1)
 	assert.Error(t, err)
 }
+
+func TestModuleRepository_HasAssociations_Success(t *testing.T) {
+	db, mock := newTestDB(t)
+	repo := NewModuleRepository(db)
+
+	mock.ExpectQuery("SELECT").WillReturnRows(sqlmock.NewRows([]string{"cnt"}).AddRow(2))
+	ok, err := repo.HasAssociations(context.Background(), 1)
+	require.NoError(t, err)
+	assert.True(t, ok)
+}
