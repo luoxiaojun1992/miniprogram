@@ -37,6 +37,18 @@ type UploadController struct {
 	auditRepo repository.AuditLogRepository
 }
 
+type fileRecordPayload struct {
+	Key        string `json:"key"`
+	Filename   string `json:"filename"`
+	Usage      string `json:"usage"`
+	Category   string `json:"category"`
+	StaticURL  string `json:"static_url,omitempty"`
+	Business   string `json:"business,omitempty"`
+	ExpiresIn  int    `json:"expires_in"`
+	Protected  bool   `json:"protected"`
+	ObjectPath string `json:"object_path,omitempty"`
+}
+
 // NewUploadController creates a new UploadController.
 func NewUploadController(uploadDir, baseURL string, log *logrus.Logger) *UploadController {
 	return &UploadController{uploadDir: uploadDir, baseURL: baseURL, log: log}
@@ -79,6 +91,81 @@ func (c *UploadController) UploadArticleImage(ctx *gin.Context) {
 	c.uploadImageWithPrefix(ctx, "article-image")
 }
 
+// GenerateAdminUploadPresignURL handles GET /admin/upload/files/presign.
+func (c *UploadController) GenerateAdminUploadPresignURL(ctx *gin.Context) {
+	if !isAdminUser(ctx) {
+		ctx.Error(apperrors.NewForbidden("仅管理员可上传素材", nil))
+		return
+	}
+	if c.cos == nil {
+		ctx.Error(apperrors.NewBadRequest("当前存储不支持预签名上传", nil))
+		return
+	}
+
+	filename := strings.TrimSpace(ctx.Query("filename"))
+	if filename == "" {
+		ctx.Error(apperrors.NewBadRequest("filename不能为空", nil))
+		return
+	}
+	usage := strings.ToLower(strings.TrimSpace(ctx.DefaultQuery("usage", "protected")))
+	if usage != "embedded" && usage != "protected" {
+		ctx.Error(apperrors.NewBadRequest("usage仅支持embedded或protected", nil))
+		return
+	}
+	ext := strings.ToLower(filepath.Ext(filename))
+	category := classifyFileCategory(ext)
+	if category == "" {
+		ctx.Error(apperrors.NewBadRequest("不支持的文件扩展名", nil))
+		return
+	}
+	if usage == "embedded" && category == "attachment" {
+		ctx.Error(apperrors.NewBadRequest("内嵌素材仅支持图片或视频", nil))
+		return
+	}
+
+	expiresIn := 900
+	if raw := strings.TrimSpace(ctx.Query("expires_in")); raw != "" {
+		v, err := strconv.Atoi(raw)
+		if err != nil || v < 60 || v > 3600 {
+			ctx.Error(apperrors.NewBadRequest("expires_in必须在60-3600秒之间", err))
+			return
+		}
+		expiresIn = v
+	}
+	prefix := usage + "-" + category
+	key := generateObjectKey(prefix, ext)
+	staticURL := ""
+	if usage == "embedded" {
+		staticURL = c.cos.objectURL(key)
+	}
+	payload := fileRecordPayload{
+		Key:       key,
+		Filename:  filename,
+		Usage:     usage,
+		Category:  category,
+		StaticURL: staticURL,
+		ExpiresIn: expiresIn,
+		Protected: usage == "protected",
+	}
+	fileID, err := c.recordFileUpload(ctx, payload)
+	if err != nil {
+		ctx.Error(err)
+		return
+	}
+
+	resp := gin.H{
+		"file_id":    fileID,
+		"key":        key,
+		"put_url":    c.cos.presignPutURL(key, expiresIn),
+		"expires_in": expiresIn,
+		"expire_at":  time.Now().Add(time.Duration(expiresIn) * time.Second).Unix(),
+	}
+	if staticURL != "" {
+		resp["static_url"] = staticURL
+	}
+	response.Success(ctx, resp)
+}
+
 // GenerateCourseVideoPresignURL handles GET /upload/course/video/presign.
 func (c *UploadController) GenerateCourseVideoPresignURL(ctx *gin.Context) {
 	if !isAdminUser(ctx) {
@@ -108,17 +195,48 @@ func (c *UploadController) GenerateCourseAttachmentPresignURL(ctx *gin.Context) 
 
 // GenerateCourseVideoDownloadURL handles GET /download/course/video.
 func (c *UploadController) GenerateCourseVideoDownloadURL(ctx *gin.Context) {
-	c.generateTemporaryDownloadURL(ctx, "course-video")
+	c.generateBusinessTemporaryDownloadURL(ctx, "course_video", "video")
 }
 
 // GenerateArticleAttachmentDownloadURL handles GET /download/article/attachment.
 func (c *UploadController) GenerateArticleAttachmentDownloadURL(ctx *gin.Context) {
-	c.generateTemporaryDownloadURL(ctx, "article-attachment")
+	c.generateBusinessTemporaryDownloadURL(ctx, "article_attachment", "attachment")
 }
 
 // GenerateCourseAttachmentDownloadURL handles GET /download/course/attachment.
 func (c *UploadController) GenerateCourseAttachmentDownloadURL(ctx *gin.Context) {
-	c.generateTemporaryDownloadURL(ctx, "course-attachment")
+	c.generateBusinessTemporaryDownloadURL(ctx, "course_attachment", "attachment")
+}
+
+// GenerateStaticMaterialURL handles GET /download/static/:file_id.
+func (c *UploadController) GenerateStaticMaterialURL(ctx *gin.Context) {
+	file, payload, err := c.loadFileRecord(ctx)
+	if err != nil {
+		ctx.Error(err)
+		return
+	}
+	if payload.Protected || payload.Usage != "embedded" || (payload.Category != "image" && payload.Category != "video") {
+		ctx.Error(apperrors.NewForbidden("该文件不支持静态访问", nil))
+		return
+	}
+	if c.cos == nil {
+		ctx.Error(apperrors.NewBadRequest("当前存储不支持静态链接校验", nil))
+		return
+	}
+	ok, checkErr := c.cos.isStaticMediaObject(ctx.Request.Context(), payload.Key)
+	if checkErr != nil {
+		ctx.Error(apperrors.NewInternal("校验文件类型失败", checkErr))
+		return
+	}
+	if !ok {
+		ctx.Error(apperrors.NewForbidden("静态访问仅支持图片和视频文件", nil))
+		return
+	}
+	response.Success(ctx, gin.H{
+		"file_id":    file.ID,
+		"static_url": c.cos.objectURL(payload.Key),
+		"category":   payload.Category,
+	})
 }
 
 // UploadImage handles POST /upload/image.
@@ -349,6 +467,68 @@ func (c *UploadController) generateTemporaryDownloadURL(ctx *gin.Context, busine
 	})
 }
 
+func (c *UploadController) generateBusinessTemporaryDownloadURL(ctx *gin.Context, business, expectedCategory string) {
+	if c.cos == nil {
+		ctx.Error(apperrors.NewBadRequest("当前存储不支持临时下载链接", nil))
+		return
+	}
+	file, payload, err := c.loadFileRecord(ctx)
+	if err != nil {
+		ctx.Error(err)
+		return
+	}
+	if payload.Usage != "protected" {
+		ctx.Error(apperrors.NewForbidden("该文件无需临时链接下载", nil))
+		return
+	}
+	if payload.Category != expectedCategory {
+		ctx.Error(apperrors.NewForbidden("文件类型与业务不匹配", nil))
+		return
+	}
+
+	expiresIn := 300
+	if raw := strings.TrimSpace(ctx.Query("expires_in")); raw != "" {
+		v, convErr := strconv.Atoi(raw)
+		if convErr != nil || v < 60 || v > 3600 {
+			ctx.Error(apperrors.NewBadRequest("expires_in必须在60-3600秒之间", convErr))
+			return
+		}
+		expiresIn = v
+	}
+	response.Success(ctx, gin.H{
+		"file_id":    file.ID,
+		"business":   business,
+		"download":   c.cos.presignGetURL(payload.Key, expiresIn),
+		"expires_in": expiresIn,
+		"expire_at":  time.Now().Add(time.Duration(expiresIn) * time.Second).Unix(),
+	})
+}
+
+func (c *UploadController) loadFileRecord(ctx *gin.Context) (*entity.AuditLog, *fileRecordPayload, error) {
+	if c.auditRepo == nil {
+		return nil, nil, apperrors.NewInternal("文件记录仓储未初始化", nil)
+	}
+	fileID, err := strconv.ParseUint(strings.TrimSpace(ctx.Param("file_id")), 10, 64)
+	if err != nil || fileID == 0 {
+		return nil, nil, apperrors.NewBadRequest("file_id不合法", err)
+	}
+	record, err := c.auditRepo.GetByID(ctx.Request.Context(), fileID)
+	if err != nil {
+		return nil, nil, err
+	}
+	if record == nil || record.Module != "file_upload" || record.Action != "file_asset" {
+		return nil, nil, apperrors.NewNotFound("文件不存在", nil)
+	}
+	var payload fileRecordPayload
+	if unmarshalErr := json.Unmarshal([]byte(record.RequestData), &payload); unmarshalErr != nil {
+		return nil, nil, apperrors.NewInternal("文件记录数据异常", unmarshalErr)
+	}
+	if normalizeObjectKey(payload.Key) == "" {
+		return nil, nil, apperrors.NewInternal("文件记录数据异常", nil)
+	}
+	return record, &payload, nil
+}
+
 func (c *UploadController) recordUploadBusiness(ctx *gin.Context, businessType, key, filename string, expiresIn int) error {
 	if c.auditRepo == nil {
 		return nil
@@ -373,6 +553,27 @@ func (c *UploadController) recordUploadBusiness(ctx *gin.Context, businessType, 
 		return apperrors.NewInternal("记录上传业务类型失败", err)
 	}
 	return nil
+}
+
+func (c *UploadController) recordFileUpload(ctx *gin.Context, payload fileRecordPayload) (uint64, error) {
+	if c.auditRepo == nil {
+		return 0, nil
+	}
+	userID, _ := middleware.GetCurrentUserID(ctx)
+	requestData, _ := json.Marshal(payload)
+	logRecord := &entity.AuditLog{
+		UserID:      userID,
+		Action:      "file_asset",
+		Module:      "file_upload",
+		Description: "创建文件上传记录",
+		IPAddress:   ctx.ClientIP(),
+		UserAgent:   ctx.Request.UserAgent(),
+		RequestData: string(requestData),
+	}
+	if err := c.auditRepo.Create(ctx.Request.Context(), logRecord); err != nil {
+		return 0, apperrors.NewInternal("记录文件上传信息失败", err)
+	}
+	return logRecord.ID, nil
 }
 
 func (c *UploadController) saveFile(ctx context.Context, file io.Reader, header *multipart.FileHeader, key string) (string, error) {
@@ -453,6 +654,20 @@ func (u *cosUploader) upload(ctx context.Context, key string, file io.Reader, co
 var uploadTypePattern = regexp.MustCompile(`^(avatar|article|course|cover)$`)
 var attachmentTypePattern = regexp.MustCompile(`^\.(pdf|doc|docx|xls|xlsx|ppt|pptx|zip|rar|7z|txt)$`)
 
+func classifyFileCategory(ext string) string {
+	switch ext {
+	case ".jpg", ".jpeg", ".png", ".gif":
+		return "image"
+	case ".mp4":
+		return "video"
+	default:
+		if attachmentTypePattern.MatchString(ext) {
+			return "attachment"
+		}
+		return ""
+	}
+}
+
 func sanitizeUploadType(raw string) string {
 	raw = strings.ToLower(strings.TrimSpace(raw))
 	if uploadTypePattern.MatchString(raw) {
@@ -475,6 +690,27 @@ func (u *cosUploader) presignPutURL(key string, expiresIn int) string {
 
 func (u *cosUploader) presignGetURL(key string, expiresIn int) string {
 	return fmt.Sprintf("%s/%s/%s?expires_in=%d", strings.TrimRight(u.endpoint, "/"), url.PathEscape(u.bucket), escapeObjectKey(key), expiresIn)
+}
+
+func (u *cosUploader) isStaticMediaObject(ctx context.Context, key string) (bool, error) {
+	targetURL := fmt.Sprintf("%s/%s/%s", u.endpoint, url.PathEscape(u.bucket), escapeObjectKey(key))
+	req, err := http.NewRequestWithContext(ctx, http.MethodHead, targetURL, nil)
+	if err != nil {
+		return false, err
+	}
+	resp, err := u.client.Do(req)
+	if err != nil {
+		return false, err
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode >= 300 {
+		return false, fmt.Errorf("head object failed status=%d", resp.StatusCode)
+	}
+	contentType := strings.ToLower(strings.TrimSpace(resp.Header.Get("Content-Type")))
+	if strings.HasPrefix(contentType, "image/") || strings.HasPrefix(contentType, "video/") {
+		return true, nil
+	}
+	return false, nil
 }
 
 func normalizeObjectKey(key string) string {

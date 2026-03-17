@@ -155,6 +155,7 @@ type WechatConfigRepository interface {
 
 // AuditLogRepository defines the interface for audit log data access.
 type AuditLogRepository interface {
+	GetByID(ctx context.Context, id uint64) (*entity.AuditLog, error)
 	List(ctx context.Context, page, pageSize int, module, action string, startTime, endTime *string) ([]*entity.AuditLog, int64, error)
 	Create(ctx context.Context, log *entity.AuditLog) error
 }

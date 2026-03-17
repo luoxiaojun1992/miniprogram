@@ -2658,30 +2658,12 @@ paths:
                         type: string
                         description: 存储Key
 
-  /admin/upload/article/image:
-    post:
-      tags:
-        - 文件上传
-      summary: 上传文章内图片（管理员）
-      security:
-        - Bearer: []
-      consumes:
-        - multipart/form-data
-      parameters:
-        - name: file
-          in: formData
-          type: file
-          required: true
-      responses:
-        200:
-          $ref: "#/responses/Success"
-
-  /admin/upload/course/video/presign:
+  /admin/upload/files/presign:
     get:
       tags:
         - 文件上传
-      summary: 获取课程视频上传预签名URL（管理员）
-      description: 生成课程视频上传链接，并在数据库记录业务类型
+      summary: 获取后台素材上传预签名URL（管理员统一接口）
+      description: 返回 file_id 与 put_url；若 usage=embedded 且为图片/视频，则同时返回 static_url 可直接用于富文本
       security:
         - Bearer: []
       parameters:
@@ -2689,7 +2671,14 @@ paths:
           in: query
           type: string
           required: true
-          description: 原始文件名（仅支持.mp4）
+          description: 原始文件名（按扩展名自动识别 image/video/attachment）
+        - name: usage
+          in: query
+          type: string
+          required: false
+          default: protected
+          enum: [embedded, protected]
+          description: embedded(内嵌素材，图片/视频可返回静态链接) 或 protected(受保护素材，需要JWT临时下载链接)
         - name: expires_in
           in: query
           type: integer
@@ -2699,49 +2688,21 @@ paths:
         200:
           $ref: "#/responses/Success"
 
-  /admin/upload/article/attachment/presign:
+  /download/static/{file_id}:
     get:
       tags:
         - 文件上传
-      summary: 获取文章附件上传预签名URL（管理员）
-      security:
-        - Bearer: []
+      summary: 获取内嵌素材静态下载链接（仅非权限图片/视频）
       parameters:
-        - name: filename
-          in: query
+        - name: file_id
+          in: path
           type: string
           required: true
-        - name: expires_in
-          in: query
-          type: integer
-          required: false
-          default: 900
       responses:
         200:
           $ref: "#/responses/Success"
 
-  /admin/upload/course/attachment/presign:
-    get:
-      tags:
-        - 文件上传
-      summary: 获取课程附件上传预签名URL（管理员）
-      security:
-        - Bearer: []
-      parameters:
-        - name: filename
-          in: query
-          type: string
-          required: true
-        - name: expires_in
-          in: query
-          type: integer
-          required: false
-          default: 900
-      responses:
-        200:
-          $ref: "#/responses/Success"
-
-  /download/course/video:
+  /download/course/video/{file_id}:
     get:
       tags:
         - 文件上传
@@ -2749,8 +2710,8 @@ paths:
       security:
         - Bearer: []
       parameters:
-        - name: key
-          in: query
+        - name: file_id
+          in: path
           type: string
           required: true
         - name: expires_in
@@ -2762,7 +2723,7 @@ paths:
         200:
           $ref: "#/responses/Success"
 
-  /download/article/attachment:
+  /download/article/attachment/{file_id}:
     get:
       tags:
         - 文件上传
@@ -2770,15 +2731,15 @@ paths:
       security:
         - Bearer: []
       parameters:
-        - name: key
-          in: query
+        - name: file_id
+          in: path
           type: string
           required: true
       responses:
         200:
           $ref: "#/responses/Success"
 
-  /download/course/attachment:
+  /download/course/attachment/{file_id}:
     get:
       tags:
         - 文件上传
@@ -2786,8 +2747,8 @@ paths:
       security:
         - Bearer: []
       parameters:
-        - name: key
-          in: query
+        - name: file_id
+          in: path
           type: string
           required: true
       responses:

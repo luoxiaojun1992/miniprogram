@@ -334,11 +334,12 @@ export default function (data) {
       },
     });
 
-    // Admin gets course video presign URL for direct upload
-    const presignRes = http.get(`${BASE_URL}/v1/admin/upload/course/video/presign?filename=k6-video.mp4&expires_in=600`, adminH);
+    // Admin gets unified file presign URL for protected course video upload
+    const presignRes = http.get(`${BASE_URL}/v1/admin/upload/files/presign?filename=k6-video.mp4&usage=protected&expires_in=600`, adminH);
     check(presignRes, {
-      'GET /v1/admin/upload/course/video/presign: 200': (r) => r.status === 200,
-      'GET /v1/admin/upload/course/video/presign: has put_url': (r) => typeof r.json('data.put_url') === 'string',
+      'GET /v1/admin/upload/files/presign: 200': (r) => r.status === 200,
+      'GET /v1/admin/upload/files/presign: has put_url': (r) => typeof r.json('data.put_url') === 'string',
+      'GET /v1/admin/upload/files/presign: has file_id': (r) => typeof r.json('data.file_id') === 'number',
     });
   });
 

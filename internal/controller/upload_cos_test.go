@@ -20,6 +20,14 @@ import (
 
 type testAuditRepo struct {
 	created []*entity.AuditLog
+	byID    map[uint64]*entity.AuditLog
+}
+
+func (r *testAuditRepo) GetByID(_ context.Context, id uint64) (*entity.AuditLog, error) {
+	if r.byID == nil {
+		return nil, nil
+	}
+	return r.byID[id], nil
 }
 
 func (r *testAuditRepo) List(_ context.Context, _, _ int, _, _ string, _, _ *string) ([]*entity.AuditLog, int64, error) {
@@ -27,7 +35,12 @@ func (r *testAuditRepo) List(_ context.Context, _, _ int, _, _ string, _, _ *str
 }
 
 func (r *testAuditRepo) Create(_ context.Context, log *entity.AuditLog) error {
+	log.ID = uint64(len(r.created) + 1)
 	r.created = append(r.created, log)
+	if r.byID == nil {
+		r.byID = map[uint64]*entity.AuditLog{}
+	}
+	r.byID[log.ID] = log
 	return nil
 }
 
@@ -72,7 +85,7 @@ func TestUploadCtrl_UploadAvatar_COS_OK(t *testing.T) {
 	assert.Contains(t, url, "/miniapp-test/avatar/")
 }
 
-func TestUploadCtrl_GenerateCourseVideoPresignURL_COS_OK(t *testing.T) {
+func TestUploadCtrl_GenerateAdminUploadPresignURL_EmbeddedImage_OK(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 	auditRepo := &testAuditRepo{}
 	ctrl := NewUploadControllerWithCOS("/tmp/uploads_test", "http://cos:9000", "http://cos:9000", "miniapp-test", logrus.New()).WithAuditRepo(auditRepo)
@@ -83,9 +96,9 @@ func TestUploadCtrl_GenerateCourseVideoPresignURL_COS_OK(t *testing.T) {
 		ctx.Set("user_type", int8(2))
 		ctx.Next()
 	})
-	r.GET("/upload/course/video/presign", ctrl.GenerateCourseVideoPresignURL)
+	r.GET("/admin/upload/files/presign", ctrl.GenerateAdminUploadPresignURL)
 
-	req, _ := http.NewRequest(http.MethodGet, "/upload/course/video/presign?filename=video.mp4&expires_in=600", nil)
+	req, _ := http.NewRequest(http.MethodGet, "/admin/upload/files/presign?filename=embed.png&usage=embedded&expires_in=600", nil)
 	w := httptest.NewRecorder()
 	r.ServeHTTP(w, req)
 
@@ -93,13 +106,14 @@ func TestUploadCtrl_GenerateCourseVideoPresignURL_COS_OK(t *testing.T) {
 	var resp map[string]interface{}
 	_ = json.Unmarshal(w.Body.Bytes(), &resp)
 	data, _ := resp["data"].(map[string]interface{})
-	assert.Contains(t, data["put_url"], "http://cos:9000/miniapp-test/course-video/")
-	assert.Contains(t, data["url"], "http://cos:9000/miniapp-test/course-video/")
+	assert.NotZero(t, data["file_id"])
+	assert.Contains(t, data["put_url"], "http://cos:9000/miniapp-test/embedded-image/")
+	assert.Contains(t, data["static_url"], "http://cos:9000/miniapp-test/embedded-image/")
 	assert.Len(t, auditRepo.created, 1)
-	assert.Contains(t, auditRepo.created[0].RequestData, "course-video")
+	assert.Contains(t, auditRepo.created[0].RequestData, "\"usage\":\"embedded\"")
 }
 
-func TestUploadCtrl_GenerateCourseVideoPresignURL_ForbiddenForFrontUser(t *testing.T) {
+func TestUploadCtrl_GenerateAdminUploadPresignURL_ForbiddenForFrontUser(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 	ctrl := NewUploadControllerWithCOS("/tmp/uploads_test", "http://cos:9000", "http://cos:9000", "miniapp-test", logrus.New())
 	r := gin.New()
@@ -109,23 +123,66 @@ func TestUploadCtrl_GenerateCourseVideoPresignURL_ForbiddenForFrontUser(t *testi
 		ctx.Set("user_type", int8(1))
 		ctx.Next()
 	})
-	r.GET("/upload/course/video/presign", ctrl.GenerateCourseVideoPresignURL)
+	r.GET("/admin/upload/files/presign", ctrl.GenerateAdminUploadPresignURL)
 
-	req, _ := http.NewRequest(http.MethodGet, "/upload/course/video/presign?filename=video.mp4", nil)
+	req, _ := http.NewRequest(http.MethodGet, "/admin/upload/files/presign?filename=video.mp4", nil)
 	w := httptest.NewRecorder()
 	r.ServeHTTP(w, req)
 
 	assert.Equal(t, http.StatusForbidden, w.Code)
 }
 
-func TestUploadCtrl_GenerateCourseVideoDownloadURL_COS_OK(t *testing.T) {
+func TestUploadCtrl_GenerateStaticMaterialURL_ValidatesCosContentType(t *testing.T) {
 	gin.SetMode(gin.TestMode)
-	ctrl := NewUploadControllerWithCOS("/tmp/uploads_test", "http://cos:9000", "http://cos:9000", "miniapp-test", logrus.New())
+	mockCOS := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method == http.MethodHead {
+			w.Header().Set("Content-Type", "application/pdf")
+			w.WriteHeader(http.StatusOK)
+			return
+		}
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer mockCOS.Close()
+	auditRepo := &testAuditRepo{
+		byID: map[uint64]*entity.AuditLog{
+			1: {
+				ID:     1,
+				Action: "file_asset",
+				Module: "file_upload",
+				RequestData: `{"key":"embedded-image/20260317/a.png","usage":"embedded","category":"image","protected":false}`,
+			},
+		},
+	}
+	ctrl := NewUploadControllerWithCOS("/tmp/uploads_test", mockCOS.URL, mockCOS.URL, "miniapp-test", logrus.New()).WithAuditRepo(auditRepo)
 	r := gin.New()
 	r.Use(middleware.ErrorMiddleware(logrus.New()))
-	r.GET("/download/course/video", ctrl.GenerateCourseVideoDownloadURL)
+	r.GET("/download/static/:file_id", ctrl.GenerateStaticMaterialURL)
 
-	req, _ := http.NewRequest(http.MethodGet, "/download/course/video?key=course-video/20260317/test.mp4", nil)
+	req, _ := http.NewRequest(http.MethodGet, "/download/static/1", nil)
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusForbidden, w.Code)
+}
+
+func TestUploadCtrl_GenerateCourseVideoDownloadURL_ByFileID_OK(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	auditRepo := &testAuditRepo{
+		byID: map[uint64]*entity.AuditLog{
+			11: {
+				ID:     11,
+				Action: "file_asset",
+				Module: "file_upload",
+				RequestData: `{"key":"protected-video/20260317/test.mp4","usage":"protected","category":"video","protected":true}`,
+			},
+		},
+	}
+	ctrl := NewUploadControllerWithCOS("/tmp/uploads_test", "http://cos:9000", "http://cos:9000", "miniapp-test", logrus.New()).WithAuditRepo(auditRepo)
+	r := gin.New()
+	r.Use(middleware.ErrorMiddleware(logrus.New()))
+	r.GET("/download/course/video/:file_id", ctrl.GenerateCourseVideoDownloadURL)
+
+	req, _ := http.NewRequest(http.MethodGet, "/download/course/video/11", nil)
 	w := httptest.NewRecorder()
 	r.ServeHTTP(w, req)
 
@@ -133,5 +190,5 @@ func TestUploadCtrl_GenerateCourseVideoDownloadURL_COS_OK(t *testing.T) {
 	var resp map[string]interface{}
 	_ = json.Unmarshal(w.Body.Bytes(), &resp)
 	data, _ := resp["data"].(map[string]interface{})
-	assert.Contains(t, data["download"], "http://cos:9000/miniapp-test/course-video/20260317/test.mp4")
+	assert.Contains(t, data["download"], "http://cos:9000/miniapp-test/protected-video/20260317/test.mp4")
 }

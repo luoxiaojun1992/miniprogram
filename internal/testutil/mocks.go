@@ -641,8 +641,16 @@ func (m *MockWechatConfigRepository) Update(ctx context.Context, cfg *entity.Wec
 
 // MockAuditLogRepository is a test double for repository.AuditLogRepository.
 type MockAuditLogRepository struct {
+	GetByIDFn func(ctx context.Context, id uint64) (*entity.AuditLog, error)
 	ListFn   func(ctx context.Context, page, pageSize int, module, action string, startTime, endTime *string) ([]*entity.AuditLog, int64, error)
 	CreateFn func(ctx context.Context, log *entity.AuditLog) error
+}
+
+func (m *MockAuditLogRepository) GetByID(ctx context.Context, id uint64) (*entity.AuditLog, error) {
+	if m.GetByIDFn != nil {
+		return m.GetByIDFn(ctx, id)
+	}
+	return nil, nil
 }
 
 func (m *MockAuditLogRepository) List(ctx context.Context, page, pageSize int, module, action string, startTime, endTime *string) ([]*entity.AuditLog, int64, error) {

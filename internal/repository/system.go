@@ -50,6 +50,18 @@ func NewAuditLogRepository(db *gorm.DB) AuditLogRepository {
 	return &auditLogRepository{db: db}
 }
 
+func (r *auditLogRepository) GetByID(ctx context.Context, id uint64) (*entity.AuditLog, error) {
+	var log entity.AuditLog
+	res := r.db.WithContext(ctx).First(&log, id)
+	if res.Error == gorm.ErrRecordNotFound {
+		return nil, nil
+	}
+	if res.Error != nil {
+		return nil, errors.NewInternal("查询审计日志失败", res.Error)
+	}
+	return &log, nil
+}
+
 func (r *auditLogRepository) List(ctx context.Context, page, pageSize int, module, action string, startTime, endTime *string) ([]*entity.AuditLog, int64, error) {
 	db := r.db.WithContext(ctx).Model(&entity.AuditLog{})
 	if module != "" {

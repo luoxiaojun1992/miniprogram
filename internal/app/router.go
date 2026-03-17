@@ -95,10 +95,11 @@ func InitRouter(p *Provider) *gin.Engine {
 
 		// Upload
 		authRequired.POST("/upload/avatar", p.UploadCtrl.UploadAvatar)
-		authRequired.GET("/download/course/video", p.UploadCtrl.GenerateCourseVideoDownloadURL)
-		authRequired.GET("/download/article/attachment", p.UploadCtrl.GenerateArticleAttachmentDownloadURL)
-		authRequired.GET("/download/course/attachment", p.UploadCtrl.GenerateCourseAttachmentDownloadURL)
+		authRequired.GET("/download/course/video/:file_id", p.UploadCtrl.GenerateCourseVideoDownloadURL)
+		authRequired.GET("/download/article/attachment/:file_id", p.UploadCtrl.GenerateArticleAttachmentDownloadURL)
+		authRequired.GET("/download/course/attachment/:file_id", p.UploadCtrl.GenerateCourseAttachmentDownloadURL)
 	}
+	v1.GET("/download/static/:file_id", p.UploadCtrl.GenerateStaticMaterialURL)
 
 	// Comments (public read)
 	v1.GET("/comments/:content_type/:content_id", p.CommentCtrl.List)
@@ -171,10 +172,7 @@ func InitRouter(p *Provider) *gin.Engine {
 		admin.PUT("/log-config", p.SystemCtrl.UpdateLogConfig)
 
 		// Upload
-		admin.POST("/upload/article/image", p.UploadCtrl.UploadArticleImage)
-		admin.GET("/upload/course/video/presign", p.UploadCtrl.GenerateCourseVideoPresignURL)
-		admin.GET("/upload/article/attachment/presign", p.UploadCtrl.GenerateArticleAttachmentPresignURL)
-		admin.GET("/upload/course/attachment/presign", p.UploadCtrl.GenerateCourseAttachmentPresignURL)
+		admin.GET("/upload/files/presign", p.UploadCtrl.GenerateAdminUploadPresignURL)
 
 		// Attributes
 		admin.GET("/attributes", p.AttributeCtrl.List)
