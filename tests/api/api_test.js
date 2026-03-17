@@ -38,6 +38,12 @@ function ok(r) {
   return r.status >= 200 && r.status < 300;
 }
 
+function multipartHeaders(token) {
+  const h = {};
+  if (token) h['Authorization'] = `Bearer ${token}`;
+  return { headers: h };
+}
+
 // ---------------------------------------------------------------------------
 // setup – runs once before any VU iteration
 // ---------------------------------------------------------------------------
@@ -314,6 +320,20 @@ export default function (data) {
     // Notifications – mark all read
     const readAllRes = http.put(`${BASE_URL}/v1/notifications/read-all`, null, userH);
     check(readAllRes, { 'PUT /v1/notifications/read-all: 2xx': (r) => ok(r) });
+
+    // Upload image (COS-backed in docker API tests)
+    const uploadPayload = {
+      file: http.file(new Uint8Array([137, 80, 78, 71]), 'k6.png', 'image/png'),
+      type: 'article',
+    };
+    const uploadRes = http.post(`${BASE_URL}/v1/upload/image`, uploadPayload, multipartHeaders(userToken));
+    check(uploadRes, {
+      'POST /v1/upload/image: 200': (r) => r.status === 200,
+      'POST /v1/upload/image: cos url': (r) => {
+        const url = r.json('data.url');
+        return typeof url === 'string' && url.indexOf('/miniapp-test/article/') !== -1;
+      },
+    });
   });
 
   // -------------------------------------------------------------------------

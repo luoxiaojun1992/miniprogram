@@ -3,6 +3,7 @@ package app
 import (
 	"fmt"
 
+	"github.com/redis/go-redis/v9"
 	"github.com/sirupsen/logrus"
 	"gorm.io/driver/mysql"
 	"gorm.io/gorm"
@@ -19,6 +20,7 @@ type Provider struct {
 	Config *Config
 	Log    *logrus.Logger
 	DB     *gorm.DB
+	Redis  redis.UniversalClient
 
 	// Repositories
 	UserRepo              repository.UserRepository
@@ -94,13 +96,16 @@ func NewProvider(cfg *Config) (*Provider, error) {
 	}
 	p.DB = db
 
-	// 3. Init Repositories
+	// 3. Init Redis
+	p.Redis = initRedis(cfg.Redis)
+
+	// 4. Init Repositories
 	p.initRepositories()
 
-	// 4. Init Services
+	// 5. Init Services
 	p.initServices()
 
-	// 5. Init Controllers
+	// 6. Init Controllers
 	p.initControllers()
 
 	return p, nil
@@ -135,6 +140,14 @@ func initDatabase(cfg DatabaseConfig) (*gorm.DB, error) {
 	sqlDB.SetMaxOpenConns(100)
 	sqlDB.SetMaxIdleConns(10)
 	return db, nil
+}
+
+func initRedis(cfg RedisConfig) redis.UniversalClient {
+	return redis.NewClient(&redis.Options{
+		Addr:     fmt.Sprintf("%s:%d", cfg.Host, cfg.Port),
+		Password: cfg.Password,
+		DB:       cfg.DB,
+	})
 }
 
 func (p *Provider) initRepositories() {
@@ -206,9 +219,19 @@ func (p *Provider) initControllers() {
 	p.CommentCtrl = controller.NewCommentController(p.CommentSvc, p.Log)
 	p.NotificationCtrl = controller.NewNotificationController(p.NotificationSvc, p.Log)
 	p.SystemCtrl = controller.NewSystemController(p.WechatConfigSvc, p.AuditLogSvc, p.LogConfigSvc, p.Log)
-	p.UploadCtrl = controller.NewUploadController(
-		p.Config.Upload.Dir, p.Config.Upload.BaseURL, p.Log,
-	)
+	if p.Config.Upload.Provider == "cos" && p.Config.Upload.COSEndpoint != "" && p.Config.Upload.COSBucket != "" {
+		p.UploadCtrl = controller.NewUploadControllerWithCOS(
+			p.Config.Upload.Dir,
+			p.Config.Upload.BaseURL,
+			p.Config.Upload.COSEndpoint,
+			p.Config.Upload.COSBucket,
+			p.Log,
+		)
+	} else {
+		p.UploadCtrl = controller.NewUploadController(
+			p.Config.Upload.Dir, p.Config.Upload.BaseURL, p.Log,
+		)
+	}
 	p.DebugCtrl = controller.NewDebugController(
 		p.UserRepo, p.Config.JWT.Secret, p.Config.JWT.Expiry, p.Log,
 	)

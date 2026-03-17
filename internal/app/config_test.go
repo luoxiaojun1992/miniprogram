@@ -27,6 +27,16 @@ func TestInitConfig_EnvVarsOnly(t *testing.T) {
 	t.Setenv("APP_WECHAT_APP_SECRET", "wxsecret")
 	t.Setenv("APP_UPLOAD_DIR", "/tmp/uploads")
 	t.Setenv("APP_UPLOAD_BASE_URL", "http://example.com/static")
+	t.Setenv("APP_UPLOAD_PROVIDER", "cos")
+	t.Setenv("APP_UPLOAD_COS_ENDPOINT", "http://cos:9000")
+	t.Setenv("APP_UPLOAD_COS_BUCKET", "test-bucket")
+	t.Setenv("APP_REDIS_HOST", "redis")
+	t.Setenv("APP_REDIS_PORT", "6380")
+	t.Setenv("APP_REDIS_PASSWORD", "redis-pass")
+	t.Setenv("APP_REDIS_DB", "2")
+	t.Setenv("APP_RATE_LIMIT_ENABLED", "true")
+	t.Setenv("APP_RATE_LIMIT_REQUESTS", "42")
+	t.Setenv("APP_RATE_LIMIT_WINDOW_SECONDS", "30")
 	t.Setenv("APP_DEBUG_ENABLE_TEST_TOKEN", "true")
 
 	cfg, err := InitConfig("")
@@ -46,6 +56,16 @@ func TestInitConfig_EnvVarsOnly(t *testing.T) {
 	assert.Equal(t, "wxsecret", cfg.Wechat.AppSecret)
 	assert.Equal(t, "/tmp/uploads", cfg.Upload.Dir)
 	assert.Equal(t, "http://example.com/static", cfg.Upload.BaseURL)
+	assert.Equal(t, "cos", cfg.Upload.Provider)
+	assert.Equal(t, "http://cos:9000", cfg.Upload.COSEndpoint)
+	assert.Equal(t, "test-bucket", cfg.Upload.COSBucket)
+	assert.Equal(t, "redis", cfg.Redis.Host)
+	assert.Equal(t, 6380, cfg.Redis.Port)
+	assert.Equal(t, "redis-pass", cfg.Redis.Password)
+	assert.Equal(t, 2, cfg.Redis.DB)
+	assert.True(t, cfg.RateLimit.Enabled)
+	assert.Equal(t, 42, cfg.RateLimit.Requests)
+	assert.Equal(t, 30, cfg.RateLimit.WindowSeconds)
 	assert.True(t, cfg.Debug.EnableTestToken)
 }
 
@@ -61,6 +81,9 @@ func TestInitConfig_Defaults(t *testing.T) {
 		"APP_LOG_LEVEL",
 		"APP_WECHAT_APP_ID", "APP_WECHAT_APP_SECRET",
 		"APP_UPLOAD_DIR", "APP_UPLOAD_BASE_URL",
+		"APP_UPLOAD_PROVIDER", "APP_UPLOAD_COS_ENDPOINT", "APP_UPLOAD_COS_BUCKET",
+		"APP_REDIS_HOST", "APP_REDIS_PORT", "APP_REDIS_PASSWORD", "APP_REDIS_DB",
+		"APP_RATE_LIMIT_ENABLED", "APP_RATE_LIMIT_REQUESTS", "APP_RATE_LIMIT_WINDOW_SECONDS",
 		"APP_DEBUG_ENABLE_TEST_TOKEN",
 	}
 	for _, v := range vars {
@@ -79,5 +102,11 @@ func TestInitConfig_Defaults(t *testing.T) {
 	assert.Equal(t, 7200, cfg.JWT.Expiry)
 	assert.Equal(t, "info", cfg.Log.Level)
 	assert.Equal(t, "storage/uploads", cfg.Upload.Dir)
+	assert.Equal(t, "local", cfg.Upload.Provider)
+	assert.Equal(t, "localhost", cfg.Redis.Host)
+	assert.Equal(t, 6379, cfg.Redis.Port)
+	assert.True(t, cfg.RateLimit.Enabled)
+	assert.Equal(t, 300, cfg.RateLimit.Requests)
+	assert.Equal(t, 60, cfg.RateLimit.WindowSeconds)
 	assert.False(t, cfg.Debug.EnableTestToken)
 }

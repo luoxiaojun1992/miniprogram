@@ -1,6 +1,8 @@
 package app
 
 import (
+	"time"
+
 	"github.com/gin-gonic/gin"
 
 	"github.com/luoxiaojun1992/miniprogram/internal/middleware"
@@ -17,6 +19,14 @@ func InitRouter(p *Provider) *gin.Engine {
 	r.Use(middleware.CorsMiddleware())
 	r.Use(middleware.RequestIDMiddleware())
 	r.Use(middleware.LoggerMiddleware(p.Log))
+	if p.Config.RateLimit.Enabled {
+		r.Use(middleware.RateLimitMiddleware(
+			middleware.NewRedisRateLimitStore(p.Redis),
+			int64(p.Config.RateLimit.Requests),
+			time.Duration(p.Config.RateLimit.WindowSeconds)*time.Second,
+			p.Log,
+		))
+	}
 
 	// Health check
 	r.GET("/health", func(ctx *gin.Context) {
