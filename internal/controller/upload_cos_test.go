@@ -192,3 +192,39 @@ func TestUploadCtrl_GenerateCourseVideoDownloadURL_ByFileID_OK(t *testing.T) {
 	data, _ := resp["data"].(map[string]interface{})
 	assert.Contains(t, data["download"], "http://cos:9000/miniapp-test/protected-video/20260317/test.mp4")
 }
+
+func TestUploadCtrl_GenerateCourseAttachmentPresignURL_RejectsZip(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	ctrl := NewUploadControllerWithCOS("/tmp/uploads_test", "http://cos:9000", "http://cos:9000", "miniapp-test", logrus.New())
+	r := gin.New()
+	r.Use(middleware.ErrorMiddleware(logrus.New()))
+	r.Use(func(ctx *gin.Context) {
+		ctx.Set("user_id", uint64(99))
+		ctx.Set("user_type", int8(2))
+		ctx.Next()
+	})
+	r.GET("/upload/course/attachment/presign", ctrl.GenerateCourseAttachmentPresignURL)
+
+	req, _ := http.NewRequest(http.MethodGet, "/upload/course/attachment/presign?filename=course.zip", nil)
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+	assert.Equal(t, http.StatusBadRequest, w.Code)
+}
+
+func TestUploadCtrl_GenerateArticleAttachmentPresignURL_AllowsZip(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	ctrl := NewUploadControllerWithCOS("/tmp/uploads_test", "http://cos:9000", "http://cos:9000", "miniapp-test", logrus.New())
+	r := gin.New()
+	r.Use(middleware.ErrorMiddleware(logrus.New()))
+	r.Use(func(ctx *gin.Context) {
+		ctx.Set("user_id", uint64(99))
+		ctx.Set("user_type", int8(2))
+		ctx.Next()
+	})
+	r.GET("/upload/article/attachment/presign", ctrl.GenerateArticleAttachmentPresignURL)
+
+	req, _ := http.NewRequest(http.MethodGet, "/upload/article/attachment/presign?filename=article.zip", nil)
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+	assert.Equal(t, http.StatusOK, w.Code)
+}
