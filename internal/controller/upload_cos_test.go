@@ -12,6 +12,8 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
+
+	"github.com/luoxiaojun1992/miniprogram/internal/middleware"
 )
 
 func TestUploadCtrl_UploadImage_COS_OK(t *testing.T) {
@@ -31,6 +33,7 @@ func TestUploadCtrl_UploadImage_COS_OK(t *testing.T) {
 
 	ctrl := NewUploadControllerWithCOS("/tmp/uploads_test", mockCOS.URL, mockCOS.URL, "miniapp-test", logrus.New())
 	r := gin.New()
+	r.Use(middleware.ErrorMiddleware(logrus.New()))
 	r.POST("/upload/image", ctrl.UploadImage)
 
 	var body bytes.Buffer
@@ -59,6 +62,7 @@ func TestUploadCtrl_GeneratePresignURL_COS_OK(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 	ctrl := NewUploadControllerWithCOS("/tmp/uploads_test", "http://cos:9000", "http://cos:9000", "miniapp-test", logrus.New())
 	r := gin.New()
+	r.Use(middleware.ErrorMiddleware(logrus.New()))
 	r.GET("/upload/presign", ctrl.GeneratePresignURL)
 
 	req, _ := http.NewRequest(http.MethodGet, "/upload/presign?filename=video.mp4&expires_in=600", nil)
@@ -77,6 +81,7 @@ func TestUploadCtrl_GeneratePresignURL_InvalidFilename(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 	ctrl := NewUploadControllerWithCOS("/tmp/uploads_test", "http://cos:9000", "http://cos:9000", "miniapp-test", logrus.New())
 	r := gin.New()
+	r.Use(middleware.ErrorMiddleware(logrus.New()))
 	r.GET("/upload/presign", ctrl.GeneratePresignURL)
 
 	req, _ := http.NewRequest(http.MethodGet, "/upload/presign?filename=video.avi", nil)
