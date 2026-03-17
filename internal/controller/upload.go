@@ -3,6 +3,7 @@ package controller
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"fmt"
 	"io"
 	"mime/multipart"
@@ -20,6 +21,9 @@ import (
 	"github.com/google/uuid"
 	"github.com/sirupsen/logrus"
 
+	"github.com/luoxiaojun1992/miniprogram/internal/middleware"
+	"github.com/luoxiaojun1992/miniprogram/internal/model/entity"
+	"github.com/luoxiaojun1992/miniprogram/internal/repository"
 	apperrors "github.com/luoxiaojun1992/miniprogram/internal/pkg/errors"
 	"github.com/luoxiaojun1992/miniprogram/internal/pkg/response"
 )
@@ -30,6 +34,7 @@ type UploadController struct {
 	baseURL   string
 	log       *logrus.Logger
 	cos       *cosUploader
+	auditRepo repository.AuditLogRepository
 }
 
 // NewUploadController creates a new UploadController.
@@ -53,6 +58,67 @@ func NewUploadControllerWithCOS(uploadDir, baseURL, endpoint, bucket string, log
 			client:        &http.Client{Timeout: 30 * time.Second},
 		},
 	}
+}
+
+func (c *UploadController) WithAuditRepo(auditRepo repository.AuditLogRepository) *UploadController {
+	c.auditRepo = auditRepo
+	return c
+}
+
+// UploadAvatar handles POST /upload/avatar.
+func (c *UploadController) UploadAvatar(ctx *gin.Context) {
+	c.uploadImageWithPrefix(ctx, "avatar")
+}
+
+// UploadArticleImage handles POST /upload/article/image.
+func (c *UploadController) UploadArticleImage(ctx *gin.Context) {
+	if !isAdminUser(ctx) {
+		ctx.Error(apperrors.NewForbidden("仅管理员可上传文章图片", nil))
+		return
+	}
+	c.uploadImageWithPrefix(ctx, "article-image")
+}
+
+// GenerateCourseVideoPresignURL handles GET /upload/course/video/presign.
+func (c *UploadController) GenerateCourseVideoPresignURL(ctx *gin.Context) {
+	if !isAdminUser(ctx) {
+		ctx.Error(apperrors.NewForbidden("仅管理员可上传课程视频", nil))
+		return
+	}
+	c.generatePresignUploadURL(ctx, "course-video", ".mp4")
+}
+
+// GenerateArticleAttachmentPresignURL handles GET /upload/article/attachment/presign.
+func (c *UploadController) GenerateArticleAttachmentPresignURL(ctx *gin.Context) {
+	if !isAdminUser(ctx) {
+		ctx.Error(apperrors.NewForbidden("仅管理员可上传文章附件", nil))
+		return
+	}
+	c.generatePresignUploadURL(ctx, "article-attachment", "")
+}
+
+// GenerateCourseAttachmentPresignURL handles GET /upload/course/attachment/presign.
+func (c *UploadController) GenerateCourseAttachmentPresignURL(ctx *gin.Context) {
+	if !isAdminUser(ctx) {
+		ctx.Error(apperrors.NewForbidden("仅管理员可上传课程附件", nil))
+		return
+	}
+	c.generatePresignUploadURL(ctx, "course-attachment", "")
+}
+
+// GenerateCourseVideoDownloadURL handles GET /download/course/video.
+func (c *UploadController) GenerateCourseVideoDownloadURL(ctx *gin.Context) {
+	c.generateTemporaryDownloadURL(ctx, "course-video")
+}
+
+// GenerateArticleAttachmentDownloadURL handles GET /download/article/attachment.
+func (c *UploadController) GenerateArticleAttachmentDownloadURL(ctx *gin.Context) {
+	c.generateTemporaryDownloadURL(ctx, "article-attachment")
+}
+
+// GenerateCourseAttachmentDownloadURL handles GET /download/course/attachment.
+func (c *UploadController) GenerateCourseAttachmentDownloadURL(ctx *gin.Context) {
+	c.generateTemporaryDownloadURL(ctx, "course-attachment")
 }
 
 // UploadImage handles POST /upload/image.
@@ -167,6 +233,148 @@ func (c *UploadController) GeneratePresignURL(ctx *gin.Context) {
 	})
 }
 
+func (c *UploadController) uploadImageWithPrefix(ctx *gin.Context, prefix string) {
+	file, header, err := ctx.Request.FormFile("file")
+	if err != nil {
+		ctx.Error(apperrors.NewBadRequest("获取文件失败", err))
+		return
+	}
+	defer file.Close()
+
+	ext := strings.ToLower(filepath.Ext(header.Filename))
+	allowed := map[string]bool{".jpg": true, ".jpeg": true, ".png": true, ".gif": true}
+	if !allowed[ext] {
+		ctx.Error(apperrors.NewBadRequest("不支持的文件类型", nil))
+		return
+	}
+	if header.Size > 5*1024*1024 {
+		ctx.Error(apperrors.NewBadRequest("文件大小超过5MB限制", nil))
+		return
+	}
+	contentType := header.Header.Get("Content-Type")
+	if contentType != "" && contentType != "application/octet-stream" && !strings.HasPrefix(contentType, "image/") {
+		ctx.Error(apperrors.NewBadRequest("仅支持图片MIME类型", nil))
+		return
+	}
+	if err := validateImageMagic(file, ext); err != nil {
+		ctx.Error(apperrors.NewBadRequest("图片文件内容非法", err))
+		return
+	}
+
+	key := generateObjectKey(prefix, ext)
+	uploadedURL, err := c.saveFile(ctx.Request.Context(), file, header, key)
+	if err != nil {
+		ctx.Error(err)
+		return
+	}
+	response.SuccessWithStatus(ctx, http.StatusOK, gin.H{"url": uploadedURL, "key": key})
+}
+
+func (c *UploadController) generatePresignUploadURL(ctx *gin.Context, businessType, forceExt string) {
+	if c.cos == nil {
+		ctx.Error(apperrors.NewBadRequest("当前存储不支持预签名上传", nil))
+		return
+	}
+
+	filename := strings.TrimSpace(ctx.Query("filename"))
+	if filename == "" {
+		ctx.Error(apperrors.NewBadRequest("filename不能为空", nil))
+		return
+	}
+	ext := strings.ToLower(filepath.Ext(filename))
+	if forceExt != "" && ext != forceExt {
+		ctx.Error(apperrors.NewBadRequest("文件扩展名不合法", nil))
+		return
+	}
+	if forceExt == "" && !attachmentTypePattern.MatchString(ext) {
+		ctx.Error(apperrors.NewBadRequest("附件扩展名不支持", nil))
+		return
+	}
+
+	expiresIn := 900
+	if raw := strings.TrimSpace(ctx.Query("expires_in")); raw != "" {
+		v, err := strconv.Atoi(raw)
+		if err != nil || v < 60 || v > 3600 {
+			ctx.Error(apperrors.NewBadRequest("expires_in必须在60-3600秒之间", err))
+			return
+		}
+		expiresIn = v
+	}
+
+	key := generateObjectKey(businessType, ext)
+	expireAt := time.Now().Add(time.Duration(expiresIn) * time.Second).Unix()
+	if err := c.recordUploadBusiness(ctx, businessType, key, filename, expiresIn); err != nil {
+		ctx.Error(err)
+		return
+	}
+
+	response.Success(ctx, gin.H{
+		"key":        key,
+		"url":        c.cos.objectURL(key),
+		"put_url":    c.cos.presignPutURL(key, expiresIn),
+		"expires_in": expiresIn,
+		"expire_at":  expireAt,
+	})
+}
+
+func (c *UploadController) generateTemporaryDownloadURL(ctx *gin.Context, businessType string) {
+	if c.cos == nil {
+		ctx.Error(apperrors.NewBadRequest("当前存储不支持临时下载链接", nil))
+		return
+	}
+	key := normalizeObjectKey(ctx.Query("key"))
+	if key == "" {
+		ctx.Error(apperrors.NewBadRequest("key不能为空", nil))
+		return
+	}
+	if !strings.HasPrefix(key, businessType+"/") {
+		ctx.Error(apperrors.NewForbidden("无权访问该文件", nil))
+		return
+	}
+
+	expiresIn := 300
+	if raw := strings.TrimSpace(ctx.Query("expires_in")); raw != "" {
+		v, err := strconv.Atoi(raw)
+		if err != nil || v < 60 || v > 3600 {
+			ctx.Error(apperrors.NewBadRequest("expires_in必须在60-3600秒之间", err))
+			return
+		}
+		expiresIn = v
+	}
+	response.Success(ctx, gin.H{
+		"key":        key,
+		"download":   c.cos.presignGetURL(key, expiresIn),
+		"expires_in": expiresIn,
+		"expire_at":  time.Now().Add(time.Duration(expiresIn) * time.Second).Unix(),
+	})
+}
+
+func (c *UploadController) recordUploadBusiness(ctx *gin.Context, businessType, key, filename string, expiresIn int) error {
+	if c.auditRepo == nil {
+		return nil
+	}
+	userID, _ := middleware.GetCurrentUserID(ctx)
+	payload, _ := json.Marshal(gin.H{
+		"business_type": businessType,
+		"key":           key,
+		"filename":      filename,
+		"expires_in":    expiresIn,
+	})
+	err := c.auditRepo.Create(ctx.Request.Context(), &entity.AuditLog{
+		UserID:      userID,
+		Action:      "upload_presign",
+		Module:      "file_upload",
+		Description: "生成上传预签名链接",
+		IPAddress:   ctx.ClientIP(),
+		UserAgent:   ctx.Request.UserAgent(),
+		RequestData: string(payload),
+	})
+	if err != nil {
+		return apperrors.NewInternal("记录上传业务类型失败", err)
+	}
+	return nil
+}
+
 func (c *UploadController) saveFile(ctx context.Context, file io.Reader, header *multipart.FileHeader, key string) (string, error) {
 	if c.cos != nil {
 		contentType := header.Header.Get("Content-Type")
@@ -243,6 +451,7 @@ func (u *cosUploader) upload(ctx context.Context, key string, file io.Reader, co
 }
 
 var uploadTypePattern = regexp.MustCompile(`^(avatar|article|course|cover)$`)
+var attachmentTypePattern = regexp.MustCompile(`^\.(pdf|doc|docx|xls|xlsx|ppt|pptx|zip|rar|7z|txt)$`)
 
 func sanitizeUploadType(raw string) string {
 	raw = strings.ToLower(strings.TrimSpace(raw))
@@ -262,6 +471,27 @@ func (u *cosUploader) objectURL(key string) string {
 
 func (u *cosUploader) presignPutURL(key string, expiresIn int) string {
 	return fmt.Sprintf("%s/%s/%s?expires_in=%d", strings.TrimRight(u.endpoint, "/"), url.PathEscape(u.bucket), escapeObjectKey(key), expiresIn)
+}
+
+func (u *cosUploader) presignGetURL(key string, expiresIn int) string {
+	return fmt.Sprintf("%s/%s/%s?expires_in=%d", strings.TrimRight(u.endpoint, "/"), url.PathEscape(u.bucket), escapeObjectKey(key), expiresIn)
+}
+
+func normalizeObjectKey(key string) string {
+	clean := path.Clean("/" + strings.TrimSpace(key))
+	if clean == "/" {
+		return ""
+	}
+	clean = strings.TrimPrefix(clean, "/")
+	if strings.Contains(clean, "..") {
+		return ""
+	}
+	return clean
+}
+
+func isAdminUser(ctx *gin.Context) bool {
+	userType, ok := middleware.GetCurrentUserType(ctx)
+	return ok && userType >= 2
 }
 
 func escapeObjectKey(key string) string {

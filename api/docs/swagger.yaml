@@ -2625,53 +2625,12 @@ paths:
 
   # ==================== 文件上传 ====================
   
-  /upload/presign:
-    get:
-      tags:
-        - 文件上传
-      summary: 获取视频上传预签名URL
-      description: 生成对象存储PUT上传地址，用于前端直传mp4
-      security:
-        - Bearer: []
-      parameters:
-        - name: filename
-          in: query
-          type: string
-          required: true
-          description: 原始文件名（仅支持.mp4）
-        - name: expires_in
-          in: query
-          type: integer
-          required: false
-          default: 900
-          description: 过期秒数，范围60-3600
-      responses:
-        200:
-          description: 生成成功
-          schema:
-            allOf:
-              - $ref: "#/definitions/ApiResponse"
-              - properties:
-                  data:
-                    type: object
-                    properties:
-                      key:
-                        type: string
-                      url:
-                        type: string
-                      put_url:
-                        type: string
-                      expires_in:
-                        type: integer
-                      expire_at:
-                        type: integer
-
-  /upload/image:
+  /upload/avatar:
     post:
       tags:
         - 文件上传
-      summary: 上传图片
-      description: 支持jpg、png、gif，最大5MB
+      summary: 上传头像图片
+      description: 前台用户仅允许上传头像；支持jpg、png、gif，最大5MB
       security:
         - Bearer: []
       consumes:
@@ -2681,13 +2640,7 @@ paths:
           in: formData
           type: file
           required: true
-          description: 图片文件
-        - name: type
-          in: formData
-          type: string
-          enum: ["avatar", "article", "course", "cover"]
-          default: "article"
-          description: 图片用途，影响存储路径和压缩策略
+          description: 头像图片文件
       responses:
         200:
           description: 上传成功
@@ -2704,13 +2657,12 @@ paths:
                       key:
                         type: string
                         description: 存储Key
-                        
-  /upload/video:
+
+  /admin/upload/article/image:
     post:
       tags:
         - 文件上传
-      summary: 上传视频
-      description: 支持mp4，最大500MB，建议先获取预签名URL后直传对象存储
+      summary: 上传文章内图片（管理员）
       security:
         - Bearer: []
       consumes:
@@ -2722,22 +2674,125 @@ paths:
           required: true
       responses:
         200:
-          description: 上传成功
-          schema:
-            allOf:
-              - $ref: "#/definitions/ApiResponse"
-              - properties:
-                  data:
-                    type: object
-                    properties:
-                      url:
-                        type: string
-                      duration:
-                        type: integer
-                        description: 视频时长（秒）
-                      cover_url:
-                        type: string
-                        description: 自动生成的封面图
+          $ref: "#/responses/Success"
+
+  /admin/upload/course/video/presign:
+    get:
+      tags:
+        - 文件上传
+      summary: 获取课程视频上传预签名URL（管理员）
+      description: 生成课程视频上传链接，并在数据库记录业务类型
+      security:
+        - Bearer: []
+      parameters:
+        - name: filename
+          in: query
+          type: string
+          required: true
+          description: 原始文件名（仅支持.mp4）
+        - name: expires_in
+          in: query
+          type: integer
+          required: false
+          default: 900
+      responses:
+        200:
+          $ref: "#/responses/Success"
+
+  /admin/upload/article/attachment/presign:
+    get:
+      tags:
+        - 文件上传
+      summary: 获取文章附件上传预签名URL（管理员）
+      security:
+        - Bearer: []
+      parameters:
+        - name: filename
+          in: query
+          type: string
+          required: true
+        - name: expires_in
+          in: query
+          type: integer
+          required: false
+          default: 900
+      responses:
+        200:
+          $ref: "#/responses/Success"
+
+  /admin/upload/course/attachment/presign:
+    get:
+      tags:
+        - 文件上传
+      summary: 获取课程附件上传预签名URL（管理员）
+      security:
+        - Bearer: []
+      parameters:
+        - name: filename
+          in: query
+          type: string
+          required: true
+        - name: expires_in
+          in: query
+          type: integer
+          required: false
+          default: 900
+      responses:
+        200:
+          $ref: "#/responses/Success"
+
+  /download/course/video:
+    get:
+      tags:
+        - 文件上传
+      summary: 获取课程视频临时下载链接（JWT）
+      security:
+        - Bearer: []
+      parameters:
+        - name: key
+          in: query
+          type: string
+          required: true
+        - name: expires_in
+          in: query
+          type: integer
+          required: false
+          default: 300
+      responses:
+        200:
+          $ref: "#/responses/Success"
+
+  /download/article/attachment:
+    get:
+      tags:
+        - 文件上传
+      summary: 获取文章附件临时下载链接（JWT）
+      security:
+        - Bearer: []
+      parameters:
+        - name: key
+          in: query
+          type: string
+          required: true
+      responses:
+        200:
+          $ref: "#/responses/Success"
+
+  /download/course/attachment:
+    get:
+      tags:
+        - 文件上传
+      summary: 获取课程附件临时下载链接（JWT）
+      security:
+        - Bearer: []
+      parameters:
+        - name: key
+          in: query
+          type: string
+          required: true
+      responses:
+        200:
+          $ref: "#/responses/Success"
 
 # 扩展字段说明（x- 字段）
 # x-permission: 接口所需的权限编码，用于前端权限控制和后端拦截器

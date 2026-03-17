@@ -226,11 +226,11 @@ func (p *Provider) initControllers() {
 			p.Config.Upload.COSEndpoint,
 			p.Config.Upload.COSBucket,
 			p.Log,
-		)
+		).WithAuditRepo(p.AuditLogRepo)
 	} else {
 		p.UploadCtrl = controller.NewUploadController(
 			p.Config.Upload.Dir, p.Config.Upload.BaseURL, p.Log,
-		)
+		).WithAuditRepo(p.AuditLogRepo)
 	}
 	p.DebugCtrl = controller.NewDebugController(
 		p.UserRepo, p.Config.JWT.Secret, p.Config.JWT.Expiry, p.Log,
