@@ -9,6 +9,8 @@ import (
 	"github.com/DATA-DOG/go-sqlmock"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"github.com/luoxiaojun1992/miniprogram/internal/model/entity"
 )
 
 var notificationColumns = []string{"id", "user_id", "title", "content", "is_read", "created_at"}
@@ -181,4 +183,20 @@ func TestNotificationRepository_MarkAllRead_Error(t *testing.T) {
 
 	err := repo.MarkAllRead(context.Background(), 10)
 	assert.Error(t, err)
+}
+
+func TestNotificationRepository_Create_Success(t *testing.T) {
+	db, mock := newTestDB(t)
+	repo := NewNotificationRepository(db)
+
+	mock.ExpectBegin()
+	mock.ExpectExec("INSERT").WillReturnResult(sqlmock.NewResult(1, 1))
+	mock.ExpectCommit()
+
+	err := repo.Create(context.Background(), &entity.Notification{
+		Type:    2,
+		Title:   "title",
+		Content: "content",
+	})
+	require.NoError(t, err)
 }

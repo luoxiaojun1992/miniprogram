@@ -263,3 +263,11 @@ func (r *commentRepository) Delete(ctx context.Context, id uint64) error {
 	}
 	return nil
 }
+
+func (r *commentRepository) HasReplies(ctx context.Context, id uint64) (bool, error) {
+	var count int64
+	if err := r.db.WithContext(ctx).Model(&entity.Comment{}).Where("parent_id = ?", id).Count(&count).Error; err != nil {
+		return false, errors.NewInternal("查询评论回复失败", err)
+	}
+	return count > 0, nil
+}

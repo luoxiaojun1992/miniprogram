@@ -184,19 +184,41 @@ func (r CreateModulePageRequest) Validate() error {
 	)
 }
 
+// ==================== Banner DTOs ====================
+
+// CreateBannerRequest is the request body for creating/updating a banner.
+type CreateBannerRequest struct {
+	Title       string `json:"title"`
+	ImageFileID uint64 `json:"image_file_id"`
+	LinkURL     string `json:"link_url"`
+	SortOrder   int    `json:"sort_order"`
+	Status      int8   `json:"status"`
+}
+
+// Validate validates CreateBannerRequest.
+func (r CreateBannerRequest) Validate() error {
+	return validation.ValidateStruct(&r,
+		validation.Field(&r.Title, validation.Required, validation.Length(1, 128)),
+		validation.Field(&r.ImageFileID, validation.Required, validation.Min(uint64(1))),
+		validation.Field(&r.Status, validation.In(int8(0), int8(1))),
+		validation.Field(&r.LinkURL, validation.Length(0, 255)),
+	)
+}
+
 // ==================== Article DTOs ====================
 
 // CreateArticleRequest is the request body for creating an article.
 type CreateArticleRequest struct {
-	Title           string     `json:"title"`
-	Summary         string     `json:"summary"`
-	Content         string     `json:"content"`
-	ContentType     int8       `json:"content_type"`
-	CoverImage      string     `json:"cover_image"`
-	ModuleID        uint       `json:"module_id"`
-	Status          int8       `json:"status"`
-	PublishTime     *time.Time `json:"publish_time"`
-	RolePermissions []uint     `json:"role_permissions"`
+	Title             string     `json:"title"`
+	Summary           string     `json:"summary"`
+	Content           string     `json:"content"`
+	ContentType       int8       `json:"content_type"`
+	CoverImage        string     `json:"cover_image"`
+	ModuleID          uint       `json:"module_id"`
+	Status            int8       `json:"status"`
+	PublishTime       *time.Time `json:"publish_time"`
+	AttachmentFileIDs []uint64   `json:"attachment_file_ids"`
+	RolePermissions   []uint     `json:"role_permissions"`
 }
 
 // Validate validates CreateArticleRequest.
@@ -211,15 +233,16 @@ func (r CreateArticleRequest) Validate() error {
 
 // UpdateArticleRequest is the request body for updating an article.
 type UpdateArticleRequest struct {
-	Title           string     `json:"title"`
-	Summary         string     `json:"summary"`
-	Content         string     `json:"content"`
-	ContentType     int8       `json:"content_type"`
-	CoverImage      string     `json:"cover_image"`
-	ModuleID        uint       `json:"module_id"`
-	Status          int8       `json:"status"`
-	PublishTime     *time.Time `json:"publish_time"`
-	RolePermissions []uint     `json:"role_permissions"`
+	Title             string     `json:"title"`
+	Summary           string     `json:"summary"`
+	Content           string     `json:"content"`
+	ContentType       int8       `json:"content_type"`
+	CoverImage        string     `json:"cover_image"`
+	ModuleID          uint       `json:"module_id"`
+	Status            int8       `json:"status"`
+	PublishTime       *time.Time `json:"publish_time"`
+	AttachmentFileIDs []uint64   `json:"attachment_file_ids"`
+	RolePermissions   []uint     `json:"role_permissions"`
 }
 
 // Validate validates UpdateArticleRequest.
@@ -260,14 +283,15 @@ func (r PinArticleRequest) Validate() error {
 
 // CreateCourseRequest is the request body for creating a course.
 type CreateCourseRequest struct {
-	Title           string     `json:"title"`
-	Description     string     `json:"description"`
-	CoverImage      string     `json:"cover_image"`
-	Price           float64    `json:"price"`
-	ModuleID        uint       `json:"module_id"`
-	Status          int8       `json:"status"`
-	PublishTime     *time.Time `json:"publish_time"`
-	RolePermissions []uint     `json:"role_permissions"`
+	Title             string     `json:"title"`
+	Description       string     `json:"description"`
+	CoverImage        string     `json:"cover_image"`
+	Price             float64    `json:"price"`
+	ModuleID          uint       `json:"module_id"`
+	Status            int8       `json:"status"`
+	PublishTime       *time.Time `json:"publish_time"`
+	AttachmentFileIDs []uint64   `json:"attachment_file_ids"`
+	RolePermissions   []uint     `json:"role_permissions"`
 }
 
 // Validate validates CreateCourseRequest.
@@ -280,14 +304,15 @@ func (r CreateCourseRequest) Validate() error {
 
 // UpdateCourseRequest is the request body for updating a course.
 type UpdateCourseRequest struct {
-	Title           string     `json:"title"`
-	Description     string     `json:"description"`
-	CoverImage      string     `json:"cover_image"`
-	Price           float64    `json:"price"`
-	ModuleID        uint       `json:"module_id"`
-	Status          int8       `json:"status"`
-	PublishTime     *time.Time `json:"publish_time"`
-	RolePermissions []uint     `json:"role_permissions"`
+	Title             string     `json:"title"`
+	Description       string     `json:"description"`
+	CoverImage        string     `json:"cover_image"`
+	Price             float64    `json:"price"`
+	ModuleID          uint       `json:"module_id"`
+	Status            int8       `json:"status"`
+	PublishTime       *time.Time `json:"publish_time"`
+	AttachmentFileIDs []uint64   `json:"attachment_file_ids"`
+	RolePermissions   []uint     `json:"role_permissions"`
 }
 
 // Validate validates UpdateCourseRequest.
@@ -324,17 +349,16 @@ func (r PinCourseRequest) Validate() error {
 
 // CreateCourseUnitRequest is the request body for creating a course unit.
 type CreateCourseUnitRequest struct {
-	Title     string `json:"title"`
-	VideoURL  string `json:"video_url"`
-	Duration  uint   `json:"duration"`
-	SortOrder int    `json:"sort_order"`
+	Title       string `json:"title"`
+	VideoFileID uint64 `json:"video_file_id"`
+	Duration    uint   `json:"duration"`
+	SortOrder   int    `json:"sort_order"`
 }
 
 // Validate validates CreateCourseUnitRequest.
 func (r CreateCourseUnitRequest) Validate() error {
 	return validation.ValidateStruct(&r,
 		validation.Field(&r.Title, validation.Required, validation.Length(1, 200)),
-		validation.Field(&r.VideoURL, validation.Length(0, 255)),
 	)
 }
 

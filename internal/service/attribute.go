@@ -12,10 +12,10 @@ import (
 )
 
 type attributeService struct {
-	attrRepo   repository.AttributeRepository
-	uaRepo     repository.UserAttributeRepository
-	userRepo   repository.UserRepository
-	log        *logrus.Logger
+	attrRepo repository.AttributeRepository
+	uaRepo   repository.UserAttributeRepository
+	userRepo repository.UserRepository
+	log      *logrus.Logger
 }
 
 // NewAttributeService creates a new AttributeService.
@@ -66,6 +66,13 @@ func (s *attributeService) Delete(ctx context.Context, id uint) error {
 	}
 	if attr == nil {
 		return errors.NewNotFound("属性不存在", nil)
+	}
+	hasAssociations, err := s.attrRepo.HasUserAssociations(ctx, id)
+	if err != nil {
+		return err
+	}
+	if hasAssociations {
+		return errors.NewBadRequest("属性已被用户使用，禁止删除", nil)
 	}
 	return s.attrRepo.Delete(ctx, id)
 }

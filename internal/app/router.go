@@ -54,6 +54,7 @@ func InitRouter(p *Provider) *gin.Engine {
 	// ==================== Public Content ====================
 	// Modules (public read)
 	v1.GET("/modules", p.ModuleCtrl.List)
+	v1.GET("/banners", p.BannerCtrl.List)
 
 	// Articles (public list/detail with optional auth)
 	articles := v1.Group("/articles")
@@ -98,6 +99,7 @@ func InitRouter(p *Provider) *gin.Engine {
 		authRequired.GET("/download/course/video/:file_id", p.UploadCtrl.GenerateCourseVideoDownloadURL)
 		authRequired.GET("/download/article/attachment/:file_id", p.UploadCtrl.GenerateArticleAttachmentDownloadURL)
 		authRequired.GET("/download/course/attachment/:file_id", p.UploadCtrl.GenerateCourseAttachmentDownloadURL)
+		authRequired.GET("/download/banner/media/:file_id", p.UploadCtrl.GenerateBannerMediaDownloadURL)
 	}
 	v1.GET("/download/static/:file_id", p.UploadCtrl.GenerateStaticMaterialURL)
 
@@ -105,7 +107,12 @@ func InitRouter(p *Provider) *gin.Engine {
 	v1.GET("/comments/:content_type/:content_id", p.CommentCtrl.List)
 
 	// ==================== Admin ====================
-	admin := v1.Group("/admin", middleware.JWTAuthMiddleware(p.Config.JWT.Secret), middleware.RequireAdmin())
+	admin := v1.Group(
+		"/admin",
+		middleware.JWTAuthMiddleware(p.Config.JWT.Secret),
+		middleware.RequireAdmin(),
+		middleware.AuditLogMiddleware(p.AuditLogSvc),
+	)
 	{
 		// Users
 		admin.GET("/users", p.UserCtrl.AdminListUsers)
@@ -138,6 +145,12 @@ func InitRouter(p *Provider) *gin.Engine {
 		admin.POST("/modules/:id/pages", p.ModuleCtrl.CreatePage)
 		admin.PUT("/modules/:id/pages/:page_id", p.ModuleCtrl.UpdatePage)
 		admin.DELETE("/modules/:id/pages/:page_id", p.ModuleCtrl.DeletePage)
+
+		// Banners
+		admin.GET("/banners", p.BannerCtrl.AdminList)
+		admin.POST("/banners", p.BannerCtrl.AdminCreate)
+		admin.PUT("/banners/:id", p.BannerCtrl.AdminUpdate)
+		admin.DELETE("/banners/:id", p.BannerCtrl.AdminDelete)
 
 		// Articles
 		admin.GET("/articles", p.ArticleCtrl.AdminList)
@@ -177,6 +190,7 @@ func InitRouter(p *Provider) *gin.Engine {
 
 		// Upload
 		admin.GET("/upload/files/presign", p.UploadCtrl.GenerateAdminUploadPresignURL)
+		admin.GET("/upload/banner/media/presign", p.UploadCtrl.GenerateBannerMediaPresignURL)
 
 		// Attributes
 		admin.GET("/attributes", p.AttributeCtrl.List)

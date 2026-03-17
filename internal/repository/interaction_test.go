@@ -527,6 +527,16 @@ func TestCommentRepository_ListAdmin_NoFilter(t *testing.T) {
 	require.NoError(t, err)
 }
 
+func TestCommentRepository_HasReplies_Success(t *testing.T) {
+	db, mock := newTestDB(t)
+	repo := NewCommentRepository(db)
+
+	mock.ExpectQuery("SELECT count").WillReturnRows(sqlmock.NewRows([]string{"count"}).AddRow(1))
+	ok, err := repo.HasReplies(context.Background(), 1)
+	require.NoError(t, err)
+	assert.True(t, ok)
+}
+
 func TestCommentRepository_ListAdmin_CountError(t *testing.T) {
 	db, mock := newTestDB(t)
 	repo := NewCommentRepository(db)

@@ -232,3 +232,61 @@ func TestArticleRepository_IncrViewCount_Error(t *testing.T) {
 	err := repo.IncrViewCount(context.Background(), 1)
 	assert.Error(t, err)
 }
+
+func TestArticleRepository_IncrLikeCount_Success(t *testing.T) {
+	db, mock := newTestDB(t)
+	repo := NewArticleRepository(db)
+	mock.ExpectExec("UPDATE articles SET like_count").WillReturnResult(sqlmock.NewResult(1, 1))
+	require.NoError(t, repo.IncrLikeCount(context.Background(), 1))
+}
+
+func TestArticleRepository_DecrLikeCount_Success(t *testing.T) {
+	db, mock := newTestDB(t)
+	repo := NewArticleRepository(db)
+	mock.ExpectExec("UPDATE articles SET like_count = CASE").WillReturnResult(sqlmock.NewResult(1, 1))
+	require.NoError(t, repo.DecrLikeCount(context.Background(), 1))
+}
+
+func TestArticleRepository_IncrCollectCount_Success(t *testing.T) {
+	db, mock := newTestDB(t)
+	repo := NewArticleRepository(db)
+	mock.ExpectExec("UPDATE articles SET collect_count").WillReturnResult(sqlmock.NewResult(1, 1))
+	require.NoError(t, repo.IncrCollectCount(context.Background(), 1))
+}
+
+func TestArticleRepository_DecrCollectCount_Success(t *testing.T) {
+	db, mock := newTestDB(t)
+	repo := NewArticleRepository(db)
+	mock.ExpectExec("UPDATE articles SET collect_count = CASE").WillReturnResult(sqlmock.NewResult(1, 1))
+	require.NoError(t, repo.DecrCollectCount(context.Background(), 1))
+}
+
+func TestArticleRepository_IncrCommentCount_Success(t *testing.T) {
+	db, mock := newTestDB(t)
+	repo := NewArticleRepository(db)
+	mock.ExpectExec("UPDATE articles SET comment_count").WillReturnResult(sqlmock.NewResult(1, 1))
+	require.NoError(t, repo.IncrCommentCount(context.Background(), 1))
+}
+
+func TestArticleRepository_DecrCommentCount_Success(t *testing.T) {
+	db, mock := newTestDB(t)
+	repo := NewArticleRepository(db)
+	mock.ExpectExec("UPDATE articles SET comment_count = CASE").WillReturnResult(sqlmock.NewResult(1, 1))
+	require.NoError(t, repo.DecrCommentCount(context.Background(), 1))
+}
+
+func TestArticleRepository_IncrShareCount_Success(t *testing.T) {
+	db, mock := newTestDB(t)
+	repo := NewArticleRepository(db)
+	mock.ExpectExec("UPDATE articles SET share_count").WillReturnResult(sqlmock.NewResult(1, 1))
+	require.NoError(t, repo.IncrShareCount(context.Background(), 1))
+}
+
+func TestArticleRepository_HasAssociations_Success(t *testing.T) {
+	db, mock := newTestDB(t)
+	repo := NewArticleRepository(db)
+	mock.ExpectQuery("SELECT").WillReturnRows(sqlmock.NewRows([]string{"cnt"}).AddRow(2))
+	ok, err := repo.HasAssociations(context.Background(), 1)
+	require.NoError(t, err)
+	assert.True(t, ok)
+}

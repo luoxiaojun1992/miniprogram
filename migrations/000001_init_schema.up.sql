@@ -191,6 +191,20 @@ CREATE TABLE IF NOT EXISTS `module_pages` (
     INDEX `idx_module_sort` (`module_id`, `sort_order`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='模块页面表';
 
+-- 轮播图表
+CREATE TABLE IF NOT EXISTS `banners` (
+    `id` BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    `title` VARCHAR(128),
+    `image_file_id` BIGINT UNSIGNED,
+    `link_url` VARCHAR(255),
+    `sort_order` INT DEFAULT 0,
+    `status` TINYINT DEFAULT 1 COMMENT '0禁用 1启用',
+    `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP,
+    `updated_at` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    INDEX `idx_image_file` (`image_file_id`),
+    INDEX `idx_status_sort` (`status`, `sort_order`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='轮播图表';
+
 -- 文章表
 CREATE TABLE IF NOT EXISTS `articles` (
     `id` BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
@@ -218,13 +232,28 @@ CREATE TABLE IF NOT EXISTS `articles` (
     INDEX `idx_sort` (`sort_order`, `created_at`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='文章表';
 
+-- 文件表
+CREATE TABLE IF NOT EXISTS `files` (
+    `id` BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    `key` VARCHAR(255) NOT NULL,
+    `filename` VARCHAR(255) NOT NULL,
+    `usage` VARCHAR(32) NOT NULL,
+    `category` VARCHAR(32) NOT NULL,
+    `business` VARCHAR(64),
+    `static_url` VARCHAR(512),
+    `created_by` BIGINT UNSIGNED,
+    `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE KEY `uk_key` (`key`),
+    INDEX `idx_usage_category` (`usage`, `category`),
+    FOREIGN KEY (`created_by`) REFERENCES `users`(`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='文件表';
+
 -- 课程表
 CREATE TABLE IF NOT EXISTS `courses` (
     `id` BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
     `title` VARCHAR(200) NOT NULL,
     `description` TEXT,
     `cover_image` VARCHAR(255),
-    `video_url` VARCHAR(255),
     `duration` INT UNSIGNED COMMENT '总课时(分钟)',
     `author_id` BIGINT UNSIGNED,
     `module_id` INT UNSIGNED,
@@ -251,14 +280,41 @@ CREATE TABLE IF NOT EXISTS `course_units` (
     `id` BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
     `course_id` BIGINT UNSIGNED,
     `title` VARCHAR(200),
-    `video_url` VARCHAR(255),
+    `video_file_id` BIGINT UNSIGNED,
     `duration` INT UNSIGNED COMMENT '课时(分钟)',
     `sort_order` INT DEFAULT 0,
     `status` TINYINT DEFAULT 1,
     `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (`course_id`) REFERENCES `courses`(`id`) ON DELETE CASCADE,
+    FOREIGN KEY (`video_file_id`) REFERENCES `files`(`id`),
     INDEX `idx_course_sort` (`course_id`, `sort_order`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='课程单元表';
+
+-- 文章附件表
+CREATE TABLE IF NOT EXISTS `article_attachments` (
+    `id` BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    `article_id` BIGINT UNSIGNED NOT NULL,
+    `file_id` BIGINT UNSIGNED NOT NULL,
+    `sort_order` INT DEFAULT 0,
+    `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (`article_id`) REFERENCES `articles`(`id`) ON DELETE CASCADE,
+    FOREIGN KEY (`file_id`) REFERENCES `files`(`id`) ON DELETE CASCADE,
+    UNIQUE KEY `uk_article_file` (`article_id`, `file_id`),
+    INDEX `idx_article_sort` (`article_id`, `sort_order`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='文章附件关联表';
+
+-- 课程附件表
+CREATE TABLE IF NOT EXISTS `course_attachments` (
+    `id` BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    `course_id` BIGINT UNSIGNED NOT NULL,
+    `file_id` BIGINT UNSIGNED NOT NULL,
+    `sort_order` INT DEFAULT 0,
+    `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (`course_id`) REFERENCES `courses`(`id`) ON DELETE CASCADE,
+    FOREIGN KEY (`file_id`) REFERENCES `files`(`id`) ON DELETE CASCADE,
+    UNIQUE KEY `uk_course_file` (`course_id`, `file_id`),
+    INDEX `idx_course_sort` (`course_id`, `sort_order`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='课程附件关联表';
 
 -- 内容权限关联表（查看权限控制）
 CREATE TABLE IF NOT EXISTS `content_permissions` (

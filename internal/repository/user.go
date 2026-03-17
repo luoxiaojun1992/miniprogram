@@ -98,6 +98,27 @@ func (r *userRepository) GetWithTags(ctx context.Context, id uint64) (*entity.Us
 	return &u, nil
 }
 
+func (r *userRepository) HasAssociations(ctx context.Context, id uint64) (bool, error) {
+	var count int64
+	if err := r.db.WithContext(ctx).Raw(`
+		SELECT (
+			(SELECT COUNT(1) FROM admin_users WHERE user_id = ?) +
+			(SELECT COUNT(1) FROM user_tags WHERE user_id = ?) +
+			(SELECT COUNT(1) FROM user_roles WHERE user_id = ?) +
+			(SELECT COUNT(1) FROM user_attributes WHERE user_id = ?) +
+			(SELECT COUNT(1) FROM articles WHERE author_id = ?) +
+			(SELECT COUNT(1) FROM courses WHERE author_id = ?) +
+			(SELECT COUNT(1) FROM comments WHERE user_id = ?) +
+			(SELECT COUNT(1) FROM likes WHERE user_id = ?) +
+			(SELECT COUNT(1) FROM collections WHERE user_id = ?) +
+			(SELECT COUNT(1) FROM user_study_records WHERE user_id = ?)
+		) AS cnt
+	`, id, id, id, id, id, id, id, id, id, id).Scan(&count).Error; err != nil {
+		return false, errors.NewInternal("查询用户关联失败", err)
+	}
+	return count > 0, nil
+}
+
 // ==================== AdminUser Repository ====================
 
 type adminUserRepository struct {

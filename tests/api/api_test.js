@@ -121,7 +121,7 @@ export function setup() {
 
   const unitRes = http.post(
     `${BASE_URL}/v1/admin/courses/${courseId}/units`,
-    JSON.stringify({ title: 'K6 Test Unit', video_url: 'http://example.com/video.mp4', duration: 30, sort_order: 1 }),
+    JSON.stringify({ title: 'K6 Test Unit', video_file_id: 1, duration: 30, sort_order: 1 }),
     headers(adminToken),
   );
   check(unitRes, { 'setup | create unit: 201': (r) => r.status === 201 });
@@ -218,6 +218,29 @@ export default function (data) {
   });
 
   // -------------------------------------------------------------------------
+  group('Audit Logs', () => {
+    const uniqueTitle = `K6 Audit Module ${Date.now()}`;
+    const writeRes = http.post(
+      `${BASE_URL}/v1/admin/modules`,
+      JSON.stringify({ title: uniqueTitle, description: 'audit test', sort_order: 777 }),
+      adminH,
+    );
+    check(writeRes, { 'POST /v1/admin/modules (audit seed): 201': (r) => r.status === 201 });
+
+    const logsRes = http.get(
+      `${BASE_URL}/v1/admin/audit-logs?page=1&page_size=20&module=modules&action=create`,
+      adminH,
+    );
+    check(logsRes, {
+      'GET /v1/admin/audit-logs: 200': (r) => r.status === 200,
+      'audit logs contains create/modules entry': (r) => {
+        const list = r.json('data.list') || [];
+        return list.length > 0 && list.some((x) => x.module === 'modules' && x.action === 'create');
+      },
+    });
+  });
+
+  // -------------------------------------------------------------------------
   group('User', () => {
     // Get profile
     const profileRes = http.get(`${BASE_URL}/v1/users/profile`, userH);
@@ -265,6 +288,10 @@ export default function (data) {
 
   // -------------------------------------------------------------------------
   group('User Interactions', () => {
+    const articleBefore = http.get(`${BASE_URL}/v1/articles/${articleId}`);
+    const likeCountBefore = articleBefore.json('data.like_count') || 0;
+    const commentCountBefore = articleBefore.json('data.comment_count') || 0;
+
     // Study records – list
     const studyListRes = http.get(`${BASE_URL}/v1/study-records`, userH);
     check(studyListRes, { 'GET /v1/study-records: 200': (r) => r.status === 200 });
@@ -289,13 +316,30 @@ export default function (data) {
     const colDelRes = http.del(`${BASE_URL}/v1/collections/1/${articleId}`, null, userH);
     check(colDelRes, { 'DELETE /v1/collections/1/:id: 2xx': (r) => ok(r) });
 
+    // Collections – add/remove for course
+    const colCourseAddRes = http.post(`${BASE_URL}/v1/collections/2/${courseId}`, null, userH);
+    check(colCourseAddRes, { 'POST /v1/collections/2/:id: 2xx': (r) => ok(r) });
+    const colCourseDelRes = http.del(`${BASE_URL}/v1/collections/2/${courseId}`, null, userH);
+    check(colCourseDelRes, { 'DELETE /v1/collections/2/:id: 2xx': (r) => ok(r) });
+
     // Likes – add
     const likeAddRes = http.post(`${BASE_URL}/v1/likes/1/${articleId}`, null, userH);
     check(likeAddRes, { 'POST /v1/likes/1/:id: 2xx': (r) => ok(r) });
 
+    const articleAfterLike = http.get(`${BASE_URL}/v1/articles/${articleId}`);
+    check(articleAfterLike, {
+      'like increments article like_count': (r) => (r.json('data.like_count') || 0) >= likeCountBefore + 1,
+    });
+
     // Likes – remove
     const likeDelRes = http.del(`${BASE_URL}/v1/likes/1/${articleId}`, null, userH);
     check(likeDelRes, { 'DELETE /v1/likes/1/:id: 2xx': (r) => ok(r) });
+
+    // Likes – add/remove for course
+    const likeCourseAddRes = http.post(`${BASE_URL}/v1/likes/2/${courseId}`, null, userH);
+    check(likeCourseAddRes, { 'POST /v1/likes/2/:id: 2xx': (r) => ok(r) });
+    const likeCourseDelRes = http.del(`${BASE_URL}/v1/likes/2/${courseId}`, null, userH);
+    check(likeCourseDelRes, { 'DELETE /v1/likes/2/:id: 2xx': (r) => ok(r) });
 
     // Comments – create (as regular user)
     const createCommentRes = http.post(
@@ -304,6 +348,38 @@ export default function (data) {
       userH,
     );
     check(createCommentRes, { 'POST /v1/comments/1/:id: 2xx': (r) => ok(r) });
+    const userCommentId = createCommentRes.json('data.id');
+
+    const articleAfterComment = http.get(`${BASE_URL}/v1/articles/${articleId}`);
+    check(articleAfterComment, {
+      'comment increments article comment_count': (r) => (r.json('data.comment_count') || 0) >= commentCountBefore + 1,
+    });
+
+    const adminNotifRes = http.get(`${BASE_URL}/v1/notifications`, adminH);
+    check(adminNotifRes, {
+      'interaction creates like/comment notifications': (r) => {
+        const list = r.json('data.list') || [];
+        return Array.isArray(list) && list.some((x) => x.type === 2 || x.type === 4);
+      },
+    });
+
+    if (userCommentId) {
+      const cleanupCommentRes = http.del(`${BASE_URL}/v1/admin/comments/${userCommentId}`, null, adminH);
+      check(cleanupCommentRes, { 'cleanup created comment: 2xx': (r) => ok(r) });
+    }
+
+    // Comments – create on course then cleanup
+    const createCourseCommentRes = http.post(
+      `${BASE_URL}/v1/comments/2/${courseId}`,
+      JSON.stringify({ content: 'k6 course comment' }),
+      userH,
+    );
+    check(createCourseCommentRes, { 'POST /v1/comments/2/:id: 2xx': (r) => ok(r) });
+    const userCourseCommentId = createCourseCommentRes.json('data.id');
+    if (userCourseCommentId) {
+      const cleanupCourseCommentRes = http.del(`${BASE_URL}/v1/admin/comments/${userCourseCommentId}`, null, adminH);
+      check(cleanupCourseCommentRes, { 'cleanup course comment: 2xx': (r) => ok(r) });
+    }
 
     // Notifications – list
     const notifListRes = http.get(`${BASE_URL}/v1/notifications`, userH);
@@ -414,6 +490,9 @@ export default function (data) {
 
   // -------------------------------------------------------------------------
   group('Admin – Modules', () => {
+    const deleteRes = http.del(`${BASE_URL}/v1/admin/modules/${moduleId}`, null, adminH);
+    check(deleteRes, { 'DELETE /v1/admin/modules/:id blocked when has associations': (r) => r.status >= 400 });
+
     // Update module
     const updateRes = http.put(
       `${BASE_URL}/v1/admin/modules/${moduleId}`,
@@ -437,6 +516,10 @@ export default function (data) {
 
   // -------------------------------------------------------------------------
   group('Admin – Articles', () => {
+    // Should be blocked if associated interaction data exists
+    const deleteBlockedRes = http.del(`${BASE_URL}/v1/admin/articles/${articleId}`, null, adminH);
+    check(deleteBlockedRes, { 'DELETE /v1/admin/articles/:id blocked when associated': (r) => r.status >= 400 });
+
     // List
     const listRes = http.get(`${BASE_URL}/v1/admin/articles?page=1&page_size=10`, adminH);
     check(listRes, { 'GET /v1/admin/articles: 200': (r) => r.status === 200 });
@@ -469,6 +552,10 @@ export default function (data) {
 
   // -------------------------------------------------------------------------
   group('Admin – Courses', () => {
+    // Should be blocked if associated unit/interaction data exists
+    const deleteBlockedRes = http.del(`${BASE_URL}/v1/admin/courses/${courseId}`, null, adminH);
+    check(deleteBlockedRes, { 'DELETE /v1/admin/courses/:id blocked when associated': (r) => r.status >= 400 });
+
     // List
     const listRes = http.get(`${BASE_URL}/v1/admin/courses?page=1&page_size=10`, adminH);
     check(listRes, { 'GET /v1/admin/courses: 200': (r) => r.status === 200 });

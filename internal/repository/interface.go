@@ -15,6 +15,7 @@ type UserRepository interface {
 	Delete(ctx context.Context, id uint64) error
 	List(ctx context.Context, page, pageSize int, keyword string, userType, status *int8) ([]*entity.User, int64, error)
 	GetWithTags(ctx context.Context, id uint64) (*entity.User, error)
+	HasAssociations(ctx context.Context, id uint64) (bool, error)
 }
 
 // AdminUserRepository defines the interface for admin user data access.
@@ -51,6 +52,7 @@ type PermissionRepository interface {
 	List(ctx context.Context) ([]*entity.Permission, error)
 	GetByID(ctx context.Context, id uint) (*entity.Permission, error)
 	GetUserPermissions(ctx context.Context, userID uint64) ([]*entity.Permission, error)
+	GetPermissionsByRoleIDs(ctx context.Context, roleIDs []uint) ([]*entity.Permission, error)
 }
 
 // ModuleRepository defines the interface for module data access.
@@ -60,6 +62,7 @@ type ModuleRepository interface {
 	Create(ctx context.Context, module *entity.Module) error
 	Update(ctx context.Context, module *entity.Module) error
 	Delete(ctx context.Context, id uint) error
+	HasAssociations(ctx context.Context, id uint) (bool, error)
 }
 
 // ModulePageRepository defines the interface for module page data access.
@@ -71,6 +74,15 @@ type ModulePageRepository interface {
 	Delete(ctx context.Context, id uint) error
 }
 
+// BannerRepository defines the interface for banner data access.
+type BannerRepository interface {
+	GetByID(ctx context.Context, id uint64) (*entity.Banner, error)
+	List(ctx context.Context, status *int8) ([]*entity.Banner, error)
+	Create(ctx context.Context, banner *entity.Banner) error
+	Update(ctx context.Context, banner *entity.Banner) error
+	Delete(ctx context.Context, id uint64) error
+}
+
 // ArticleRepository defines the interface for article data access.
 type ArticleRepository interface {
 	GetByID(ctx context.Context, id uint64) (*entity.Article, error)
@@ -79,6 +91,14 @@ type ArticleRepository interface {
 	Update(ctx context.Context, article *entity.Article) error
 	Delete(ctx context.Context, id uint64) error
 	IncrViewCount(ctx context.Context, id uint64) error
+	IncrLikeCount(ctx context.Context, id uint64) error
+	DecrLikeCount(ctx context.Context, id uint64) error
+	IncrCollectCount(ctx context.Context, id uint64) error
+	DecrCollectCount(ctx context.Context, id uint64) error
+	IncrCommentCount(ctx context.Context, id uint64) error
+	DecrCommentCount(ctx context.Context, id uint64) error
+	IncrShareCount(ctx context.Context, id uint64) error
+	HasAssociations(ctx context.Context, id uint64) (bool, error)
 }
 
 // CourseRepository defines the interface for course data access.
@@ -89,6 +109,15 @@ type CourseRepository interface {
 	Update(ctx context.Context, course *entity.Course) error
 	Delete(ctx context.Context, id uint64) error
 	IncrViewCount(ctx context.Context, id uint64) error
+	IncrLikeCount(ctx context.Context, id uint64) error
+	DecrLikeCount(ctx context.Context, id uint64) error
+	IncrCollectCount(ctx context.Context, id uint64) error
+	DecrCollectCount(ctx context.Context, id uint64) error
+	IncrCommentCount(ctx context.Context, id uint64) error
+	DecrCommentCount(ctx context.Context, id uint64) error
+	IncrShareCount(ctx context.Context, id uint64) error
+	IncrStudyCount(ctx context.Context, id uint64) error
+	HasAssociations(ctx context.Context, id uint64) (bool, error)
 }
 
 // CourseUnitRepository defines the interface for course unit data access.
@@ -98,6 +127,25 @@ type CourseUnitRepository interface {
 	Create(ctx context.Context, unit *entity.CourseUnit) error
 	Update(ctx context.Context, unit *entity.CourseUnit) error
 	Delete(ctx context.Context, id uint64) error
+	HasStudyRecords(ctx context.Context, id uint64) (bool, error)
+}
+
+// FileRepository defines the interface for file metadata access.
+type FileRepository interface {
+	GetByID(ctx context.Context, id uint64) (*entity.File, error)
+	Create(ctx context.Context, file *entity.File) error
+}
+
+// ArticleAttachmentRepository defines article attachment relation access.
+type ArticleAttachmentRepository interface {
+	ListFileIDs(ctx context.Context, articleID uint64) ([]uint64, error)
+	Replace(ctx context.Context, articleID uint64, fileIDs []uint64) error
+}
+
+// CourseAttachmentRepository defines course attachment relation access.
+type CourseAttachmentRepository interface {
+	ListFileIDs(ctx context.Context, courseID uint64) ([]uint64, error)
+	Replace(ctx context.Context, courseID uint64, fileIDs []uint64) error
 }
 
 // ContentPermissionRepository defines the interface for content permission data access.
@@ -136,6 +184,7 @@ type CommentRepository interface {
 	Create(ctx context.Context, comment *entity.Comment) error
 	UpdateStatus(ctx context.Context, id uint64, status int8) error
 	Delete(ctx context.Context, id uint64) error
+	HasReplies(ctx context.Context, id uint64) (bool, error)
 }
 
 // NotificationRepository defines the interface for notification data access.
@@ -145,6 +194,7 @@ type NotificationRepository interface {
 	UnreadCount(ctx context.Context, userID uint64) (int64, error)
 	MarkRead(ctx context.Context, id uint64) error
 	MarkAllRead(ctx context.Context, userID uint64) error
+	Create(ctx context.Context, notification *entity.Notification) error
 }
 
 // WechatConfigRepository defines the interface for wechat config data access.
@@ -173,6 +223,7 @@ type AttributeRepository interface {
 	Create(ctx context.Context, attr *entity.Attribute) error
 	Update(ctx context.Context, attr *entity.Attribute) error
 	Delete(ctx context.Context, id uint) error
+	HasUserAssociations(ctx context.Context, id uint) (bool, error)
 }
 
 // UserAttributeRepository defines the interface for user attribute data access.

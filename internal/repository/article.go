@@ -88,3 +88,66 @@ func (r *articleRepository) IncrViewCount(ctx context.Context, id uint64) error 
 	}
 	return nil
 }
+
+func (r *articleRepository) IncrLikeCount(ctx context.Context, id uint64) error {
+	if err := r.db.WithContext(ctx).Exec("UPDATE articles SET like_count = like_count + 1 WHERE id = ?", id).Error; err != nil {
+		return errors.NewInternal("更新点赞数失败", err)
+	}
+	return nil
+}
+
+func (r *articleRepository) DecrLikeCount(ctx context.Context, id uint64) error {
+	if err := r.db.WithContext(ctx).Exec("UPDATE articles SET like_count = CASE WHEN like_count > 0 THEN like_count - 1 ELSE 0 END WHERE id = ?", id).Error; err != nil {
+		return errors.NewInternal("更新点赞数失败", err)
+	}
+	return nil
+}
+
+func (r *articleRepository) IncrCollectCount(ctx context.Context, id uint64) error {
+	if err := r.db.WithContext(ctx).Exec("UPDATE articles SET collect_count = collect_count + 1 WHERE id = ?", id).Error; err != nil {
+		return errors.NewInternal("更新收藏数失败", err)
+	}
+	return nil
+}
+
+func (r *articleRepository) DecrCollectCount(ctx context.Context, id uint64) error {
+	if err := r.db.WithContext(ctx).Exec("UPDATE articles SET collect_count = CASE WHEN collect_count > 0 THEN collect_count - 1 ELSE 0 END WHERE id = ?", id).Error; err != nil {
+		return errors.NewInternal("更新收藏数失败", err)
+	}
+	return nil
+}
+
+func (r *articleRepository) IncrCommentCount(ctx context.Context, id uint64) error {
+	if err := r.db.WithContext(ctx).Exec("UPDATE articles SET comment_count = comment_count + 1 WHERE id = ?", id).Error; err != nil {
+		return errors.NewInternal("更新评论数失败", err)
+	}
+	return nil
+}
+
+func (r *articleRepository) DecrCommentCount(ctx context.Context, id uint64) error {
+	if err := r.db.WithContext(ctx).Exec("UPDATE articles SET comment_count = CASE WHEN comment_count > 0 THEN comment_count - 1 ELSE 0 END WHERE id = ?", id).Error; err != nil {
+		return errors.NewInternal("更新评论数失败", err)
+	}
+	return nil
+}
+
+func (r *articleRepository) IncrShareCount(ctx context.Context, id uint64) error {
+	if err := r.db.WithContext(ctx).Exec("UPDATE articles SET share_count = share_count + 1 WHERE id = ?", id).Error; err != nil {
+		return errors.NewInternal("更新分享数失败", err)
+	}
+	return nil
+}
+
+func (r *articleRepository) HasAssociations(ctx context.Context, id uint64) (bool, error) {
+	var count int64
+	if err := r.db.WithContext(ctx).Raw(`
+		SELECT (
+			(SELECT COUNT(1) FROM likes WHERE content_type = 1 AND content_id = ?) +
+			(SELECT COUNT(1) FROM collections WHERE content_type = 1 AND content_id = ?) +
+			(SELECT COUNT(1) FROM comments WHERE content_type = 1 AND content_id = ?)
+		) AS cnt
+	`, id, id, id).Scan(&count).Error; err != nil {
+		return false, errors.NewInternal("查询文章关联失败", err)
+	}
+	return count > 0, nil
+}

@@ -53,11 +53,13 @@ type WechatConfig struct {
 
 // UploadConfig holds upload configuration.
 type UploadConfig struct {
-	Dir         string `mapstructure:"dir"`
-	BaseURL     string `mapstructure:"base_url"`
-	Provider    string `mapstructure:"provider"`
-	COSEndpoint string `mapstructure:"cos_endpoint"`
-	COSBucket   string `mapstructure:"cos_bucket"`
+	Dir          string `mapstructure:"dir"`
+	BaseURL      string `mapstructure:"base_url"`
+	Provider     string `mapstructure:"provider"`
+	COSEndpoint  string `mapstructure:"cos_endpoint"`
+	COSBucket    string `mapstructure:"cos_bucket"`
+	COSSecretID  string `mapstructure:"cos_secret_id"`
+	COSSecretKey string `mapstructure:"cos_secret_key"`
 }
 
 // RedisConfig holds redis configuration.
@@ -112,6 +114,8 @@ func InitConfig(configPath string) (*Config, error) {
 	v.SetDefault("upload.provider", "local")
 	v.SetDefault("upload.cos_endpoint", "")
 	v.SetDefault("upload.cos_bucket", "")
+	v.SetDefault("upload.cos_secret_id", "")
+	v.SetDefault("upload.cos_secret_key", "")
 	v.SetDefault("redis.host", "localhost")
 	v.SetDefault("redis.port", 6379)
 	v.SetDefault("redis.password", "")

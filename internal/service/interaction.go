@@ -16,12 +16,23 @@ import (
 type studyRecordService struct {
 	studyRecordRepo repository.StudyRecordRepository
 	courseUnitRepo  repository.CourseUnitRepository
+	courseRepo      repository.CourseRepository
 	log             *logrus.Logger
 }
 
 // NewStudyRecordService creates a new StudyRecordService.
-func NewStudyRecordService(studyRecordRepo repository.StudyRecordRepository, courseUnitRepo repository.CourseUnitRepository, log *logrus.Logger) StudyRecordService {
-	return &studyRecordService{studyRecordRepo: studyRecordRepo, courseUnitRepo: courseUnitRepo, log: log}
+func NewStudyRecordService(
+	studyRecordRepo repository.StudyRecordRepository,
+	courseUnitRepo repository.CourseUnitRepository,
+	courseRepo repository.CourseRepository,
+	log *logrus.Logger,
+) StudyRecordService {
+	return &studyRecordService{
+		studyRecordRepo: studyRecordRepo,
+		courseUnitRepo:  courseUnitRepo,
+		courseRepo:      courseRepo,
+		log:             log,
+	}
 }
 
 func (s *studyRecordService) List(ctx context.Context, userID uint64, page, pageSize int) ([]*entity.UserStudyRecord, int64, error) {
@@ -43,19 +54,43 @@ func (s *studyRecordService) Update(ctx context.Context, userID uint64, req *dto
 		Progress: req.Progress,
 		Status:   req.Status,
 	}
-	return s.studyRecordRepo.Upsert(ctx, record)
+	existing, err := s.studyRecordRepo.GetByUserAndUnit(ctx, userID, req.UnitID)
+	if err != nil {
+		return err
+	}
+	if err := s.studyRecordRepo.Upsert(ctx, record); err != nil {
+		return err
+	}
+	if existing == nil && s.courseRepo != nil {
+		if err := s.courseRepo.IncrStudyCount(ctx, unit.CourseID); err != nil {
+			s.log.WithError(err).Warn("更新课程学习人数失败")
+		}
+	}
+	return nil
 }
 
 // ==================== Collection Service ====================
 
 type collectionService struct {
 	collectionRepo repository.CollectionRepository
+	articleRepo    repository.ArticleRepository
+	courseRepo     repository.CourseRepository
 	log            *logrus.Logger
 }
 
 // NewCollectionService creates a new CollectionService.
-func NewCollectionService(collectionRepo repository.CollectionRepository, log *logrus.Logger) CollectionService {
-	return &collectionService{collectionRepo: collectionRepo, log: log}
+func NewCollectionService(
+	collectionRepo repository.CollectionRepository,
+	articleRepo repository.ArticleRepository,
+	courseRepo repository.CourseRepository,
+	log *logrus.Logger,
+) CollectionService {
+	return &collectionService{
+		collectionRepo: collectionRepo,
+		articleRepo:    articleRepo,
+		courseRepo:     courseRepo,
+		log:            log,
+	}
 }
 
 func (s *collectionService) List(ctx context.Context, userID uint64, page, pageSize int, contentType *int8) ([]*entity.Collection, int64, error) {
@@ -75,11 +110,45 @@ func (s *collectionService) Add(ctx context.Context, userID uint64, contentType 
 		ContentType: contentType,
 		ContentID:   contentID,
 	}
-	return s.collectionRepo.Create(ctx, c)
+	if err := s.collectionRepo.Create(ctx, c); err != nil {
+		return err
+	}
+	switch contentType {
+	case 1:
+		if s.articleRepo != nil {
+			if err := s.articleRepo.IncrCollectCount(ctx, contentID); err != nil {
+				s.log.WithError(err).Warn("更新文章收藏数失败")
+			}
+		}
+	case 2:
+		if s.courseRepo != nil {
+			if err := s.courseRepo.IncrCollectCount(ctx, contentID); err != nil {
+				s.log.WithError(err).Warn("更新课程收藏数失败")
+			}
+		}
+	}
+	return nil
 }
 
 func (s *collectionService) Remove(ctx context.Context, userID uint64, contentType int8, contentID uint64) error {
-	return s.collectionRepo.Delete(ctx, userID, contentType, contentID)
+	if err := s.collectionRepo.Delete(ctx, userID, contentType, contentID); err != nil {
+		return err
+	}
+	switch contentType {
+	case 1:
+		if s.articleRepo != nil {
+			if err := s.articleRepo.DecrCollectCount(ctx, contentID); err != nil {
+				s.log.WithError(err).Warn("更新文章收藏数失败")
+			}
+		}
+	case 2:
+		if s.courseRepo != nil {
+			if err := s.courseRepo.DecrCollectCount(ctx, contentID); err != nil {
+				s.log.WithError(err).Warn("更新课程收藏数失败")
+			}
+		}
+	}
+	return nil
 }
 
 // ==================== Like Service ====================
@@ -88,6 +157,8 @@ type likeService struct {
 	likeRepo    repository.LikeRepository
 	articleRepo repository.ArticleRepository
 	courseRepo  repository.CourseRepository
+	notifRepo   repository.NotificationRepository
+	commentRepo repository.CommentRepository
 	log         *logrus.Logger
 }
 
@@ -96,12 +167,14 @@ func NewLikeService(
 	likeRepo repository.LikeRepository,
 	articleRepo repository.ArticleRepository,
 	courseRepo repository.CourseRepository,
+	notifRepo repository.NotificationRepository,
 	log *logrus.Logger,
 ) LikeService {
 	return &likeService{
 		likeRepo:    likeRepo,
 		articleRepo: articleRepo,
 		courseRepo:  courseRepo,
+		notifRepo:   notifRepo,
 		log:         log,
 	}
 }
@@ -119,17 +192,79 @@ func (s *likeService) Add(ctx context.Context, userID uint64, contentType int8, 
 		ContentType: contentType,
 		ContentID:   contentID,
 	}
-	return s.likeRepo.Create(ctx, l)
+	if err := s.likeRepo.Create(ctx, l); err != nil {
+		return err
+	}
+	var targetUserID uint64
+	switch contentType {
+	case 1:
+		if s.articleRepo != nil {
+			if err := s.articleRepo.IncrLikeCount(ctx, contentID); err != nil {
+				s.log.WithError(err).Warn("更新文章点赞数失败")
+			}
+			article, err := s.articleRepo.GetByID(ctx, contentID)
+			if err != nil {
+				s.log.WithError(err).Warn("查询文章失败")
+			} else if article != nil {
+				targetUserID = article.AuthorID
+			}
+		}
+	case 2:
+		if s.courseRepo != nil {
+			if err := s.courseRepo.IncrLikeCount(ctx, contentID); err != nil {
+				s.log.WithError(err).Warn("更新课程点赞数失败")
+			}
+			course, err := s.courseRepo.GetByID(ctx, contentID)
+			if err != nil {
+				s.log.WithError(err).Warn("查询课程失败")
+			} else if course != nil {
+				targetUserID = course.AuthorID
+			}
+		}
+	}
+	if s.notifRepo != nil && targetUserID > 0 && targetUserID != userID {
+		target := targetUserID
+		if err := s.notifRepo.Create(ctx, &entity.Notification{
+			UserID:  &target,
+			Type:    4,
+			Title:   "收到新的点赞",
+			Content: "你的内容收到一个新的点赞",
+			IsRead:  0,
+		}); err != nil {
+			s.log.WithError(err).Warn("发送点赞通知失败")
+		}
+	}
+	return nil
 }
 
 func (s *likeService) Remove(ctx context.Context, userID uint64, contentType int8, contentID uint64) error {
-	return s.likeRepo.Delete(ctx, userID, contentType, contentID)
+	if err := s.likeRepo.Delete(ctx, userID, contentType, contentID); err != nil {
+		return err
+	}
+	switch contentType {
+	case 1:
+		if s.articleRepo != nil {
+			if err := s.articleRepo.DecrLikeCount(ctx, contentID); err != nil {
+				s.log.WithError(err).Warn("更新文章点赞数失败")
+			}
+		}
+	case 2:
+		if s.courseRepo != nil {
+			if err := s.courseRepo.DecrLikeCount(ctx, contentID); err != nil {
+				s.log.WithError(err).Warn("更新课程点赞数失败")
+			}
+		}
+	}
+	return nil
 }
 
 // ==================== Comment Service ====================
 
 type commentService struct {
 	commentRepo       repository.CommentRepository
+	articleRepo       repository.ArticleRepository
+	courseRepo        repository.CourseRepository
+	notifRepo         repository.NotificationRepository
 	sensitiveWordRepo repository.SensitiveWordRepository
 	log               *logrus.Logger
 }
@@ -137,6 +272,9 @@ type commentService struct {
 // NewCommentService creates a new CommentService.
 func NewCommentService(
 	commentRepo repository.CommentRepository,
+	articleRepo repository.ArticleRepository,
+	courseRepo repository.CourseRepository,
+	notifRepo repository.NotificationRepository,
 	log *logrus.Logger,
 	sensitiveWordRepo ...repository.SensitiveWordRepository,
 ) CommentService {
@@ -144,7 +282,14 @@ func NewCommentService(
 	if len(sensitiveWordRepo) > 0 {
 		swRepo = sensitiveWordRepo[0]
 	}
-	return &commentService{commentRepo: commentRepo, sensitiveWordRepo: swRepo, log: log}
+	return &commentService{
+		commentRepo:       commentRepo,
+		articleRepo:       articleRepo,
+		courseRepo:        courseRepo,
+		notifRepo:         notifRepo,
+		sensitiveWordRepo: swRepo,
+		log:               log,
+	}
 }
 
 func (s *commentService) List(ctx context.Context, contentType int8, contentID uint64, page, pageSize int) ([]*entity.Comment, int64, error) {
@@ -166,6 +311,61 @@ func (s *commentService) Create(ctx context.Context, userID uint64, contentType 
 	}
 	if err := s.commentRepo.Create(ctx, c); err != nil {
 		return nil, err
+	}
+	switch contentType {
+	case 1:
+		if s.articleRepo != nil {
+			if err := s.articleRepo.IncrCommentCount(ctx, contentID); err != nil {
+				s.log.WithError(err).Warn("更新文章评论数失败")
+			}
+		}
+	case 2:
+		if s.courseRepo != nil {
+			if err := s.courseRepo.IncrCommentCount(ctx, contentID); err != nil {
+				s.log.WithError(err).Warn("更新课程评论数失败")
+			}
+		}
+	}
+	if s.notifRepo != nil {
+		var targetUserID uint64
+		if req.ParentID > 0 {
+			parent, err := s.commentRepo.GetByID(ctx, req.ParentID)
+			if err != nil {
+				s.log.WithError(err).Warn("查询父评论失败")
+			} else if parent != nil {
+				targetUserID = parent.UserID
+			}
+		}
+		if targetUserID == 0 {
+			switch contentType {
+			case 1:
+				article, err := s.articleRepo.GetByID(ctx, contentID)
+				if err != nil {
+					s.log.WithError(err).Warn("查询文章失败")
+				} else if article != nil {
+					targetUserID = article.AuthorID
+				}
+			case 2:
+				course, err := s.courseRepo.GetByID(ctx, contentID)
+				if err != nil {
+					s.log.WithError(err).Warn("查询课程失败")
+				} else if course != nil {
+					targetUserID = course.AuthorID
+				}
+			}
+		}
+		if targetUserID > 0 && targetUserID != userID {
+			target := targetUserID
+			if err := s.notifRepo.Create(ctx, &entity.Notification{
+				UserID:  &target,
+				Type:    2,
+				Title:   "收到新的评论",
+				Content: "你的内容收到新的评论或回复",
+				IsRead:  0,
+			}); err != nil {
+				s.log.WithError(err).Warn("发送评论通知失败")
+			}
+		}
 	}
 	return c, nil
 }
@@ -193,7 +393,31 @@ func (s *commentService) Delete(ctx context.Context, id uint64) error {
 	if c == nil {
 		return errors.NewNotFound("评论不存在", nil)
 	}
-	return s.commentRepo.Delete(ctx, id)
+	hasReplies, err := s.commentRepo.HasReplies(ctx, id)
+	if err != nil {
+		return err
+	}
+	if hasReplies {
+		return errors.NewBadRequest("评论存在回复，禁止删除", nil)
+	}
+	if err := s.commentRepo.Delete(ctx, id); err != nil {
+		return err
+	}
+	switch c.ContentType {
+	case 1:
+		if s.articleRepo != nil {
+			if err := s.articleRepo.DecrCommentCount(ctx, c.ContentID); err != nil {
+				s.log.WithError(err).Warn("更新文章评论数失败")
+			}
+		}
+	case 2:
+		if s.courseRepo != nil {
+			if err := s.courseRepo.DecrCommentCount(ctx, c.ContentID); err != nil {
+				s.log.WithError(err).Warn("更新课程评论数失败")
+			}
+		}
+	}
+	return nil
 }
 
 // ==================== Notification Service ====================
@@ -226,6 +450,10 @@ func (s *notificationService) MarkRead(ctx context.Context, id uint64) error {
 
 func (s *notificationService) MarkAllRead(ctx context.Context, userID uint64) error {
 	return s.notifRepo.MarkAllRead(ctx, userID)
+}
+
+func (s *notificationService) Send(ctx context.Context, notification *entity.Notification) error {
+	return s.notifRepo.Create(ctx, notification)
 }
 
 // ==================== WechatConfig Service ====================

@@ -55,6 +55,15 @@ type ModuleService interface {
 	DeletePage(ctx context.Context, moduleID, pageID uint) error
 }
 
+// BannerService handles banner operations.
+type BannerService interface {
+	List(ctx context.Context) ([]*entity.Banner, error)
+	AdminList(ctx context.Context, status *int8) ([]*entity.Banner, error)
+	Create(ctx context.Context, req *dto.CreateBannerRequest) (uint64, error)
+	Update(ctx context.Context, id uint64, req *dto.CreateBannerRequest) error
+	Delete(ctx context.Context, id uint64) error
+}
+
 // ArticleService handles article operations.
 type ArticleService interface {
 	List(ctx context.Context, page, pageSize int, keyword string, moduleID *uint, sort string, userID *uint64) ([]*entity.Article, int64, error)
@@ -120,6 +129,7 @@ type NotificationService interface {
 	List(ctx context.Context, userID uint64, page, pageSize int, isRead *bool) ([]*entity.Notification, int64, int64, error)
 	MarkRead(ctx context.Context, id uint64) error
 	MarkAllRead(ctx context.Context, userID uint64) error
+	Send(ctx context.Context, notification *entity.Notification) error
 }
 
 // WechatConfigService handles wechat config operations.

@@ -120,6 +120,16 @@ func TestAttrService_Delete_NotFound(t *testing.T) {
 	require.Error(t, err)
 }
 
+func TestAttrService_Delete_WithUserAssociations(t *testing.T) {
+	repo := &testutil.MockAttributeRepository{
+		GetByIDFn:             func(_ context.Context, id uint) (*entity.Attribute, error) { return &entity.Attribute{ID: id}, nil },
+		HasUserAssociationsFn: func(_ context.Context, id uint) (bool, error) { return true, nil },
+	}
+	svc := newAttrService(repo, nil, nil)
+	err := svc.Delete(context.Background(), 1)
+	require.Error(t, err)
+}
+
 // ==================== ListUserAttributes ====================
 
 func TestAttrService_ListUserAttributes_OK(t *testing.T) {

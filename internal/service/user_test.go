@@ -2,8 +2,8 @@ package service
 
 import (
 	"context"
-	"time"
 	"testing"
+	"time"
 
 	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
@@ -385,6 +385,16 @@ func TestUserService_DeleteUser_NotFound(t *testing.T) {
 		GetByIDFn: func(_ context.Context, id uint64) (*entity.User, error) {
 			return nil, nil
 		},
+	}
+	svc := newUserService(userRepo, nil, nil, nil, nil)
+	err := svc.DeleteUser(context.Background(), 1)
+	require.Error(t, err)
+}
+
+func TestUserService_DeleteUser_WithAssociations(t *testing.T) {
+	userRepo := &testutil.MockUserRepository{
+		GetByIDFn:         func(_ context.Context, id uint64) (*entity.User, error) { return &entity.User{ID: id}, nil },
+		HasAssociationsFn: func(_ context.Context, id uint64) (bool, error) { return true, nil },
 	}
 	svc := newUserService(userRepo, nil, nil, nil, nil)
 	err := svc.DeleteUser(context.Background(), 1)
