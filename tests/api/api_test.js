@@ -334,6 +334,13 @@ export default function (data) {
         return typeof url === 'string' && url.indexOf('/miniapp-test/article/') !== -1;
       },
     });
+
+    // Presign URL for video direct upload
+    const presignRes = http.get(`${BASE_URL}/v1/upload/presign?filename=k6-video.mp4&expires_in=600`, userH);
+    check(presignRes, {
+      'GET /v1/upload/presign: 200': (r) => r.status === 200,
+      'GET /v1/upload/presign: has put_url': (r) => typeof r.json('data.put_url') === 'string',
+    });
   });
 
   // -------------------------------------------------------------------------

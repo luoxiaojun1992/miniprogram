@@ -2625,6 +2625,47 @@ paths:
 
   # ==================== 文件上传 ====================
   
+  /upload/presign:
+    get:
+      tags:
+        - 文件上传
+      summary: 获取视频上传预签名URL
+      description: 生成对象存储PUT上传地址，用于前端直传mp4
+      security:
+        - Bearer: []
+      parameters:
+        - name: filename
+          in: query
+          type: string
+          required: true
+          description: 原始文件名（仅支持.mp4）
+        - name: expires_in
+          in: query
+          type: integer
+          required: false
+          default: 900
+          description: 过期秒数，范围60-3600
+      responses:
+        200:
+          description: 生成成功
+          schema:
+            allOf:
+              - $ref: "#/definitions/ApiResponse"
+              - properties:
+                  data:
+                    type: object
+                    properties:
+                      key:
+                        type: string
+                      url:
+                        type: string
+                      put_url:
+                        type: string
+                      expires_in:
+                        type: integer
+                      expire_at:
+                        type: integer
+
   /upload/image:
     post:
       tags:

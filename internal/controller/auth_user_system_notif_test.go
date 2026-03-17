@@ -784,7 +784,7 @@ func TestUploadCtrl_UploadImage_OK(t *testing.T) {
 	r := newTestRouter()
 	ctrl := NewUploadController(dir, "http://localhost", logrus.New())
 	r.POST("/upload/image", ctrl.UploadImage)
-	body, ct := testutil.CreateMultipartFile(t, "file", "x.jpg", []byte("imgdata"))
+	body, ct := testutil.CreateMultipartFile(t, "file", "x.jpg", []byte{0xFF, 0xD8, 0xFF, 0xE0, 0x00, 0x10})
 	req, _ := http.NewRequest("POST", "/upload/image", body)
 	req.Header.Set("Content-Type", ct)
 	w := httptest.NewRecorder()
@@ -797,7 +797,7 @@ func TestUploadCtrl_UploadImage_WithType(t *testing.T) {
 	r := newTestRouter()
 	ctrl := NewUploadController(dir, "http://localhost", logrus.New())
 	r.POST("/upload/image", ctrl.UploadImage)
-	body, ct := testutil.CreateMultipartFileWithFields(t, "file", "x.png", []byte("pngdata"), map[string]string{"type": "avatar"})
+	body, ct := testutil.CreateMultipartFileWithFields(t, "file", "x.png", []byte{0x89, 'P', 'N', 'G', '\r', '\n', 0x1A, '\n'}, map[string]string{"type": "avatar"})
 	req, _ := http.NewRequest("POST", "/upload/image", body)
 	req.Header.Set("Content-Type", ct)
 	w := httptest.NewRecorder()
@@ -824,65 +824,65 @@ var _ require.TestingT = (*testing.T)(nil)
 // ── Additional coverage tests ─────────────────────────────────────────────────
 
 func TestArticleCtrl_List_BindQueryErr(t *testing.T) {
-r := newTestRouter()
-r.GET("/articles", NewArticleController(&testutil.MockArticleService{}, logrus.New()).List)
-assert.Equal(t, 400, doRequest(r, "GET", "/articles?page=abc", "").Code)
+	r := newTestRouter()
+	r.GET("/articles", NewArticleController(&testutil.MockArticleService{}, logrus.New()).List)
+	assert.Equal(t, 400, doRequest(r, "GET", "/articles?page=abc", "").Code)
 }
 
 func TestArticleCtrl_List_WithAuth(t *testing.T) {
-svc := &testutil.MockArticleService{
-ListFn: func(ctx context.Context, p, ps int, kw string, mid *uint, sort string, uid *uint64) ([]*entity.Article, int64, error) {
-return []*entity.Article{{ID: 1}}, 1, nil
-},
-}
-r := newTestRouterWithAuth(1, 1)
-r.GET("/articles", NewArticleController(svc, logrus.New()).List)
-assert.Equal(t, 200, doRequest(r, "GET", "/articles", "").Code)
+	svc := &testutil.MockArticleService{
+		ListFn: func(ctx context.Context, p, ps int, kw string, mid *uint, sort string, uid *uint64) ([]*entity.Article, int64, error) {
+			return []*entity.Article{{ID: 1}}, 1, nil
+		},
+	}
+	r := newTestRouterWithAuth(1, 1)
+	r.GET("/articles", NewArticleController(svc, logrus.New()).List)
+	assert.Equal(t, 200, doRequest(r, "GET", "/articles", "").Code)
 }
 
 func TestArticleCtrl_AdminList_BindQueryErr(t *testing.T) {
-r := newTestRouter()
-r.GET("/admin/articles", NewArticleController(&testutil.MockArticleService{}, logrus.New()).AdminList)
-assert.Equal(t, 400, doRequest(r, "GET", "/admin/articles?page=abc", "").Code)
+	r := newTestRouter()
+	r.GET("/admin/articles", NewArticleController(&testutil.MockArticleService{}, logrus.New()).AdminList)
+	assert.Equal(t, 400, doRequest(r, "GET", "/admin/articles?page=abc", "").Code)
 }
 
 func TestNotificationCtrl_List_BindQueryErr(t *testing.T) {
-r := newTestRouterWithAuth(1, 1)
-r.GET("/notifications", NewNotificationController(&testutil.MockNotificationService{}, logrus.New()).List)
-assert.Equal(t, 400, doRequest(r, "GET", "/notifications?page=abc", "").Code)
+	r := newTestRouterWithAuth(1, 1)
+	r.GET("/notifications", NewNotificationController(&testutil.MockNotificationService{}, logrus.New()).List)
+	assert.Equal(t, 400, doRequest(r, "GET", "/notifications?page=abc", "").Code)
 }
 
 func TestNotificationCtrl_List_WithIsRead(t *testing.T) {
-svc := &testutil.MockNotificationService{
-ListFn: func(_ context.Context, uid uint64, p, ps int, isRead *bool) ([]*entity.Notification, int64, int64, error) {
-return []*entity.Notification{{ID: 1}}, 1, 0, nil
-},
-}
-r := newTestRouterWithAuth(1, 1)
-r.GET("/notifications", NewNotificationController(svc, logrus.New()).List)
-assert.Equal(t, 200, doRequest(r, "GET", "/notifications?is_read=true", "").Code)
+	svc := &testutil.MockNotificationService{
+		ListFn: func(_ context.Context, uid uint64, p, ps int, isRead *bool) ([]*entity.Notification, int64, int64, error) {
+			return []*entity.Notification{{ID: 1}}, 1, 0, nil
+		},
+	}
+	r := newTestRouterWithAuth(1, 1)
+	r.GET("/notifications", NewNotificationController(svc, logrus.New()).List)
+	assert.Equal(t, 200, doRequest(r, "GET", "/notifications?is_read=true", "").Code)
 }
 
 func TestSystemCtrl_ListAuditLogs_BindQueryErr(t *testing.T) {
-svc := &testutil.MockAuditLogService{
-ListFn: func(_ context.Context, p, ps int, module, action string, st, et *string) ([]*entity.AuditLog, int64, error) {
-return nil, 0, nil
-},
-}
-r := newTestRouter()
-r.GET("/admin/audit-logs", NewSystemController(nil, svc, nil, logrus.New()).ListAuditLogs)
-assert.Equal(t, 400, doRequest(r, "GET", "/admin/audit-logs?page=abc", "").Code)
+	svc := &testutil.MockAuditLogService{
+		ListFn: func(_ context.Context, p, ps int, module, action string, st, et *string) ([]*entity.AuditLog, int64, error) {
+			return nil, 0, nil
+		},
+	}
+	r := newTestRouter()
+	r.GET("/admin/audit-logs", NewSystemController(nil, svc, nil, logrus.New()).ListAuditLogs)
+	assert.Equal(t, 400, doRequest(r, "GET", "/admin/audit-logs?page=abc", "").Code)
 }
 
 func TestSystemCtrl_ListAuditLogs_WithTimeRange(t *testing.T) {
-svc := &testutil.MockAuditLogService{
-ListFn: func(_ context.Context, p, ps int, module, action string, st, et *string) ([]*entity.AuditLog, int64, error) {
-return []*entity.AuditLog{{ID: 1}}, 1, nil
-},
-}
-r := newTestRouter()
-r.GET("/admin/audit-logs", NewSystemController(nil, svc, nil, logrus.New()).ListAuditLogs)
-assert.Equal(t, 200, doRequest(r, "GET", "/admin/audit-logs?start_time=2024-01-01&end_time=2024-12-31", "").Code)
+	svc := &testutil.MockAuditLogService{
+		ListFn: func(_ context.Context, p, ps int, module, action string, st, et *string) ([]*entity.AuditLog, int64, error) {
+			return []*entity.AuditLog{{ID: 1}}, 1, nil
+		},
+	}
+	r := newTestRouter()
+	r.GET("/admin/audit-logs", NewSystemController(nil, svc, nil, logrus.New()).ListAuditLogs)
+	assert.Equal(t, 200, doRequest(r, "GET", "/admin/audit-logs?start_time=2024-01-01&end_time=2024-12-31", "").Code)
 }
 
 func TestUploadCtrl_UploadImage_TooLarge(t *testing.T) {
@@ -903,12 +903,24 @@ func TestUploadCtrl_UploadImage_SaveFail(t *testing.T) {
 	r := newTestRouter()
 	ctrl := NewUploadController("/nonexistent_dir_xyz", "http://localhost", logrus.New())
 	r.POST("/upload/image", ctrl.UploadImage)
-	body, ct := testutil.CreateMultipartFile(t, "file", "x.jpg", []byte("imgdata"))
+	body, ct := testutil.CreateMultipartFile(t, "file", "x.jpg", []byte{0xFF, 0xD8, 0xFF, 0xE0, 0x00, 0x10})
 	req, _ := http.NewRequest("POST", "/upload/image", body)
 	req.Header.Set("Content-Type", ct)
 	w := httptest.NewRecorder()
 	r.ServeHTTP(w, req)
 	assert.Equal(t, 500, w.Code)
+}
+
+func TestUploadCtrl_UploadImage_InvalidMagic(t *testing.T) {
+	r := newTestRouter()
+	ctrl := NewUploadController("/tmp/uploads_test", "http://localhost", logrus.New())
+	r.POST("/upload/image", ctrl.UploadImage)
+	body, ct := testutil.CreateMultipartFile(t, "file", "x.jpg", []byte("not-a-jpeg"))
+	req, _ := http.NewRequest("POST", "/upload/image", body)
+	req.Header.Set("Content-Type", ct)
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+	assert.Equal(t, 400, w.Code)
 }
 
 func TestUploadCtrl_UploadVideo_TooLarge(t *testing.T) {

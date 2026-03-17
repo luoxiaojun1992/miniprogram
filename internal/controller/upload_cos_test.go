@@ -36,7 +36,7 @@ func TestUploadCtrl_UploadImage_COS_OK(t *testing.T) {
 	var body bytes.Buffer
 	writer := multipart.NewWriter(&body)
 	part, _ := writer.CreateFormFile("file", "test.png")
-	_, _ = part.Write([]byte("png"))
+	_, _ = part.Write([]byte{0x89, 'P', 'N', 'G', '\r', '\n', 0x1A, '\n'})
 	_ = writer.WriteField("type", "article")
 	_ = writer.Close()
 
@@ -53,4 +53,35 @@ func TestUploadCtrl_UploadImage_COS_OK(t *testing.T) {
 	data, _ := resp["data"].(map[string]interface{})
 	url, _ := data["url"].(string)
 	assert.Contains(t, url, "/miniapp-test/article/")
+}
+
+func TestUploadCtrl_GeneratePresignURL_COS_OK(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	ctrl := NewUploadControllerWithCOS("/tmp/uploads_test", "http://cos:9000", "http://cos:9000", "miniapp-test", logrus.New())
+	r := gin.New()
+	r.GET("/upload/presign", ctrl.GeneratePresignURL)
+
+	req, _ := http.NewRequest(http.MethodGet, "/upload/presign?filename=video.mp4&expires_in=600", nil)
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusOK, w.Code)
+	var resp map[string]interface{}
+	_ = json.Unmarshal(w.Body.Bytes(), &resp)
+	data, _ := resp["data"].(map[string]interface{})
+	assert.Contains(t, data["put_url"], "http://cos:9000/miniapp-test/video/")
+	assert.Contains(t, data["url"], "http://cos:9000/miniapp-test/video/")
+}
+
+func TestUploadCtrl_GeneratePresignURL_InvalidFilename(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	ctrl := NewUploadControllerWithCOS("/tmp/uploads_test", "http://cos:9000", "http://cos:9000", "miniapp-test", logrus.New())
+	r := gin.New()
+	r.GET("/upload/presign", ctrl.GeneratePresignURL)
+
+	req, _ := http.NewRequest(http.MethodGet, "/upload/presign?filename=video.avi", nil)
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusBadRequest, w.Code)
 }

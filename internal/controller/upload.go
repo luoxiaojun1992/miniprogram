@@ -1,6 +1,7 @@
 package controller
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"io"
@@ -11,10 +12,12 @@ import (
 	"path"
 	"path/filepath"
 	"regexp"
+	"strconv"
 	"strings"
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/google/uuid"
 	"github.com/sirupsen/logrus"
 
 	apperrors "github.com/luoxiaojun1992/miniprogram/internal/pkg/errors"
@@ -71,13 +74,22 @@ func (c *UploadController) UploadImage(ctx *gin.Context) {
 		ctx.Error(apperrors.NewBadRequest("文件大小超过5MB限制", nil))
 		return
 	}
+	contentType := header.Header.Get("Content-Type")
+	if contentType != "" && contentType != "application/octet-stream" && !strings.HasPrefix(contentType, "image/") {
+		ctx.Error(apperrors.NewBadRequest("仅支持图片MIME类型", nil))
+		return
+	}
+	if err := validateImageMagic(file, ext); err != nil {
+		ctx.Error(apperrors.NewBadRequest("图片文件内容非法", err))
+		return
+	}
 
 	imgType := ctx.PostForm("type")
 	if imgType == "" {
 		imgType = "article"
 	}
 	imgType = sanitizeUploadType(imgType)
-	key := fmt.Sprintf("%s/%d%s", imgType, time.Now().UnixNano(), ext)
+	key := generateObjectKey(imgType, ext)
 	url, err := c.saveFile(ctx.Request.Context(), file, header, key)
 	if err != nil {
 		ctx.Error(err)
@@ -106,7 +118,7 @@ func (c *UploadController) UploadVideo(ctx *gin.Context) {
 		return
 	}
 
-	key := fmt.Sprintf("video/%d%s", time.Now().UnixNano(), ext)
+	key := generateObjectKey("video", ext)
 	url, err := c.saveFile(ctx.Request.Context(), file, header, key)
 	if err != nil {
 		ctx.Error(err)
@@ -114,6 +126,45 @@ func (c *UploadController) UploadVideo(ctx *gin.Context) {
 	}
 
 	response.Success(ctx, gin.H{"url": url, "duration": 0, "cover_url": ""})
+}
+
+// GeneratePresignURL handles GET /upload/presign.
+func (c *UploadController) GeneratePresignURL(ctx *gin.Context) {
+	if c.cos == nil {
+		ctx.Error(apperrors.NewBadRequest("当前存储不支持预签名上传", nil))
+		return
+	}
+
+	filename := strings.TrimSpace(ctx.Query("filename"))
+	if filename == "" {
+		ctx.Error(apperrors.NewBadRequest("filename不能为空", nil))
+		return
+	}
+	ext := strings.ToLower(filepath.Ext(filename))
+	if ext != ".mp4" {
+		ctx.Error(apperrors.NewBadRequest("仅支持mp4预签名上传", nil))
+		return
+	}
+
+	expiresIn := 900
+	if raw := strings.TrimSpace(ctx.Query("expires_in")); raw != "" {
+		v, err := strconv.Atoi(raw)
+		if err != nil || v < 60 || v > 3600 {
+			ctx.Error(apperrors.NewBadRequest("expires_in必须在60-3600秒之间", err))
+			return
+		}
+		expiresIn = v
+	}
+	key := generateObjectKey("video", ext)
+	expireAt := time.Now().Add(time.Duration(expiresIn) * time.Second).Unix()
+
+	response.Success(ctx, gin.H{
+		"key":        key,
+		"url":        c.cos.objectURL(key),
+		"put_url":    c.cos.presignPutURL(key, expiresIn),
+		"expires_in": expiresIn,
+		"expire_at":  expireAt,
+	})
 }
 
 func (c *UploadController) saveFile(ctx context.Context, file io.Reader, header *multipart.FileHeader, key string) (string, error) {
@@ -188,17 +239,29 @@ func (u *cosUploader) upload(ctx context.Context, key string, file io.Reader, co
 		body, _ := io.ReadAll(io.LimitReader(resp.Body, 1024))
 		return "", fmt.Errorf("cos upload failed status=%d body=%s", resp.StatusCode, string(body))
 	}
-	return fmt.Sprintf("%s/%s/%s", strings.TrimRight(u.publicBaseURL, "/"), url.PathEscape(u.bucket), escapedPath), nil
+	return u.objectURL(key), nil
 }
 
-var uploadTypePattern = regexp.MustCompile(`^[a-zA-Z0-9_-]{1,32}$`)
+var uploadTypePattern = regexp.MustCompile(`^(avatar|article|course|cover)$`)
 
 func sanitizeUploadType(raw string) string {
-	raw = strings.TrimSpace(raw)
+	raw = strings.ToLower(strings.TrimSpace(raw))
 	if uploadTypePattern.MatchString(raw) {
 		return raw
 	}
 	return "article"
+}
+
+func generateObjectKey(prefix, ext string) string {
+	return fmt.Sprintf("%s/%s/%s%s", prefix, time.Now().Format("20060102"), uuid.NewString(), ext)
+}
+
+func (u *cosUploader) objectURL(key string) string {
+	return fmt.Sprintf("%s/%s/%s", strings.TrimRight(u.publicBaseURL, "/"), url.PathEscape(u.bucket), escapeObjectKey(key))
+}
+
+func (u *cosUploader) presignPutURL(key string, expiresIn int) string {
+	return fmt.Sprintf("%s/%s/%s?expires_in=%d", strings.TrimRight(u.endpoint, "/"), url.PathEscape(u.bucket), escapeObjectKey(key), expiresIn)
 }
 
 func escapeObjectKey(key string) string {
@@ -211,4 +274,32 @@ func escapeObjectKey(key string) string {
 		escaped = append(escaped, url.PathEscape(part))
 	}
 	return strings.Join(escaped, "/")
+}
+
+func validateImageMagic(file multipart.File, ext string) error {
+	header := make([]byte, 12)
+	n, err := file.Read(header)
+	if err != nil && err != io.EOF {
+		return err
+	}
+	if _, seekErr := file.Seek(0, io.SeekStart); seekErr != nil {
+		return seekErr
+	}
+	header = header[:n]
+
+	switch ext {
+	case ".jpg", ".jpeg":
+		if len(header) >= 2 && header[0] == 0xFF && header[1] == 0xD8 {
+			return nil
+		}
+	case ".png":
+		if len(header) >= 8 && bytes.Equal(header[:8], []byte{0x89, 'P', 'N', 'G', '\r', '\n', 0x1A, '\n'}) {
+			return nil
+		}
+	case ".gif":
+		if len(header) >= 6 && (bytes.Equal(header[:6], []byte("GIF87a")) || bytes.Equal(header[:6], []byte("GIF89a"))) {
+			return nil
+		}
+	}
+	return fmt.Errorf("invalid image magic")
 }

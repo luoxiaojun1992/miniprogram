@@ -94,6 +94,7 @@ func InitRouter(p *Provider) *gin.Engine {
 		authRequired.PUT("/notifications/:id/read", p.NotificationCtrl.MarkRead)
 
 		// Upload
+		authRequired.GET("/upload/presign", p.UploadCtrl.GeneratePresignURL)
 		authRequired.POST("/upload/image", p.UploadCtrl.UploadImage)
 		authRequired.POST("/upload/video", p.UploadCtrl.UploadVideo)
 	}
