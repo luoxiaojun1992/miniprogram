@@ -15,7 +15,6 @@ import (
 )
 
 func TestUploadCtrl_UploadImage_COS_OK(t *testing.T) {
-	t.Helper()
 	gin.SetMode(gin.TestMode)
 
 	var gotPath string

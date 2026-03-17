@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"net/http"
-	"strings"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -57,7 +56,6 @@ func RateLimitMiddleware(store RateLimitStore, limit int64, window time.Duration
 		if route == "" {
 			route = ctx.Request.URL.Path
 		}
-		route = strings.ReplaceAll(route, " ", "")
 		key := fmt.Sprintf("ratelimit:%s:%s", ctx.ClientIP(), route)
 
 		count, err := store.Increment(ctx.Request.Context(), key, window)

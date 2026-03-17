@@ -10,6 +10,7 @@ import (
 	"os"
 	"path"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"time"
 
@@ -75,6 +76,7 @@ func (c *UploadController) UploadImage(ctx *gin.Context) {
 	if imgType == "" {
 		imgType = "article"
 	}
+	imgType = sanitizeUploadType(imgType)
 	key := fmt.Sprintf("%s/%d%s", imgType, time.Now().UnixNano(), ext)
 	url, err := c.saveFile(ctx.Request.Context(), file, header, key)
 	if err != nil {
@@ -167,7 +169,11 @@ func (u *cosUploader) upload(ctx context.Context, key string, file io.Reader, co
 		return "", fmt.Errorf("invalid object key")
 	}
 	escapedKey = strings.TrimPrefix(escapedKey, "/")
-	targetURL := fmt.Sprintf("%s/%s/%s", u.endpoint, url.PathEscape(u.bucket), escapedKey)
+	if strings.Contains(escapedKey, "..") {
+		return "", fmt.Errorf("invalid object key")
+	}
+	escapedPath := escapeObjectKey(escapedKey)
+	targetURL := fmt.Sprintf("%s/%s/%s", u.endpoint, url.PathEscape(u.bucket), escapedPath)
 	req, err := http.NewRequestWithContext(ctx, http.MethodPut, targetURL, file)
 	if err != nil {
 		return "", err
@@ -182,5 +188,27 @@ func (u *cosUploader) upload(ctx context.Context, key string, file io.Reader, co
 		body, _ := io.ReadAll(io.LimitReader(resp.Body, 1024))
 		return "", fmt.Errorf("cos upload failed status=%d body=%s", resp.StatusCode, string(body))
 	}
-	return fmt.Sprintf("%s/%s/%s", strings.TrimRight(u.publicBaseURL, "/"), url.PathEscape(u.bucket), escapedKey), nil
+	return fmt.Sprintf("%s/%s/%s", strings.TrimRight(u.publicBaseURL, "/"), url.PathEscape(u.bucket), escapedPath), nil
+}
+
+var uploadTypePattern = regexp.MustCompile(`^[a-zA-Z0-9_-]{1,32}$`)
+
+func sanitizeUploadType(raw string) string {
+	raw = strings.TrimSpace(raw)
+	if uploadTypePattern.MatchString(raw) {
+		return raw
+	}
+	return "article"
+}
+
+func escapeObjectKey(key string) string {
+	parts := strings.Split(key, "/")
+	escaped := make([]string, 0, len(parts))
+	for _, part := range parts {
+		if part == "" {
+			continue
+		}
+		escaped = append(escaped, url.PathEscape(part))
+	}
+	return strings.Join(escaped, "/")
 }

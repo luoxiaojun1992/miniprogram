@@ -10,18 +10,26 @@ import (
 	"sync"
 )
 
-type objectStore struct {
-	mu   sync.RWMutex
-	data map[string][]byte
+type objectMeta struct {
+	path string
+	size int64
 }
 
-func (s *objectStore) put(key string, value []byte) {
+type objectStore struct {
+	mu   sync.RWMutex
+	data map[string]objectMeta
+}
+
+func (s *objectStore) put(key string, value objectMeta) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
+	if old, ok := s.data[key]; ok && old.path != "" {
+		_ = os.Remove(old.path)
+	}
 	s.data[key] = value
 }
 
-func (s *objectStore) get(key string) ([]byte, bool) {
+func (s *objectStore) get(key string) (objectMeta, bool) {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 	v, ok := s.data[key]
@@ -34,7 +42,7 @@ func main() {
 		port = "9000"
 	}
 
-	store := &objectStore{data: map[string][]byte{}}
+	store := &objectStore{data: map[string]objectMeta{}}
 	mux := http.NewServeMux()
 
 	mux.HandleFunc("/health", func(w http.ResponseWriter, _ *http.Request) {
@@ -57,28 +65,44 @@ func main() {
 
 		switch r.Method {
 		case http.MethodPut:
-			body, err := io.ReadAll(io.LimitReader(r.Body, 512*1024*1024))
+			tmpFile, err := os.CreateTemp("", "cos-mock-*")
 			if err != nil {
+				http.Error(w, "create temp file failed", http.StatusInternalServerError)
+				return
+			}
+			defer tmpFile.Close()
+
+			size, err := io.Copy(tmpFile, io.LimitReader(r.Body, 512*1024*1024))
+			if err != nil {
+				_ = os.Remove(tmpFile.Name())
 				http.Error(w, "read body failed", http.StatusBadRequest)
 				return
 			}
-			store.put(key, body)
+			store.put(key, objectMeta{path: tmpFile.Name(), size: size})
 			w.Header().Set("Content-Type", "application/json")
 			w.WriteHeader(http.StatusOK)
-			_, _ = fmt.Fprintf(w, `{"code":"Success","key":"%s","size":%d}`, key, len(body))
+			_, _ = fmt.Fprintf(w, `{"code":"Success","key":"%s","size":%d}`, key, size)
 		case http.MethodGet:
-			data, ok := store.get(key)
+			meta, ok := store.get(key)
 			if !ok {
 				http.NotFound(w, r)
 				return
 			}
+			f, err := os.Open(meta.path)
+			if err != nil {
+				http.Error(w, "open object failed", http.StatusInternalServerError)
+				return
+			}
+			defer f.Close()
 			w.WriteHeader(http.StatusOK)
-			_, _ = w.Write(data)
+			_, _ = io.Copy(w, f)
 		case http.MethodHead:
-			if _, ok := store.get(key); !ok {
+			meta, ok := store.get(key)
+			if !ok {
 				http.NotFound(w, r)
 				return
 			}
+			w.Header().Set("Content-Length", fmt.Sprintf("%d", meta.size))
 			w.WriteHeader(http.StatusOK)
 		default:
 			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
