@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"errors"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -22,4 +23,23 @@ func TestMaskText(t *testing.T) {
 
 func TestMaskText_NoWords(t *testing.T) {
 	assert.Equal(t, "normal text", maskText("normal text", nil))
+}
+
+func TestLoadSensitiveWords_NilRepo(t *testing.T) {
+	assert.Nil(t, loadSensitiveWords(context.Background(), nil, nil))
+}
+
+func TestLoadSensitiveWords_RepoError(t *testing.T) {
+	repo := &testutil.MockSensitiveWordRepository{
+		ListEnabledWordsFn: func(_ context.Context) ([]string, error) {
+			return nil, errors.New("db error")
+		},
+	}
+	assert.Nil(t, loadSensitiveWords(context.Background(), repo, nil))
+}
+
+func TestNormalizeSensitiveWords(t *testing.T) {
+	got := normalizeSensitiveWords([]string{"  foo  ", "bar", "foo", "", "敏感词"})
+	assert.Len(t, got, 3)
+	assert.ElementsMatch(t, []string{"敏感词", "foo", "bar"}, got)
 }

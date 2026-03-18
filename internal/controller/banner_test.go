@@ -10,6 +10,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	"github.com/luoxiaojun1992/miniprogram/internal/middleware"
 	"github.com/luoxiaojun1992/miniprogram/internal/model/dto"
@@ -99,4 +100,54 @@ func TestBannerCtrl_AdminDelete_NotFound(t *testing.T) {
 	req, _ := http.NewRequest(http.MethodDelete, "/admin/banners/1", nil)
 	r.ServeHTTP(w, req)
 	assert.Equal(t, http.StatusNotFound, w.Code)
+}
+
+func TestBannerCtrl_AdminList_OK(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	r := gin.New()
+	r.Use(middleware.ErrorMiddleware(logrus.New()))
+	ctrl := NewBannerController(&mockBannerService{
+		adminListFn: func(_ context.Context, status *int8) ([]*entity.Banner, error) {
+			require.NotNil(t, status)
+			assert.Equal(t, int8(1), *status)
+			return []*entity.Banner{{ID: 1, Title: "B1", Status: 1}}, nil
+		},
+	}, logrus.New())
+	r.GET("/admin/banners", ctrl.AdminList)
+	w := httptest.NewRecorder()
+	req, _ := http.NewRequest(http.MethodGet, "/admin/banners?status=1", nil)
+	r.ServeHTTP(w, req)
+	assert.Equal(t, http.StatusOK, w.Code)
+}
+
+func TestBannerCtrl_AdminUpdate_BadID(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	r := gin.New()
+	r.Use(middleware.ErrorMiddleware(logrus.New()))
+	ctrl := NewBannerController(&mockBannerService{}, logrus.New())
+	r.PUT("/admin/banners/:id", ctrl.AdminUpdate)
+	w := httptest.NewRecorder()
+	req, _ := http.NewRequest(http.MethodPut, "/admin/banners/not-a-number", bytes.NewBufferString(`{"title":"ok","image_file_id":1}`))
+	req.Header.Set("Content-Type", "application/json")
+	r.ServeHTTP(w, req)
+	assert.Equal(t, http.StatusBadRequest, w.Code)
+}
+
+func TestBannerCtrl_AdminUpdate_OK(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	r := gin.New()
+	r.Use(middleware.ErrorMiddleware(logrus.New()))
+	ctrl := NewBannerController(&mockBannerService{
+		updateFn: func(_ context.Context, id uint64, req *dto.CreateBannerRequest) error {
+			assert.Equal(t, uint64(1), id)
+			assert.Equal(t, "ok", req.Title)
+			return nil
+		},
+	}, logrus.New())
+	r.PUT("/admin/banners/:id", ctrl.AdminUpdate)
+	w := httptest.NewRecorder()
+	req, _ := http.NewRequest(http.MethodPut, "/admin/banners/1", bytes.NewBufferString(`{"title":"ok","image_file_id":1}`))
+	req.Header.Set("Content-Type", "application/json")
+	r.ServeHTTP(w, req)
+	assert.Equal(t, http.StatusOK, w.Code)
 }
