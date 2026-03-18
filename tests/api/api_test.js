@@ -108,7 +108,14 @@ export function setup() {
     headers(adminToken),
   );
 
-  // 5. Create a test course, add a unit, and publish it
+  // 5. Create a protected video file record, then create a test course/unit and publish
+  const setupVideoPresignRes = http.get(
+    `${BASE_URL}/v1/admin/upload/files/presign?filename=k6-setup-video.mp4&usage=protected&expires_in=600`,
+    headers(adminToken),
+  );
+  check(setupVideoPresignRes, { 'setup | create video file record: 200': (r) => r.status === 200 });
+  const setupVideoFileId = setupVideoPresignRes.json('data.file_id');
+
   const courseRes = http.post(
     `${BASE_URL}/v1/admin/courses`,
     JSON.stringify({
@@ -124,7 +131,7 @@ export function setup() {
 
   const unitRes = http.post(
     `${BASE_URL}/v1/admin/courses/${courseId}/units`,
-    JSON.stringify({ title: 'K6 Test Unit', video_file_id: 1, duration: 30, sort_order: 1 }),
+    JSON.stringify({ title: 'K6 Test Unit', video_file_id: setupVideoFileId, duration: 30, sort_order: 1 }),
     headers(adminToken),
   );
   check(unitRes, { 'setup | create unit: 201': (r) => r.status === 201 });
@@ -163,7 +170,7 @@ export function setup() {
   check(newUserRes, { 'setup | create admin user: 201': (r) => r.status === 201 });
   const newUserId = newUserRes.json('data.id');
 
-  return { adminToken, userToken, moduleId, pageId, articleId, courseId, unitId, roleId, commentId, newUserId };
+  return { adminToken, userToken, moduleId, pageId, articleId, courseId, unitId, roleId, commentId, newUserId, setupVideoFileId };
 }
 
 // ---------------------------------------------------------------------------
@@ -171,7 +178,7 @@ export function setup() {
 // ---------------------------------------------------------------------------
 
 export default function (data) {
-  const { adminToken, userToken, moduleId, pageId, articleId, courseId, unitId, roleId, commentId, newUserId } = data;
+  const { adminToken, userToken, moduleId, pageId, articleId, courseId, unitId, roleId, commentId, newUserId, setupVideoFileId } = data;
   const adminH = headers(adminToken);
   const userH  = headers(userToken);
   const jsonH  = headers(null);
@@ -408,7 +415,7 @@ export default function (data) {
 
     // Front user upload avatar image (COS-backed in docker API tests)
     const uploadPayload = {
-      file: http.file(new Uint8Array([137, 80, 78, 71]).buffer, 'k6.png', 'image/png'),
+      file: http.file(new Uint8Array([137, 80, 78, 71, 13, 10, 26, 10]).buffer, 'k6.png', 'image/png'),
     };
     const uploadRes = http.post(`${BASE_URL}/v1/upload/avatar`, uploadPayload, multipartHeaders(userToken));
     check(uploadRes, {
@@ -501,23 +508,7 @@ export default function (data) {
       check(delTagRes, { 'DELETE /v1/admin/users/:id/tags: 2xx': (r) => ok(r) });
     }
 
-    // Create and delete an extra user to cover full user CRUD
-    const tempUserRes = http.post(
-      `${BASE_URL}/v1/admin/users`,
-      JSON.stringify({
-        email: `k6_tmp_${uniqueTestId}@example.com`,
-        password: ADMIN_TEST_PASSWORD,
-        nickname: `K6 Tmp ${uniqueTestId}`,
-        user_type: 2,
-      }),
-      adminH,
-    );
-    check(tempUserRes, { 'POST /v1/admin/users: 201': (r) => r.status === 201 });
-    const tempUserId = tempUserRes.json('data.id');
-    if (tempUserId) {
-      const delUserRes = http.del(`${BASE_URL}/v1/admin/users/${tempUserId}`, null, adminH);
-      check(delUserRes, { 'DELETE /v1/admin/users/:id: 2xx': (r) => ok(r) });
-    }
+    // Endpoint create/delete coverage is already exercised in setup + teardown.
   });
 
   // -------------------------------------------------------------------------
@@ -745,7 +736,7 @@ export default function (data) {
     // Create and delete temporary unit
     const createUnitRes = http.post(
       `${BASE_URL}/v1/admin/courses/${courseId}/units`,
-      JSON.stringify({ title: 'K6 Temp Unit', video_file_id: DEFAULT_VIDEO_FILE_ID, duration: 60, sort_order: 2 }),
+      JSON.stringify({ title: 'K6 Temp Unit', video_file_id: setupVideoFileId || DEFAULT_VIDEO_FILE_ID, duration: 60, sort_order: 2 }),
       adminH,
     );
     check(createUnitRes, { 'POST /v1/admin/courses/:id/units: 201': (r) => r.status === 201 });
