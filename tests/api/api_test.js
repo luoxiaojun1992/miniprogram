@@ -408,7 +408,7 @@ export default function (data) {
 
     // Front user upload avatar image (COS-backed in docker API tests)
     const uploadPayload = {
-      file: http.file(new Uint8Array([137, 80, 78, 71]), 'k6.png', 'image/png'),
+      file: http.file(new Uint8Array([137, 80, 78, 71]).buffer, 'k6.png', 'image/png'),
     };
     const uploadRes = http.post(`${BASE_URL}/v1/upload/avatar`, uploadPayload, multipartHeaders(userToken));
     check(uploadRes, {
