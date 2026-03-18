@@ -18,6 +18,7 @@ module.exports = defineConfig({
   workers: 1,
   reporter: [
     ['list'],
+    ['allure-playwright', { outputFolder: 'allure-results' }],
     ['html', { open: 'never', outputFolder: 'html-report' }],
   ],
   use: {

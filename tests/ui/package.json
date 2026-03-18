@@ -9,6 +9,7 @@
     "test:debug": "npx playwright test --debug"
   },
   "devDependencies": {
-    "@playwright/test": "1.52.0"
+    "@playwright/test": "1.52.0",
+    "allure-playwright": "3.0.9"
   }
 }

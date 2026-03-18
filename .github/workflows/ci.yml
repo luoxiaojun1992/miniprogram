@@ -80,12 +80,12 @@ jobs:
             --exit-code-from playwright \
             --abort-on-container-exit
 
-      - name: Upload test screenshots and report
+      - name: Upload Allure UI test report
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: playwright-ui-test-results
-          path: tests/ui/test-results/
+          name: playwright-ui-allure-report
+          path: tests/ui/allure-results/
           retention-days: 14
 
       - name: Tear down Docker Compose
