@@ -235,7 +235,7 @@ test.describe('Admin Portal', () => {
       const adminToken = await getAdminToken(request);
       const userToken = await getUserToken(request);
       const headers = { Authorization: `Bearer ${adminToken}` };
-      const unique = `${Date.now()}-${testInfo.retry}-${testInfo.workerIndex}-${Math.floor(Math.random() * 100000)}`;
+      const unique = `${Date.now()}-${testInfo.retry}-${testInfo.workerIndex}`;
 
       const moduleTitle = `UI CRUD Module ${unique}`;
       const attributeName = `UI CRUD Attribute ${unique}`;
@@ -248,6 +248,7 @@ test.describe('Admin Portal', () => {
       const courseTitle = `UI CRUD Course ${unique}`;
       const unitTitle = `UI CRUD Unit ${unique}`;
       const pageTitle = `UI CRUD Page ${unique}`;
+      const MODULE_PAGE_CONTENT_TYPE = 1;
       const UNIT_DURATION_INITIAL = 10;
       const UNIT_DURATION_UPDATED = 20;
 
@@ -285,7 +286,7 @@ test.describe('Admin Portal', () => {
       // 2) module pages CRUD
       const pageCreateRes = await request.post(`${APP_BASE_URL}/v1/admin/modules/${moduleID}/pages`, {
         headers,
-        data: { title: pageTitle, content: 'ui-crud-page-content', content_type: 1, sort_order: 0 },
+        data: { title: pageTitle, content: 'ui-crud-page-content', content_type: MODULE_PAGE_CONTENT_TYPE, sort_order: 0 },
       });
       expect(pageCreateRes.ok()).toBeTruthy();
       const pageCreateBody = await pageCreateRes.json();
@@ -297,7 +298,7 @@ test.describe('Admin Portal', () => {
       const pageUpdatedTitle = `${pageTitle} Updated`;
       const pageUpdateRes = await request.put(`${APP_BASE_URL}/v1/admin/modules/${moduleID}/pages/${pageID}`, {
         headers,
-        data: { title: pageUpdatedTitle, content: 'ui-crud-page-content-updated', content_type: 1, sort_order: 2 },
+        data: { title: pageUpdatedTitle, content: 'ui-crud-page-content-updated', content_type: MODULE_PAGE_CONTENT_TYPE, sort_order: 2 },
       });
       expect(pageUpdateRes.ok()).toBeTruthy();
       const pageListAfterUpdate = await request.get(`${APP_BASE_URL}/v1/admin/modules/${moduleID}/pages`, { headers });
@@ -788,11 +789,11 @@ test.describe('Miniprogram Simulator', () => {
       await expect(page.getByText(/收到新的点赞|收到新的评论/).first()).toBeVisible({ timeout: 15000 });
     });
 
-    test('miniprogram user interactions for articles and courses', async ({ page, request }) => {
+    test('miniprogram user interactions for articles and courses', async ({ page, request }, testInfo) => {
       const adminToken = await getAdminToken(request);
       const userToken = await getUserToken(request);
       const headers = { Authorization: `Bearer ${adminToken}` };
-      const unique = `${Date.now()}-${Math.floor(Math.random() * 100000)}`;
+      const unique = `${Date.now()}-${testInfo.retry}-${testInfo.workerIndex}`;
       const moduleID = await ensureModuleIDForArticle(request, adminToken);
 
       const articleTitle = `UI MP CRUD Article ${unique}`;
