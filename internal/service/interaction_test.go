@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"errors"
 	"testing"
 
 	"github.com/sirupsen/logrus"
@@ -519,6 +520,73 @@ func TestLogConfigService_Update_Found(t *testing.T) {
 	svc := NewLogConfigService(repo, logrus.New())
 	err := svc.Update(context.Background(), &dto.UpdateLogConfigRequest{RetentionDays: 60})
 	require.NoError(t, err)
+}
+
+func TestCollectionService_Add_CreateError_Extra(t *testing.T) {
+	repo := &testutil.MockCollectionRepository{
+		GetFn: func(_ context.Context, _ uint64, _ int8, _ uint64) (*entity.Collection, error) { return nil, nil },
+		CreateFn: func(_ context.Context, _ *entity.Collection) error {
+			return errors.New("create failed")
+		},
+	}
+	svc := NewCollectionService(repo, nil, nil, logrus.New())
+	require.Error(t, svc.Add(context.Background(), 1, 1, 1))
+}
+
+func TestCollectionService_Remove_DeleteError_Extra(t *testing.T) {
+	repo := &testutil.MockCollectionRepository{
+		DeleteFn: func(_ context.Context, _ uint64, _ int8, _ uint64) error {
+			return errors.New("delete failed")
+		},
+	}
+	svc := NewCollectionService(repo, nil, nil, logrus.New())
+	require.Error(t, svc.Remove(context.Background(), 1, 1, 1))
+}
+
+func TestLikeService_Add_CreateError_Extra(t *testing.T) {
+	likeRepo := &testutil.MockLikeRepository{
+		GetFn: func(_ context.Context, _ uint64, _ int8, _ uint64) (*entity.Like, error) { return nil, nil },
+		CreateFn: func(_ context.Context, _ *entity.Like) error {
+			return errors.New("create failed")
+		},
+	}
+	svc := NewLikeService(likeRepo, nil, nil, nil, logrus.New())
+	require.Error(t, svc.Add(context.Background(), 1, 1, 1))
+}
+
+func TestLikeService_Add_CourseNotificationPath_Extra(t *testing.T) {
+	likeRepo := &testutil.MockLikeRepository{
+		GetFn:    func(_ context.Context, _ uint64, _ int8, _ uint64) (*entity.Like, error) { return nil, nil },
+		CreateFn: func(_ context.Context, _ *entity.Like) error { return nil },
+	}
+	courseRepo := &testutil.MockCourseRepository{
+		IncrLikeCountFn: func(_ context.Context, id uint64) error {
+			assert.Equal(t, uint64(5), id)
+			return nil
+		},
+		GetByIDFn: func(_ context.Context, id uint64) (*entity.Course, error) {
+			return &entity.Course{ID: id, AuthorID: 3}, nil
+		},
+	}
+	notifRepo := &testutil.MockNotificationRepository{
+		CreateFn: func(_ context.Context, n *entity.Notification) error {
+			require.NotNil(t, n.UserID)
+			assert.Equal(t, uint64(3), *n.UserID)
+			return nil
+		},
+	}
+	svc := NewLikeService(likeRepo, nil, courseRepo, notifRepo, logrus.New())
+	require.NoError(t, svc.Add(context.Background(), 1, 2, 5))
+}
+
+func TestLikeService_Remove_DeleteError_Extra(t *testing.T) {
+	likeRepo := &testutil.MockLikeRepository{
+		DeleteFn: func(_ context.Context, _ uint64, _ int8, _ uint64) error {
+			return errors.New("delete failed")
+		},
+	}
+	svc := NewLikeService(likeRepo, nil, nil, nil, logrus.New())
+	require.Error(t, svc.Remove(context.Background(), 1, 1, 1))
 }
 
 func TestLogConfigService_Update_NotFound(t *testing.T) {

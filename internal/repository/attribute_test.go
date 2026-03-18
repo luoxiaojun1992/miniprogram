@@ -47,6 +47,42 @@ func TestAttributeRepository_CRUDAndAssoc(t *testing.T) {
 	assert.True(t, has)
 }
 
+func TestAttributeRepository_NotFoundAndErrorBranches(t *testing.T) {
+	db, mock := newTestDB(t)
+	repo := NewAttributeRepository(db)
+
+	mock.ExpectQuery("SELECT").WillReturnRows(sqlmock.NewRows([]string{"id", "name"}))
+	attr, err := repo.GetByID(context.Background(), 999)
+	require.NoError(t, err)
+	assert.Nil(t, attr)
+
+	mock.ExpectQuery("SELECT").WillReturnError(fmt.Errorf("list error"))
+	_, err = repo.List(context.Background())
+	assert.Error(t, err)
+
+	mock.ExpectBegin()
+	mock.ExpectExec("INSERT").WillReturnError(fmt.Errorf("insert error"))
+	mock.ExpectRollback()
+	err = repo.Create(context.Background(), &entity.Attribute{Name: "x"})
+	assert.Error(t, err)
+
+	mock.ExpectBegin()
+	mock.ExpectExec("UPDATE").WillReturnError(fmt.Errorf("update error"))
+	mock.ExpectRollback()
+	err = repo.Update(context.Background(), &entity.Attribute{ID: 1, Name: "x"})
+	assert.Error(t, err)
+
+	mock.ExpectBegin()
+	mock.ExpectExec("DELETE").WillReturnError(fmt.Errorf("delete error"))
+	mock.ExpectRollback()
+	err = repo.Delete(context.Background(), 1)
+	assert.Error(t, err)
+
+	mock.ExpectQuery("SELECT count").WillReturnError(fmt.Errorf("count error"))
+	_, err = repo.HasUserAssociations(context.Background(), 1)
+	assert.Error(t, err)
+}
+
 func TestUserAttributeRepository_CRUDAndErrors(t *testing.T) {
 	db, mock := newTestDB(t)
 	repo := NewUserAttributeRepository(db)
@@ -73,5 +109,26 @@ func TestUserAttributeRepository_CRUDAndErrors(t *testing.T) {
 	repo2 := NewAttributeRepository(db2)
 	mock2.ExpectQuery("SELECT").WillReturnError(fmt.Errorf("db error"))
 	_, err = repo2.GetByID(context.Background(), 1)
+	assert.Error(t, err)
+}
+
+func TestUserAttributeRepository_ErrorBranches(t *testing.T) {
+	db, mock := newTestDB(t)
+	repo := NewUserAttributeRepository(db)
+
+	mock.ExpectQuery("SELECT").WillReturnError(fmt.Errorf("list error"))
+	_, err := repo.ListByUserID(context.Background(), 2)
+	assert.Error(t, err)
+
+	mock.ExpectBegin()
+	mock.ExpectExec("INSERT").WillReturnError(fmt.Errorf("upsert error"))
+	mock.ExpectRollback()
+	err = repo.Upsert(context.Background(), &entity.UserAttribute{UserID: 2, AttributeID: 3, Value: "x"})
+	assert.Error(t, err)
+
+	mock.ExpectBegin()
+	mock.ExpectExec("DELETE").WillReturnError(fmt.Errorf("delete error"))
+	mock.ExpectRollback()
+	err = repo.Delete(context.Background(), 2, 3)
 	assert.Error(t, err)
 }

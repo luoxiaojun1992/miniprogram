@@ -265,6 +265,35 @@ func TestArticleCtrl_AdminPin_OK(t *testing.T) {
 	assert.Equal(t, 200, doRequest(r, "POST", "/admin/articles/1/pin", `{"sort_order":999}`).Code)
 }
 
+func TestArticleCtrl_AdminPin_BadID(t *testing.T) {
+	r := newTestRouter()
+	r.POST("/admin/articles/:id/pin", artCtrl(&testutil.MockArticleService{}).AdminPin)
+	assert.Equal(t, 400, doRequest(r, "POST", "/admin/articles/abc/pin", `{"sort_order":1}`).Code)
+}
+
+func TestArticleCtrl_AdminPin_BadJSON(t *testing.T) {
+	r := newTestRouter()
+	r.POST("/admin/articles/:id/pin", artCtrl(&testutil.MockArticleService{}).AdminPin)
+	assert.Equal(t, 400, doRequest(r, "POST", "/admin/articles/1/pin", `bad`).Code)
+}
+
+func TestArticleCtrl_AdminPin_Validation(t *testing.T) {
+	r := newTestRouter()
+	r.POST("/admin/articles/:id/pin", artCtrl(&testutil.MockArticleService{}).AdminPin)
+	assert.Equal(t, 400, doRequest(r, "POST", "/admin/articles/1/pin", `{}`).Code)
+}
+
+func TestArticleCtrl_AdminPin_SvcErr(t *testing.T) {
+	svc := &testutil.MockArticleService{
+		PinFn: func(_ context.Context, _ uint64, _ *dto.PinArticleRequest) error {
+			return apperrors.NewInternal("pin failed", nil)
+		},
+	}
+	r := newTestRouter()
+	r.POST("/admin/articles/:id/pin", artCtrl(svc).AdminPin)
+	assert.Equal(t, 500, doRequest(r, "POST", "/admin/articles/1/pin", `{"sort_order":1}`).Code)
+}
+
 func TestArticleCtrl_AdminCopy_OK(t *testing.T) {
 	svc := &testutil.MockArticleService{
 		CopyFn: func(_ context.Context, id uint64, authorID uint64) (uint64, error) { return 88, nil },
@@ -272,6 +301,23 @@ func TestArticleCtrl_AdminCopy_OK(t *testing.T) {
 	r := newTestRouter()
 	r.POST("/admin/articles/:id/copy", artCtrl(svc).AdminCopy)
 	assert.Equal(t, 201, doRequest(r, "POST", "/admin/articles/1/copy", "").Code)
+}
+
+func TestArticleCtrl_AdminCopy_BadID(t *testing.T) {
+	r := newTestRouter()
+	r.POST("/admin/articles/:id/copy", artCtrl(&testutil.MockArticleService{}).AdminCopy)
+	assert.Equal(t, 400, doRequest(r, "POST", "/admin/articles/abc/copy", "").Code)
+}
+
+func TestArticleCtrl_AdminCopy_SvcErr(t *testing.T) {
+	svc := &testutil.MockArticleService{
+		CopyFn: func(_ context.Context, _ uint64, _ uint64) (uint64, error) {
+			return 0, apperrors.NewInternal("copy failed", nil)
+		},
+	}
+	r := newTestRouterWithAuth(1, 2)
+	r.POST("/admin/articles/:id/copy", artCtrl(svc).AdminCopy)
+	assert.Equal(t, 500, doRequest(r, "POST", "/admin/articles/1/copy", "").Code)
 }
 
 // ── ModuleController ──────────────────────────────────────────────────────────
