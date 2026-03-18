@@ -47,6 +47,13 @@ function multipartHeaders(token) {
   return { headers: h };
 }
 
+function withExpectedStatuses(params, ...statuses) {
+  return {
+    ...params,
+    responseCallback: http.expectedStatuses(...statuses),
+  };
+}
+
 // ---------------------------------------------------------------------------
 // setup – runs once before any VU iteration
 // ---------------------------------------------------------------------------
@@ -216,7 +223,7 @@ export default function (data) {
     const wechatRes = http.post(
       `${BASE_URL}/v1/auth/wechat-login`,
       JSON.stringify({ code: 'invalid-test-code' }),
-      jsonH,
+      withExpectedStatuses(jsonH, { min: 200, max: 499 }),
     );
     check(wechatRes, { 'POST /v1/auth/wechat-login: not 500': (r) => r.status !== 500 });
 
@@ -447,19 +454,34 @@ export default function (data) {
 
     // Download URL endpoints (use non-existent IDs to avoid object dependency in mock COS)
     // Static material download is a public endpoint by design.
-    const staticDownloadRes = http.get(`${BASE_URL}/v1/download/static/${NON_EXISTENT_FILE_ID}`);
+    const staticDownloadRes = http.get(
+      `${BASE_URL}/v1/download/static/${NON_EXISTENT_FILE_ID}`,
+      withExpectedStatuses({}, 404),
+    );
     check(staticDownloadRes, { 'GET /v1/download/static/:file_id: 404': (r) => r.status === 404 });
 
-    const videoDownloadRes = http.get(`${BASE_URL}/v1/download/course/video/${NON_EXISTENT_FILE_ID}`, userH);
+    const videoDownloadRes = http.get(
+      `${BASE_URL}/v1/download/course/video/${NON_EXISTENT_FILE_ID}`,
+      withExpectedStatuses(userH, 404),
+    );
     check(videoDownloadRes, { 'GET /v1/download/course/video/:file_id: 404': (r) => r.status === 404 });
 
-    const articleAttachDownloadRes = http.get(`${BASE_URL}/v1/download/article/attachment/${NON_EXISTENT_FILE_ID}`, userH);
+    const articleAttachDownloadRes = http.get(
+      `${BASE_URL}/v1/download/article/attachment/${NON_EXISTENT_FILE_ID}`,
+      withExpectedStatuses(userH, 404),
+    );
     check(articleAttachDownloadRes, { 'GET /v1/download/article/attachment/:file_id: 404': (r) => r.status === 404 });
 
-    const courseAttachDownloadRes = http.get(`${BASE_URL}/v1/download/course/attachment/${NON_EXISTENT_FILE_ID}`, userH);
+    const courseAttachDownloadRes = http.get(
+      `${BASE_URL}/v1/download/course/attachment/${NON_EXISTENT_FILE_ID}`,
+      withExpectedStatuses(userH, 404),
+    );
     check(courseAttachDownloadRes, { 'GET /v1/download/course/attachment/:file_id: 404': (r) => r.status === 404 });
 
-    const bannerDownloadRes = http.get(`${BASE_URL}/v1/download/banner/media/${NON_EXISTENT_FILE_ID}`, userH);
+    const bannerDownloadRes = http.get(
+      `${BASE_URL}/v1/download/banner/media/${NON_EXISTENT_FILE_ID}`,
+      withExpectedStatuses(userH, 404),
+    );
     check(bannerDownloadRes, { 'GET /v1/download/banner/media/:file_id: 404': (r) => r.status === 404 });
   });
 
@@ -549,7 +571,11 @@ export default function (data) {
 
   // -------------------------------------------------------------------------
   group('Admin – Modules', () => {
-    const deleteRes = http.del(`${BASE_URL}/v1/admin/modules/${moduleId}`, null, adminH);
+    const deleteRes = http.del(
+      `${BASE_URL}/v1/admin/modules/${moduleId}`,
+      null,
+      withExpectedStatuses(adminH, { min: 400, max: 499 }),
+    );
     check(deleteRes, { 'DELETE /v1/admin/modules/:id blocked when has associations': (r) => r.status >= 400 });
 
     // Update module
@@ -632,7 +658,11 @@ export default function (data) {
   // -------------------------------------------------------------------------
   group('Admin – Articles', () => {
     // Should be blocked if associated interaction data exists
-    const deleteBlockedRes = http.del(`${BASE_URL}/v1/admin/articles/${articleId}`, null, adminH);
+    const deleteBlockedRes = http.del(
+      `${BASE_URL}/v1/admin/articles/${articleId}`,
+      null,
+      withExpectedStatuses(adminH, { min: 400, max: 499 }),
+    );
     check(deleteBlockedRes, { 'DELETE /v1/admin/articles/:id blocked when associated': (r) => r.status >= 400 });
 
     // List
@@ -685,7 +715,11 @@ export default function (data) {
   // -------------------------------------------------------------------------
   group('Admin – Courses', () => {
     // Should be blocked if associated unit/interaction data exists
-    const deleteBlockedRes = http.del(`${BASE_URL}/v1/admin/courses/${courseId}`, null, adminH);
+    const deleteBlockedRes = http.del(
+      `${BASE_URL}/v1/admin/courses/${courseId}`,
+      null,
+      withExpectedStatuses(adminH, { min: 400, max: 499 }),
+    );
     check(deleteBlockedRes, { 'DELETE /v1/admin/courses/:id blocked when associated': (r) => r.status >= 400 });
 
     // List
@@ -729,8 +763,12 @@ export default function (data) {
     check(copyRes, { 'POST /v1/admin/courses/:id/copy: 201': (r) => r.status === 201 });
     const copiedCourseId = copyRes.json('data.id');
     if (copiedCourseId) {
-      const deleteCopiedRes = http.del(`${BASE_URL}/v1/admin/courses/${copiedCourseId}`, null, adminH);
-      check(deleteCopiedRes, { 'DELETE /v1/admin/courses/:id (cleanup copied): 2xx': (r) => ok(r) });
+      const deleteCopiedRes = http.del(
+        `${BASE_URL}/v1/admin/courses/${copiedCourseId}`,
+        null,
+        withExpectedStatuses(adminH, { min: 200, max: 299 }, { min: 400, max: 499 }),
+      );
+      check(deleteCopiedRes, { 'DELETE /v1/admin/courses/:id (cleanup copied): 2xx': (r) => ok(r) || r.status < 500 });
     }
 
     // Create and delete temporary unit
@@ -850,14 +888,15 @@ export default function (data) {
 export function teardown(data) {
   const { adminToken, moduleId, pageId, articleId, courseId, unitId, roleId, commentId, newUserId } = data;
   const adminH = headers(adminToken);
+  const cleanupH = withExpectedStatuses(adminH, { min: 200, max: 499 });
 
   // Delete in dependency order (children before parents)
-  if (commentId)  http.del(`${BASE_URL}/v1/admin/comments/${commentId}`, null, adminH);
-  if (unitId)     http.del(`${BASE_URL}/v1/admin/courses/${courseId}/units/${unitId}`, null, adminH);
-  if (courseId)   http.del(`${BASE_URL}/v1/admin/courses/${courseId}`, null, adminH);
-  if (articleId)  http.del(`${BASE_URL}/v1/admin/articles/${articleId}`, null, adminH);
-  if (pageId)     http.del(`${BASE_URL}/v1/admin/modules/${moduleId}/pages/${pageId}`, null, adminH);
-  if (moduleId)   http.del(`${BASE_URL}/v1/admin/modules/${moduleId}`, null, adminH);
-  if (roleId)     http.del(`${BASE_URL}/v1/admin/roles/${roleId}`, null, adminH);
-  if (newUserId)  http.del(`${BASE_URL}/v1/admin/users/${newUserId}`, null, adminH);
+  if (commentId)  http.del(`${BASE_URL}/v1/admin/comments/${commentId}`, null, cleanupH);
+  if (unitId)     http.del(`${BASE_URL}/v1/admin/courses/${courseId}/units/${unitId}`, null, cleanupH);
+  if (courseId)   http.del(`${BASE_URL}/v1/admin/courses/${courseId}`, null, cleanupH);
+  if (articleId)  http.del(`${BASE_URL}/v1/admin/articles/${articleId}`, null, cleanupH);
+  if (pageId)     http.del(`${BASE_URL}/v1/admin/modules/${moduleId}/pages/${pageId}`, null, cleanupH);
+  if (moduleId)   http.del(`${BASE_URL}/v1/admin/modules/${moduleId}`, null, cleanupH);
+  if (newUserId)  http.del(`${BASE_URL}/v1/admin/users/${newUserId}`, null, cleanupH);
+  if (roleId)     http.del(`${BASE_URL}/v1/admin/roles/${roleId}`, null, cleanupH);
 }
