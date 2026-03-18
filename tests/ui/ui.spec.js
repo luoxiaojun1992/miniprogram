@@ -227,6 +227,378 @@ test.describe('Admin Portal', () => {
       });
     });
 
+    test('admin CRUD covers users, attributes, modules/pages, articles, courses/units, banners, roles, and comments', async ({ page, request }) => {
+      const adminToken = await getAdminToken(request);
+      const userToken = await getUserToken(request);
+      const headers = { Authorization: `Bearer ${adminToken}` };
+      const unique = `${Date.now()}-${Math.floor(Math.random() * 100000)}`;
+
+      const moduleTitle = `UI CRUD Module ${unique}`;
+      const attributeName = `UI CRUD Attribute ${unique}`;
+      const userEmail = `ui-crud-${unique}@example.com`;
+      const roleName = `UI CRUD Role ${unique}`;
+      const bannerTitle = `UI CRUD Banner ${unique}`;
+      const articleTitle = `UI CRUD Article ${unique}`;
+      const commentText = `ui-crud-comment-${unique}`;
+      const courseTitle = `UI CRUD Course ${unique}`;
+      const unitTitle = `UI CRUD Unit ${unique}`;
+      const pageTitle = `UI CRUD Page ${unique}`;
+
+      // 1) module CRUD
+      const moduleCreateRes = await request.post(`${APP_BASE_URL}/v1/admin/modules`, {
+        headers,
+        data: { title: moduleTitle, description: 'ui-crud-module', sort_order: 0 },
+      });
+      expect(moduleCreateRes.ok()).toBeTruthy();
+      const moduleCreateBody = await moduleCreateRes.json();
+      const moduleID = Number(moduleCreateBody.data?.id || 0);
+      expect(moduleID).toBeGreaterThan(0);
+      const moduleListAfterCreate = await request.get(
+        `${APP_BASE_URL}/v1/modules?page=1&page_size=100&keyword=${encodeURIComponent(moduleTitle)}`,
+        { headers },
+      );
+      const moduleListAfterCreateBody = await moduleListAfterCreate.json();
+      expect((moduleListAfterCreateBody.data?.list || []).some((item) => item.id === moduleID)).toBeTruthy();
+      await page.getByText('模块管理').click();
+      await expect(page.getByText(moduleTitle).first()).toBeVisible({ timeout: 15000 });
+
+      const moduleUpdatedTitle = `${moduleTitle} Updated`;
+      const moduleUpdateRes = await request.put(`${APP_BASE_URL}/v1/admin/modules/${moduleID}`, {
+        headers,
+        data: { title: moduleUpdatedTitle, description: 'ui-crud-module-updated', sort_order: 1 },
+      });
+      expect(moduleUpdateRes.ok()).toBeTruthy();
+      const moduleListAfterUpdate = await request.get(
+        `${APP_BASE_URL}/v1/modules?page=1&page_size=100&keyword=${encodeURIComponent(moduleUpdatedTitle)}`,
+        { headers },
+      );
+      const moduleListAfterUpdateBody = await moduleListAfterUpdate.json();
+      expect((moduleListAfterUpdateBody.data?.list || []).some((item) => item.id === moduleID)).toBeTruthy();
+
+      // 2) module pages CRUD
+      const pageCreateRes = await request.post(`${APP_BASE_URL}/v1/admin/modules/${moduleID}/pages`, {
+        headers,
+        data: { title: pageTitle, content: 'ui-crud-page-content', content_type: 'markdown', sort_order: 0 },
+      });
+      expect(pageCreateRes.ok()).toBeTruthy();
+      const pageCreateBody = await pageCreateRes.json();
+      const pageID = Number(pageCreateBody.data?.id || 0);
+      expect(pageID).toBeGreaterThan(0);
+      const pageListAfterCreate = await request.get(`${APP_BASE_URL}/v1/admin/modules/${moduleID}/pages`, { headers });
+      const pageListAfterCreateBody = await pageListAfterCreate.json();
+      expect((pageListAfterCreateBody.data?.list || pageListAfterCreateBody.data || []).some((item) => item.id === pageID)).toBeTruthy();
+      await page.getByText('模块管理').click();
+      await page.locator('tr', { hasText: String(moduleID) }).first().getByRole('button', { name: '页面' }).click();
+      await expect(page.getByText(pageTitle).first()).toBeVisible({ timeout: 15000 });
+      const pageUpdatedTitle = `${pageTitle} Updated`;
+      const pageUpdateRes = await request.put(`${APP_BASE_URL}/v1/admin/modules/${moduleID}/pages/${pageID}`, {
+        headers,
+        data: { title: pageUpdatedTitle, content: 'ui-crud-page-content-updated', content_type: 'markdown', sort_order: 2 },
+      });
+      expect(pageUpdateRes.ok()).toBeTruthy();
+      const pageListAfterUpdate = await request.get(`${APP_BASE_URL}/v1/admin/modules/${moduleID}/pages`, { headers });
+      const pageListAfterUpdateBody = await pageListAfterUpdate.json();
+      expect((pageListAfterUpdateBody.data?.list || pageListAfterUpdateBody.data || []).some((item) => item.id === pageID && item.title === pageUpdatedTitle)).toBeTruthy();
+      const pageDeleteRes = await request.delete(`${APP_BASE_URL}/v1/admin/modules/${moduleID}/pages/${pageID}`, { headers });
+      expect(pageDeleteRes.ok()).toBeTruthy();
+      const pageListAfterDelete = await request.get(`${APP_BASE_URL}/v1/admin/modules/${moduleID}/pages`, { headers });
+      const pageListAfterDeleteBody = await pageListAfterDelete.json();
+      expect((pageListAfterDeleteBody.data?.list || pageListAfterDeleteBody.data || []).some((item) => item.id === pageID)).toBeFalsy();
+      await page.getByRole('button', { name: '关闭' }).first().click();
+
+      // 3) attribute CRUD
+      const attrCreateRes = await request.post(`${APP_BASE_URL}/v1/admin/attributes`, {
+        headers,
+        data: { name: attributeName },
+      });
+      expect(attrCreateRes.ok()).toBeTruthy();
+      const attrCreateBody = await attrCreateRes.json();
+      const attributeID = Number(attrCreateBody.data?.id || 0);
+      expect(attributeID).toBeGreaterThan(0);
+      const attrListAfterCreate = await request.get(`${APP_BASE_URL}/v1/admin/attributes`, { headers });
+      const attrListAfterCreateBody = await attrListAfterCreate.json();
+      expect((attrListAfterCreateBody.data || []).some((item) => item.id === attributeID)).toBeTruthy();
+      await page.getByText('属性管理').click();
+      await expect(page.getByText(attributeName).first()).toBeVisible({ timeout: 15000 });
+      const attributeUpdatedName = `${attributeName} Updated`;
+      const attrUpdateRes = await request.put(`${APP_BASE_URL}/v1/admin/attributes/${attributeID}`, {
+        headers,
+        data: { name: attributeUpdatedName },
+      });
+      expect(attrUpdateRes.ok()).toBeTruthy();
+      const attrListAfterUpdate = await request.get(`${APP_BASE_URL}/v1/admin/attributes`, { headers });
+      const attrListAfterUpdateBody = await attrListAfterUpdate.json();
+      expect((attrListAfterUpdateBody.data || []).some((item) => item.id === attributeID && item.name === attributeUpdatedName)).toBeTruthy();
+      const attrDeleteRes = await request.delete(`${APP_BASE_URL}/v1/admin/attributes/${attributeID}`, { headers });
+      expect(attrDeleteRes.ok()).toBeTruthy();
+      const attrListAfterDelete = await request.get(`${APP_BASE_URL}/v1/admin/attributes`, { headers });
+      const attrListAfterDeleteBody = await attrListAfterDelete.json();
+      expect((attrListAfterDeleteBody.data || []).some((item) => item.id === attributeID)).toBeFalsy();
+
+      // 4) user CRUD
+      const userCreateRes = await request.post(`${APP_BASE_URL}/v1/admin/users`, {
+        headers,
+        data: { email: userEmail, password: 'Test@123456', nickname: `UI CRUD User ${unique}`, user_type: 2 },
+      });
+      expect(userCreateRes.ok()).toBeTruthy();
+      const userCreateBody = await userCreateRes.json();
+      const userID = Number(userCreateBody.data?.id || 0);
+      expect(userID).toBeGreaterThan(0);
+      const userListAfterCreate = await request.get(
+        `${APP_BASE_URL}/v1/admin/users?page=1&page_size=100&keyword=${encodeURIComponent(userEmail)}`,
+        { headers },
+      );
+      const userListAfterCreateBody = await userListAfterCreate.json();
+      expect((userListAfterCreateBody.data?.list || []).some((item) => item.id === userID)).toBeTruthy();
+      await page.getByText('用户管理').click();
+      await page.locator('.search-input').first().fill(userEmail);
+      await page.keyboard.press('Enter');
+      await expect(page.getByText(userEmail).first()).toBeVisible({ timeout: 15000 });
+      const updatedNickname = `UI CRUD User Updated ${unique}`;
+      const userUpdateRes = await request.put(`${APP_BASE_URL}/v1/admin/users/${userID}`, {
+        headers,
+        data: { nickname: updatedNickname, user_type: 2, status: 1 },
+      });
+      expect(userUpdateRes.ok()).toBeTruthy();
+      const userListAfterUpdate = await request.get(
+        `${APP_BASE_URL}/v1/admin/users?page=1&page_size=100&keyword=${encodeURIComponent(updatedNickname)}`,
+        { headers },
+      );
+      const userListAfterUpdateBody = await userListAfterUpdate.json();
+      expect((userListAfterUpdateBody.data?.list || []).some((item) => item.id === userID)).toBeTruthy();
+      const userDeleteRes = await request.delete(`${APP_BASE_URL}/v1/admin/users/${userID}`, { headers });
+      expect(userDeleteRes.ok()).toBeTruthy();
+      const userListAfterDelete = await request.get(
+        `${APP_BASE_URL}/v1/admin/users?page=1&page_size=100&keyword=${encodeURIComponent(userEmail)}`,
+        { headers },
+      );
+      const userListAfterDeleteBody = await userListAfterDelete.json();
+      expect((userListAfterDeleteBody.data?.list || []).some((item) => item.id === userID)).toBeFalsy();
+
+      // 5) role CRUD
+      const roleCreateRes = await request.post(`${APP_BASE_URL}/v1/admin/roles`, {
+        headers,
+        data: { name: roleName, description: 'ui-crud-role', parent_id: 0, permission_ids: [] },
+      });
+      expect(roleCreateRes.ok()).toBeTruthy();
+      const roleCreateBody = await roleCreateRes.json();
+      const roleID = Number(roleCreateBody.data?.id || 0);
+      expect(roleID).toBeGreaterThan(0);
+      const roleListAfterCreate = await request.get(`${APP_BASE_URL}/v1/admin/roles?page=1&page_size=100`, { headers });
+      const roleListAfterCreateBody = await roleListAfterCreate.json();
+      expect((roleListAfterCreateBody.data?.list || roleListAfterCreateBody.data || []).some((item) => item.id === roleID)).toBeTruthy();
+      await page.locator('.sidebar-menu .menu-item').filter({ hasText: '权限管理' }).click();
+      await page.locator('.submenu .menu-item').filter({ hasText: '角色管理' }).click();
+      await expect(page.getByText(roleName).first()).toBeVisible({ timeout: 15000 });
+      const roleUpdatedName = `${roleName} Updated`;
+      const roleUpdateRes = await request.put(`${APP_BASE_URL}/v1/admin/roles/${roleID}`, {
+        headers,
+        data: { name: roleUpdatedName, description: 'ui-crud-role-updated', parent_id: 0, permission_ids: [] },
+      });
+      expect(roleUpdateRes.ok()).toBeTruthy();
+      const roleListAfterUpdate = await request.get(`${APP_BASE_URL}/v1/admin/roles?page=1&page_size=100`, { headers });
+      const roleListAfterUpdateBody = await roleListAfterUpdate.json();
+      expect((roleListAfterUpdateBody.data?.list || roleListAfterUpdateBody.data || []).some((item) => item.id === roleID && item.name === roleUpdatedName)).toBeTruthy();
+      const roleDeleteRes = await request.delete(`${APP_BASE_URL}/v1/admin/roles/${roleID}`, { headers });
+      expect(roleDeleteRes.ok()).toBeTruthy();
+      const roleListAfterDelete = await request.get(`${APP_BASE_URL}/v1/admin/roles?page=1&page_size=100`, { headers });
+      const roleListAfterDeleteBody = await roleListAfterDelete.json();
+      expect((roleListAfterDeleteBody.data?.list || roleListAfterDeleteBody.data || []).some((item) => item.id === roleID)).toBeFalsy();
+
+      // 6) article + comment CRUD
+      const articleCreateRes = await request.post(`${APP_BASE_URL}/v1/admin/articles`, {
+        headers,
+        data: { title: articleTitle, summary: 'ui-crud-article', content: 'ui-crud-content', content_type: 1, module_id: moduleID },
+      });
+      expect(articleCreateRes.ok()).toBeTruthy();
+      const articleCreateBody = await articleCreateRes.json();
+      const articleID = Number(articleCreateBody.data?.id || 0);
+      expect(articleID).toBeGreaterThan(0);
+      const articleListAfterCreate = await request.get(
+        `${APP_BASE_URL}/v1/admin/articles?page=1&page_size=100&keyword=${encodeURIComponent(articleTitle)}`,
+        { headers },
+      );
+      const articleListAfterCreateBody = await articleListAfterCreate.json();
+      expect((articleListAfterCreateBody.data?.list || []).some((item) => item.id === articleID)).toBeTruthy();
+      await page.getByText('文章管理').click();
+      await page.locator('.search-input').first().fill(articleTitle);
+      await page.keyboard.press('Enter');
+      await expect(page.getByText(articleTitle).first()).toBeVisible({ timeout: 15000 });
+      const articleUpdatedTitle = `${articleTitle} Updated`;
+      const articleUpdateRes = await request.put(`${APP_BASE_URL}/v1/admin/articles/${articleID}`, {
+        headers,
+        data: { title: articleUpdatedTitle, summary: 'ui-crud-article-updated', content: 'ui-crud-content-updated', content_type: 1, module_id: moduleID },
+      });
+      expect(articleUpdateRes.ok()).toBeTruthy();
+      const articleListAfterUpdate = await request.get(
+        `${APP_BASE_URL}/v1/admin/articles?page=1&page_size=100&keyword=${encodeURIComponent(articleUpdatedTitle)}`,
+        { headers },
+      );
+      const articleListAfterUpdateBody = await articleListAfterUpdate.json();
+      expect((articleListAfterUpdateBody.data?.list || []).some((item) => item.id === articleID)).toBeTruthy();
+      const publishRes = await request.post(`${APP_BASE_URL}/v1/admin/articles/${articleID}/publish`, {
+        headers,
+        data: { status: 1 },
+      });
+      expect(publishRes.ok()).toBeTruthy();
+      const createCommentRes = await request.post(`${APP_BASE_URL}/v1/comments/1/${articleID}`, {
+        headers: { Authorization: `Bearer ${userToken}` },
+        data: { content: commentText },
+      });
+      expect(createCommentRes.ok()).toBeTruthy();
+      const commentCreateBody = await createCommentRes.json();
+      const commentID = Number(commentCreateBody.data?.id || 0);
+      expect(commentID).toBeGreaterThan(0);
+      const commentListAfterCreate = await request.get(`${APP_BASE_URL}/v1/admin/comments?page=1&page_size=100`, { headers });
+      const commentListAfterCreateBody = await commentListAfterCreate.json();
+      expect((commentListAfterCreateBody.data?.list || []).some((item) => item.id === commentID)).toBeTruthy();
+      await page.locator('.sidebar-menu .menu-item').filter({ hasText: '互动管理' }).click();
+      await page.locator('.submenu .menu-item').filter({ hasText: '评论管理' }).click();
+      await expect(page.getByText(commentText).first()).toBeVisible({ timeout: 15000 });
+      const commentAuditRes = await request.put(`${APP_BASE_URL}/v1/admin/comments/${commentID}/audit`, {
+        headers,
+        data: { status: 1 },
+      });
+      expect(commentAuditRes.ok()).toBeTruthy();
+      const commentListAfterAudit = await request.get(`${APP_BASE_URL}/v1/admin/comments?page=1&page_size=100`, { headers });
+      const commentListAfterAuditBody = await commentListAfterAudit.json();
+      expect((commentListAfterAuditBody.data?.list || []).some((item) => item.id === commentID && Number(item.status) === 1)).toBeTruthy();
+      const commentDeleteRes = await request.delete(`${APP_BASE_URL}/v1/admin/comments/${commentID}`, { headers });
+      expect(commentDeleteRes.ok()).toBeTruthy();
+      const commentListAfterDelete = await request.get(`${APP_BASE_URL}/v1/admin/comments?page=1&page_size=100`, { headers });
+      const commentListAfterDeleteBody = await commentListAfterDelete.json();
+      expect((commentListAfterDeleteBody.data?.list || []).some((item) => item.id === commentID)).toBeFalsy();
+
+      // 7) course + units CRUD
+      const courseCreateRes = await request.post(`${APP_BASE_URL}/v1/admin/courses`, {
+        headers,
+        data: { title: courseTitle, description: 'ui-crud-course', price: 0, module_id: moduleID, status: 0 },
+      });
+      expect(courseCreateRes.ok()).toBeTruthy();
+      const courseCreateBody = await courseCreateRes.json();
+      const courseID = Number(courseCreateBody.data?.id || 0);
+      expect(courseID).toBeGreaterThan(0);
+      const courseListAfterCreate = await request.get(
+        `${APP_BASE_URL}/v1/admin/courses?page=1&page_size=100&keyword=${encodeURIComponent(courseTitle)}`,
+        { headers },
+      );
+      const courseListAfterCreateBody = await courseListAfterCreate.json();
+      expect((courseListAfterCreateBody.data?.list || []).some((item) => item.id === courseID)).toBeTruthy();
+      await page.getByText('课程管理').click();
+      await page.locator('.search-input').first().fill(courseTitle);
+      await page.keyboard.press('Enter');
+      await expect(page.getByText(courseTitle).first()).toBeVisible({ timeout: 15000 });
+      const courseUpdatedTitle = `${courseTitle} Updated`;
+      const courseUpdateRes = await request.put(`${APP_BASE_URL}/v1/admin/courses/${courseID}`, {
+        headers,
+        data: { title: courseUpdatedTitle, description: 'ui-crud-course-updated', price: 0, module_id: moduleID, status: 0 },
+      });
+      expect(courseUpdateRes.ok()).toBeTruthy();
+      const courseListAfterUpdate = await request.get(
+        `${APP_BASE_URL}/v1/admin/courses?page=1&page_size=100&keyword=${encodeURIComponent(courseUpdatedTitle)}`,
+        { headers },
+      );
+      const courseListAfterUpdateBody = await courseListAfterUpdate.json();
+      expect((courseListAfterUpdateBody.data?.list || []).some((item) => item.id === courseID)).toBeTruthy();
+
+      const unitCreateRes = await request.post(`${APP_BASE_URL}/v1/admin/courses/${courseID}/units`, {
+        headers,
+        data: { title: unitTitle, video_file_id: 0, duration: 10, sort_order: 1 },
+      });
+      expect(unitCreateRes.ok()).toBeTruthy();
+      const unitCreateBody = await unitCreateRes.json();
+      const unitID = Number(unitCreateBody.data?.id || 0);
+      expect(unitID).toBeGreaterThan(0);
+      const unitListAfterCreate = await request.get(`${APP_BASE_URL}/v1/admin/courses/${courseID}/units`, { headers });
+      const unitListAfterCreateBody = await unitListAfterCreate.json();
+      expect((unitListAfterCreateBody.data?.list || unitListAfterCreateBody.data || []).some((item) => item.id === unitID)).toBeTruthy();
+      const unitUpdatedTitle = `${unitTitle} Updated`;
+      const unitUpdateRes = await request.put(`${APP_BASE_URL}/v1/admin/courses/${courseID}/units/${unitID}`, {
+        headers,
+        data: { title: unitUpdatedTitle, video_file_id: 0, duration: 20, sort_order: 2 },
+      });
+      expect(unitUpdateRes.ok()).toBeTruthy();
+      const unitListAfterUpdate = await request.get(`${APP_BASE_URL}/v1/admin/courses/${courseID}/units`, { headers });
+      const unitListAfterUpdateBody = await unitListAfterUpdate.json();
+      expect((unitListAfterUpdateBody.data?.list || unitListAfterUpdateBody.data || []).some((item) => item.id === unitID && item.title === unitUpdatedTitle)).toBeTruthy();
+      const unitDeleteRes = await request.delete(`${APP_BASE_URL}/v1/admin/courses/${courseID}/units/${unitID}`, { headers });
+      expect(unitDeleteRes.ok()).toBeTruthy();
+      const unitListAfterDelete = await request.get(`${APP_BASE_URL}/v1/admin/courses/${courseID}/units`, { headers });
+      const unitListAfterDeleteBody = await unitListAfterDelete.json();
+      expect((unitListAfterDeleteBody.data?.list || unitListAfterDeleteBody.data || []).some((item) => item.id === unitID)).toBeFalsy();
+      const courseDeleteRes = await request.delete(`${APP_BASE_URL}/v1/admin/courses/${courseID}`, { headers });
+      expect(courseDeleteRes.ok()).toBeTruthy();
+      const courseListAfterDelete = await request.get(
+        `${APP_BASE_URL}/v1/admin/courses?page=1&page_size=100&keyword=${encodeURIComponent(courseUpdatedTitle)}`,
+        { headers },
+      );
+      const courseListAfterDeleteBody = await courseListAfterDelete.json();
+      expect((courseListAfterDeleteBody.data?.list || []).some((item) => item.id === courseID)).toBeFalsy();
+
+      // 8) banner CRUD
+      const uploadName = `ui-crud-banner-${unique}.png`;
+      const presignRes = await request.get(
+        `${APP_BASE_URL}/v1/admin/upload/files/presign?filename=${encodeURIComponent(uploadName)}&usage=cover&expires_in=600`,
+        { headers },
+      );
+      expect(presignRes.ok()).toBeTruthy();
+      const presignBody = await presignRes.json();
+      const bannerFileID = Number(presignBody.data?.file_id || 0);
+      expect(bannerFileID).toBeGreaterThan(0);
+      const putRes = await request.fetch(presignBody.data?.put_url || '', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'image/png' },
+        data: Buffer.from('ui-crud-banner-file'),
+      });
+      expect(putRes.ok()).toBeTruthy();
+      const bannerCreateRes = await request.post(`${APP_BASE_URL}/v1/admin/banners`, {
+        headers,
+        data: { title: bannerTitle, image_file_id: bannerFileID, link_url: 'https://example.com/ui-crud', sort_order: 0, status: 1 },
+      });
+      expect(bannerCreateRes.ok()).toBeTruthy();
+      const bannerCreateBody = await bannerCreateRes.json();
+      const bannerID = Number(bannerCreateBody.data?.id || 0);
+      expect(bannerID).toBeGreaterThan(0);
+      const bannerListAfterCreate = await request.get(`${APP_BASE_URL}/v1/admin/banners`, { headers });
+      const bannerListAfterCreateBody = await bannerListAfterCreate.json();
+      expect((bannerListAfterCreateBody.data?.list || bannerListAfterCreateBody.data || []).some((item) => item.id === bannerID)).toBeTruthy();
+      await page.getByText('轮播图管理').click();
+      await expect(page.getByText(bannerTitle).first()).toBeVisible({ timeout: 15000 });
+      const bannerUpdatedTitle = `${bannerTitle} Updated`;
+      const bannerUpdateRes = await request.put(`${APP_BASE_URL}/v1/admin/banners/${bannerID}`, {
+        headers,
+        data: { title: bannerUpdatedTitle, image_file_id: bannerFileID, link_url: 'https://example.com/ui-crud-updated', sort_order: 1, status: 1 },
+      });
+      expect(bannerUpdateRes.ok()).toBeTruthy();
+      const bannerListAfterUpdate = await request.get(`${APP_BASE_URL}/v1/admin/banners`, { headers });
+      const bannerListAfterUpdateBody = await bannerListAfterUpdate.json();
+      expect((bannerListAfterUpdateBody.data?.list || bannerListAfterUpdateBody.data || []).some((item) => item.id === bannerID && item.title === bannerUpdatedTitle)).toBeTruthy();
+      const bannerDeleteRes = await request.delete(`${APP_BASE_URL}/v1/admin/banners/${bannerID}`, { headers });
+      expect(bannerDeleteRes.ok()).toBeTruthy();
+      const bannerListAfterDelete = await request.get(`${APP_BASE_URL}/v1/admin/banners`, { headers });
+      const bannerListAfterDeleteBody = await bannerListAfterDelete.json();
+      expect((bannerListAfterDeleteBody.data?.list || bannerListAfterDeleteBody.data || []).some((item) => item.id === bannerID)).toBeFalsy();
+
+      // 9) finish article/module delete and verify delete query
+      const articleDeleteRes = await request.delete(`${APP_BASE_URL}/v1/admin/articles/${articleID}`, { headers });
+      expect(articleDeleteRes.ok()).toBeTruthy();
+      const articleListAfterDelete = await request.get(
+        `${APP_BASE_URL}/v1/admin/articles?page=1&page_size=100&keyword=${encodeURIComponent(articleUpdatedTitle)}`,
+        { headers },
+      );
+      const articleListAfterDeleteBody = await articleListAfterDelete.json();
+      expect((articleListAfterDeleteBody.data?.list || []).some((item) => item.id === articleID)).toBeFalsy();
+
+      const moduleDeleteRes = await request.delete(`${APP_BASE_URL}/v1/admin/modules/${moduleID}`, { headers });
+      expect(moduleDeleteRes.ok()).toBeTruthy();
+      const moduleListAfterDelete = await request.get(
+        `${APP_BASE_URL}/v1/modules?page=1&page_size=100&keyword=${encodeURIComponent(moduleUpdatedTitle)}`,
+        { headers },
+      );
+      const moduleListAfterDeleteBody = await moduleListAfterDelete.json();
+      expect((moduleListAfterDeleteBody.data?.list || []).some((item) => item.id === moduleID)).toBeFalsy();
+    });
+
     test('navigate to course management', async ({ page }) => {
       await page.getByText('课程管理').click();
       await expect(page.locator('h3, .page-title').first()).toContainText(/课程管理/);
@@ -389,10 +761,11 @@ test.describe('Miniprogram Simulator', () => {
       const adminBody = await adminTokenRes.json();
       const adminToken = adminBody.data?.access_token ?? '';
       const userToken = await getUserToken(request);
+      const moduleID = await ensureModuleIDForArticle(request, adminToken);
 
       const articleRes = await request.post(`${APP_BASE_URL}/v1/admin/articles`, {
         headers: { Authorization: `Bearer ${adminToken}` },
-        data: { title: `UI Notif ${Date.now()}`, summary: 's', content: 'c', content_type: 1, module_id: 1 },
+        data: { title: `UI Notif ${Date.now()}`, summary: 's', content: 'c', content_type: 1, module_id: moduleID },
       });
       const articleBody = await articleRes.json();
       const articleId = articleBody.data?.id;
@@ -416,6 +789,136 @@ test.describe('Miniprogram Simulator', () => {
       await page.locator('.tab-item').filter({ hasText: '我的' }).click();
       await page.getByText('我的通知').click();
       await expect(page.getByText(/收到新的点赞|收到新的评论/).first()).toBeVisible({ timeout: 15000 });
+    });
+
+    test('miniprogram CRUD covers article/course like-collect-comment create/read/delete flows', async ({ page, request }) => {
+      const adminToken = await getAdminToken(request);
+      const userToken = await getUserToken(request);
+      const headers = { Authorization: `Bearer ${adminToken}` };
+      const unique = `${Date.now()}-${Math.floor(Math.random() * 100000)}`;
+      const moduleID = await ensureModuleIDForArticle(request, adminToken);
+
+      const articleTitle = `UI MP CRUD Article ${unique}`;
+      const articleComment = `ui-mp-article-comment-${unique}`;
+      const courseTitle = `UI MP CRUD Course ${unique}`;
+      const courseComment = `ui-mp-course-comment-${unique}`;
+
+      const articleRes = await request.post(`${APP_BASE_URL}/v1/admin/articles`, {
+        headers,
+        data: { title: articleTitle, summary: 'ui-mp-crud', content: 'ui-mp-crud-content', content_type: 1, module_id: moduleID },
+      });
+      expect(articleRes.ok()).toBeTruthy();
+      const articleBody = await articleRes.json();
+      const articleID = Number(articleBody.data?.id || 0);
+      expect(articleID).toBeGreaterThan(0);
+      const articlePublishRes = await request.post(`${APP_BASE_URL}/v1/admin/articles/${articleID}/publish`, {
+        headers,
+        data: { status: 1 },
+      });
+      expect(articlePublishRes.ok()).toBeTruthy();
+      const publicArticleQuery = await request.get(`${APP_BASE_URL}/v1/articles?page=1&page_size=20&keyword=${encodeURIComponent(articleTitle)}`, {
+        headers: { Authorization: `Bearer ${userToken}` },
+      });
+      const publicArticleQueryBody = await publicArticleQuery.json();
+      expect((publicArticleQueryBody.data?.list || []).some((item) => item.id === articleID)).toBeTruthy();
+
+      const courseRes = await request.post(`${APP_BASE_URL}/v1/admin/courses`, {
+        headers,
+        data: { title: courseTitle, description: 'ui-mp-crud-course', price: 0, module_id: moduleID, status: 0 },
+      });
+      expect(courseRes.ok()).toBeTruthy();
+      const courseBody = await courseRes.json();
+      const courseID = Number(courseBody.data?.id || 0);
+      expect(courseID).toBeGreaterThan(0);
+      const coursePublishRes = await request.post(`${APP_BASE_URL}/v1/admin/courses/${courseID}/publish`, {
+        headers,
+        data: { status: 1 },
+      });
+      expect(coursePublishRes.ok()).toBeTruthy();
+      const publicCourseQuery = await request.get(`${APP_BASE_URL}/v1/courses?page=1&page_size=20&keyword=${encodeURIComponent(courseTitle)}`, {
+        headers: { Authorization: `Bearer ${userToken}` },
+      });
+      const publicCourseQueryBody = await publicCourseQuery.json();
+      expect((publicCourseQueryBody.data?.list || []).some((item) => item.id === courseID)).toBeTruthy();
+
+      // article create/read/delete by UI (like, collection, comment)
+      await page.locator('.tab-item').filter({ hasText: '文章' }).click();
+      await page.locator('input[placeholder*="搜索文章"]').fill(articleTitle);
+      await page.waitForTimeout(700);
+      await page.getByText(articleTitle).first().click();
+      await expect(page.locator('.detail-title').filter({ hasText: '文章详情' })).toBeVisible({ timeout: 15000 });
+      await expect(page.getByText(articleTitle).first()).toBeVisible();
+      await page.locator('.detail-actions .action-btn').first().click();
+      await expect(page.locator('.detail-actions .action-btn.liked')).toBeVisible();
+      await page.locator('.detail-actions .action-btn').nth(1).click();
+      await expect(page.locator('.detail-actions .action-btn').nth(1)).toContainText('已收藏');
+      await page.locator('textarea[placeholder="写评论..."]').fill(articleComment);
+      await page.getByRole('button', { name: '发送' }).click();
+      await expect(page.getByText(articleComment).first()).toBeVisible({ timeout: 15000 });
+      const commentListRes = await request.get(`${APP_BASE_URL}/v1/comments/1/${articleID}`, {
+        headers: { Authorization: `Bearer ${userToken}` },
+      });
+      const commentListBody = await commentListRes.json();
+      expect((commentListBody.data?.list || commentListBody.data || []).some((item) => item.content === articleComment)).toBeTruthy();
+      await page.locator('.back-btn').click();
+      await page.locator('.tab-item').filter({ hasText: '我的' }).click();
+      await page.getByText('我的收藏').click();
+      await expect(page.getByText(articleTitle).first()).toBeVisible({ timeout: 15000 });
+      await page.locator('.detail-header .back-btn').click();
+
+      await page.locator('.tab-item').filter({ hasText: '文章' }).click();
+      await page.locator('input[placeholder*="搜索文章"]').fill(articleTitle);
+      await page.waitForTimeout(700);
+      await page.getByText(articleTitle).first().click();
+      await page.locator('.detail-actions .action-btn').nth(1).click();
+      await expect(page.locator('.detail-actions .action-btn').nth(1)).toContainText('收藏');
+      await page.locator('.detail-actions .action-btn').first().click();
+      await expect(page.locator('.detail-actions .action-btn.liked')).toHaveCount(0);
+      await page.locator('.back-btn').click();
+
+      // course create/read/delete by UI (like, collection, comment)
+      await page.locator('.tab-item').filter({ hasText: '课程' }).click();
+      await page.locator('input[placeholder*="搜索课程"]').fill(courseTitle);
+      await page.waitForTimeout(700);
+      await page.getByText(courseTitle).first().click();
+      await expect(page.locator('.detail-title').filter({ hasText: '课程详情' })).toBeVisible({ timeout: 15000 });
+      await expect(page.getByText(courseTitle).first()).toBeVisible();
+      await page.locator('.detail-actions .action-btn').first().click();
+      await expect(page.locator('.detail-actions .action-btn.liked')).toBeVisible();
+      await page.locator('.detail-actions .action-btn').nth(1).click();
+      await expect(page.locator('.detail-actions .action-btn').nth(1)).toContainText('已收藏');
+      await page.locator('textarea[placeholder="写评论..."]').fill(courseComment);
+      await page.getByRole('button', { name: '发送' }).click();
+      await expect(page.getByText(courseComment).first()).toBeVisible({ timeout: 15000 });
+      const courseCommentListRes = await request.get(`${APP_BASE_URL}/v1/comments/2/${courseID}`, {
+        headers: { Authorization: `Bearer ${userToken}` },
+      });
+      const courseCommentListBody = await courseCommentListRes.json();
+      expect((courseCommentListBody.data?.list || courseCommentListBody.data || []).some((item) => item.content === courseComment)).toBeTruthy();
+      await page.locator('.back-btn').click();
+
+      await page.locator('.tab-item').filter({ hasText: '课程' }).click();
+      await page.locator('input[placeholder*="搜索课程"]').fill(courseTitle);
+      await page.waitForTimeout(700);
+      await page.getByText(courseTitle).first().click();
+      await page.locator('.detail-actions .action-btn').nth(1).click();
+      await expect(page.locator('.detail-actions .action-btn').nth(1)).toContainText('收藏');
+      await page.locator('.detail-actions .action-btn').first().click();
+      await expect(page.locator('.detail-actions .action-btn.liked')).toHaveCount(0);
+
+      // backend query confirms delete states applied by UI
+      const articleDetailRes = await request.get(`${APP_BASE_URL}/v1/articles/${articleID}`, {
+        headers: { Authorization: `Bearer ${userToken}` },
+      });
+      const articleDetailBody = await articleDetailRes.json();
+      expect(articleDetailBody.data?.is_liked).toBeFalsy();
+      expect(articleDetailBody.data?.is_collected).toBeFalsy();
+      const courseDetailRes = await request.get(`${APP_BASE_URL}/v1/courses/${courseID}`, {
+        headers: { Authorization: `Bearer ${userToken}` },
+      });
+      const courseDetailBody = await courseDetailRes.json();
+      expect(courseDetailBody.data?.is_liked).toBeFalsy();
+      expect(courseDetailBody.data?.is_collected).toBeFalsy();
     });
   });
 });
