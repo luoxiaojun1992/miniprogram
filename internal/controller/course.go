@@ -105,7 +105,7 @@ func (c *CourseController) List(ctx *gin.Context) {
 			filtered = append(filtered, item)
 		}
 	}
-	response.PaginatedSuccess(ctx, filtered, minInt64(total, int64(len(filtered))), q.GetPage(), q.GetPageSize())
+	response.PaginatedSuccess(ctx, filtered, total, q.GetPage(), q.GetPageSize())
 }
 
 // GetByID handles GET /courses/:id.
@@ -512,11 +512,4 @@ func (c *CourseController) GetUnitAttachments(ctx *gin.Context) {
 		return
 	}
 	response.Success(ctx, fileIDs)
-}
-
-func minInt64(a, b int64) int64 {
-	if a < b {
-		return a
-	}
-	return b
 }

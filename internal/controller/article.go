@@ -74,7 +74,7 @@ func (c *ArticleController) List(ctx *gin.Context) {
 	if userID > 0 {
 		uid = &userID
 	}
-	articles, _, err := c.svc.List(ctx, q.GetPage(), q.GetPageSize(), q.Keyword, moduleID, q.Sort, uid)
+	articles, total, err := c.svc.List(ctx, q.GetPage(), q.GetPageSize(), q.Keyword, moduleID, q.Sort, uid)
 	if err != nil {
 		ctx.Error(err)
 		return
@@ -90,7 +90,7 @@ func (c *ArticleController) List(ctx *gin.Context) {
 			filtered = append(filtered, item)
 		}
 	}
-	response.PaginatedSuccess(ctx, filtered, int64(len(filtered)), q.GetPage(), q.GetPageSize())
+	response.PaginatedSuccess(ctx, filtered, total, q.GetPage(), q.GetPageSize())
 }
 
 // GetByID handles GET /articles/:id.
