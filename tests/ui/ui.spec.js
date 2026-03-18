@@ -109,6 +109,12 @@ test.describe('Admin Portal', () => {
       await expect(page.getByRole('button', { name: /新增/ })).toBeVisible();
     });
 
+    test('navigate to attribute management', async ({ page }) => {
+      await page.getByText('属性管理').click();
+      await expect(page.locator('h3, .page-title').first()).toContainText(/属性管理/);
+      await expect(page.getByRole('button', { name: /新增属性/ })).toBeVisible();
+    });
+
     test('navigate to article management', async ({ page }) => {
       await page.getByText('文章管理').click();
       await expect(page.locator('h3, .page-title').first()).toContainText(/文章管理/);
@@ -200,6 +206,12 @@ test.describe('Admin Portal', () => {
     test('navigate to module management', async ({ page }) => {
       await page.getByText('模块管理').click();
       await expect(page.locator('h3, .page-title').first()).toContainText(/模块管理/);
+    });
+
+    test('navigate to banner management', async ({ page }) => {
+      await page.getByText('轮播图管理').click();
+      await expect(page.locator('h3, .page-title').first()).toContainText(/轮播图管理/);
+      await expect(page.getByRole('button', { name: /新增轮播图/ })).toBeVisible();
     });
 
     test('navigate to comment management', async ({ page }) => {
