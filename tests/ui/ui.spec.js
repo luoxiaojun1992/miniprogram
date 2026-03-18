@@ -39,6 +39,35 @@ async function attachJSON(testInfo, name, payload) {
   });
 }
 
+async function ensureModuleIDForArticle(request, adminToken) {
+  const headers = { Authorization: `Bearer ${adminToken}` };
+  const listRes = await request.get(`${APP_BASE_URL}/v1/admin/modules?page=1&page_size=20`, { headers });
+  if (listRes.ok()) {
+    const listBody = await listRes.json();
+    const modules = listBody.data?.list ?? listBody.data ?? [];
+    if (Array.isArray(modules)) {
+      const existing = modules.find((item) => Number(item?.id) > 0);
+      if (existing) {
+        return Number(existing.id);
+      }
+    }
+  }
+
+  const createRes = await request.post(`${APP_BASE_URL}/v1/admin/modules`, {
+    headers,
+    data: {
+      title: `UI Report Module ${Date.now()}-${Math.floor(Math.random() * 100000)}`,
+      description: 'ui-report-module',
+      sort_order: 0,
+    },
+  });
+  expect(createRes.ok()).toBeTruthy();
+  const createBody = await createRes.json();
+  const moduleID = createBody.data?.id ?? 0;
+  expect(moduleID).toBeGreaterThan(0);
+  return moduleID;
+}
+
 /* ═══════════════════════════════════════════════════════════════════ */
 /*  ADMIN PORTAL TESTS                                                */
 /* ═══════════════════════════════════════════════════════════════════ */
@@ -133,12 +162,13 @@ test.describe('Admin Portal', () => {
     test('report includes created content, created content list, and uploaded file', async ({ page, request }, testInfo) => {
       const adminToken = await getAdminToken(request);
       const uniqueTitle = `UI Report Article ${Date.now()}-${Math.floor(Math.random() * 100000)}`;
+      const moduleID = await ensureModuleIDForArticle(request, adminToken);
 
       let articleId = 0;
       await test.step('创建内容：创建文章', async () => {
         const articleRes = await request.post(`${APP_BASE_URL}/v1/admin/articles`, {
           headers: { Authorization: `Bearer ${adminToken}` },
-          data: { title: uniqueTitle, summary: 'ui-report-summary', content: 'ui-report-content', content_type: 1, module_id: 1 },
+          data: { title: uniqueTitle, summary: 'ui-report-summary', content: 'ui-report-content', content_type: 1, module_id: moduleID },
         });
         expect(articleRes.ok()).toBeTruthy();
         const articleBody = await articleRes.json();
