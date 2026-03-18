@@ -14,7 +14,6 @@ import (
 	"github.com/luoxiaojun1992/miniprogram/internal/service"
 )
 
-// StudyRecordController handles study record requests.
 // CommentController handles comment requests.
 type CommentController struct {
 	svc service.CommentService

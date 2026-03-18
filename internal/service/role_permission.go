@@ -110,5 +110,3 @@ func (s *roleService) Delete(ctx context.Context, id uint) error {
 	}
 	return s.roleRepo.Delete(ctx, id)
 }
-
-// ==================== Permission Service ====================

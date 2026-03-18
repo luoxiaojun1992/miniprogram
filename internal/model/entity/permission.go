@@ -2,7 +2,6 @@ package entity
 
 import "time"
 
-// Role represents the roles table.
 // Permission represents the permissions table.
 type Permission struct {
 	ID        uint          `gorm:"primarykey" json:"id"`

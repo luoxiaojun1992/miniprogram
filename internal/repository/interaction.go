@@ -9,8 +9,6 @@ import (
 	"github.com/luoxiaojun1992/miniprogram/internal/pkg/errors"
 )
 
-// ==================== ContentPermission Repository ====================
-
 type contentPermissionRepository struct {
 	db *gorm.DB
 }
@@ -47,5 +45,3 @@ func (r *contentPermissionRepository) SetContentPermissions(ctx context.Context,
 		return nil
 	})
 }
-
-// ==================== StudyRecord Repository ====================

@@ -11,8 +11,6 @@ import (
 	"github.com/luoxiaojun1992/miniprogram/internal/repository"
 )
 
-// ==================== Module Service ====================
-
 type moduleService struct {
 	moduleRepo     repository.ModuleRepository
 	modulePageRepo repository.ModulePageRepository
@@ -128,5 +126,3 @@ func (s *moduleService) DeletePage(ctx context.Context, moduleID, pageID uint) e
 	}
 	return s.modulePageRepo.Delete(ctx, pageID)
 }
-
-// ==================== Article Service ====================

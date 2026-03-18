@@ -2,7 +2,6 @@ package entity
 
 import "time"
 
-// ContentPermission represents the content_permissions table.
 // Collection represents the collections table.
 type Collection struct {
 	ID           uint64    `gorm:"primarykey" json:"id"`

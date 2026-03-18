@@ -9,8 +9,6 @@ import (
 	"github.com/luoxiaojun1992/miniprogram/internal/repository"
 )
 
-// ==================== Study Record Service ====================
-
 type auditLogService struct {
 	auditLogRepo repository.AuditLogRepository
 	log          *logrus.Logger
@@ -30,5 +28,3 @@ func (s *auditLogService) Log(ctx context.Context, log *entity.AuditLog) {
 		s.log.WithError(err).Warn("记录审计日志失败")
 	}
 }
-
-// ==================== LogConfig Service ====================

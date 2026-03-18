@@ -117,5 +117,3 @@ func (r *userRepository) HasAssociations(ctx context.Context, id uint64) (bool, 
 	}
 	return count > 0, nil
 }
-
-// ==================== AdminUser Repository ====================

@@ -9,8 +9,6 @@ import (
 	"github.com/luoxiaojun1992/miniprogram/internal/pkg/errors"
 )
 
-// ==================== Attribute Repository ====================
-
 type attributeRepository struct {
 	db *gorm.DB
 }
@@ -68,5 +66,3 @@ func (r *attributeRepository) HasUserAssociations(ctx context.Context, id uint) 
 	}
 	return count > 0, nil
 }
-
-// ==================== UserAttribute Repository ====================

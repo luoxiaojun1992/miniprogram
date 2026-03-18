@@ -2,7 +2,6 @@ package entity
 
 import "time"
 
-// WechatConfig represents the wechat_configs table.
 // LogConfig represents the log_configs table.
 type LogConfig struct {
 	ID            uint      `gorm:"primarykey" json:"id"`

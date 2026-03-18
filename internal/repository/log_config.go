@@ -9,8 +9,6 @@ import (
 	"github.com/luoxiaojun1992/miniprogram/internal/pkg/errors"
 )
 
-// ==================== WechatConfig Repository ====================
-
 type logConfigRepository struct {
 	db *gorm.DB
 }

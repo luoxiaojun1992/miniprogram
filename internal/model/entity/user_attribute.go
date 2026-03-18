@@ -2,7 +2,6 @@ package entity
 
 import "time"
 
-// Attribute represents the attributes table.
 // UserAttribute represents the user_attributes table.
 type UserAttribute struct {
 	ID          uint64     `gorm:"primarykey;comment:ID" json:"id"`

@@ -13,7 +13,6 @@ import (
 	"github.com/luoxiaojun1992/miniprogram/internal/service"
 )
 
-// StudyRecordController handles study record requests.
 // LikeController handles like requests.
 type LikeController struct {
 	svc service.LikeService

@@ -4,7 +4,6 @@ import (
 	"time"
 )
 
-// User represents the users table.
 // AdminUser represents the admin_users table.
 type AdminUser struct {
 	ID           uint64     `gorm:"primarykey" json:"id"`

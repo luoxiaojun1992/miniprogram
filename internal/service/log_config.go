@@ -10,8 +10,6 @@ import (
 	"github.com/luoxiaojun1992/miniprogram/internal/repository"
 )
 
-// ==================== Study Record Service ====================
-
 type logConfigService struct {
 	logConfigRepo repository.LogConfigRepository
 	log           *logrus.Logger

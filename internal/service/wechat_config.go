@@ -10,8 +10,6 @@ import (
 	"github.com/luoxiaojun1992/miniprogram/internal/repository"
 )
 
-// ==================== Study Record Service ====================
-
 type wechatConfigService struct {
 	wechatConfigRepo repository.WechatConfigRepository
 	log              *logrus.Logger
@@ -48,5 +46,3 @@ func (s *wechatConfigService) Update(ctx context.Context, req *dto.UpdateWechatC
 	}
 	return s.wechatConfigRepo.Update(ctx, cfg)
 }
-
-// ==================== AuditLog Service ====================

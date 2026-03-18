@@ -8,7 +8,6 @@ import (
 	"github.com/luoxiaojun1992/miniprogram/internal/service"
 )
 
-// RoleController handles role management requests.
 // PermissionController handles permission requests.
 type PermissionController struct {
 	svc service.PermissionService

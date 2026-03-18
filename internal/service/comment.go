@@ -11,8 +11,6 @@ import (
 	"github.com/luoxiaojun1992/miniprogram/internal/repository"
 )
 
-// ==================== Study Record Service ====================
-
 type commentService struct {
 	commentRepo       repository.CommentRepository
 	articleRepo       repository.ArticleRepository
@@ -172,5 +170,3 @@ func (s *commentService) Delete(ctx context.Context, id uint64) error {
 	}
 	return nil
 }
-
-// ==================== Notification Service ====================

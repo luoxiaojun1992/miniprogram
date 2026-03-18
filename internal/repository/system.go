@@ -9,8 +9,6 @@ import (
 	"github.com/luoxiaojun1992/miniprogram/internal/pkg/errors"
 )
 
-// ==================== WechatConfig Repository ====================
-
 type wechatConfigRepository struct {
 	db *gorm.DB
 }
@@ -38,5 +36,3 @@ func (r *wechatConfigRepository) Update(ctx context.Context, cfg *entity.WechatC
 	}
 	return nil
 }
-
-// ==================== AuditLog Repository ====================

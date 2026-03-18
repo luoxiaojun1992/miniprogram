@@ -9,8 +9,6 @@ import (
 	"github.com/luoxiaojun1992/miniprogram/internal/pkg/errors"
 )
 
-// ==================== WechatConfig Repository ====================
-
 type auditLogRepository struct {
 	db *gorm.DB
 }
@@ -63,5 +61,3 @@ func (r *auditLogRepository) Create(ctx context.Context, auditLog *entity.AuditL
 	}
 	return nil
 }
-
-// ==================== LogConfig Repository ====================

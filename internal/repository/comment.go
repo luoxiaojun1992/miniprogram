@@ -9,8 +9,6 @@ import (
 	"github.com/luoxiaojun1992/miniprogram/internal/pkg/errors"
 )
 
-// ==================== ContentPermission Repository ====================
-
 type commentRepository struct {
 	db *gorm.DB
 }

@@ -14,7 +14,6 @@ import (
 	"github.com/luoxiaojun1992/miniprogram/internal/service"
 )
 
-// StudyRecordController handles study record requests.
 // CollectionController handles collection requests.
 type CollectionController struct {
 	svc service.CollectionService

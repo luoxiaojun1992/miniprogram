@@ -10,8 +10,6 @@ import (
 	"github.com/luoxiaojun1992/miniprogram/internal/repository"
 )
 
-// ==================== Study Record Service ====================
-
 type likeService struct {
 	likeRepo    repository.LikeRepository
 	articleRepo repository.ArticleRepository
@@ -116,5 +114,3 @@ func (s *likeService) Remove(ctx context.Context, userID uint64, contentType int
 	}
 	return nil
 }
-
-// ==================== Comment Service ====================

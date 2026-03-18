@@ -9,8 +9,6 @@ import (
 	"github.com/luoxiaojun1992/miniprogram/internal/pkg/errors"
 )
 
-// ==================== ContentPermission Repository ====================
-
 type collectionRepository struct {
 	db *gorm.DB
 }
@@ -61,5 +59,3 @@ func (r *collectionRepository) Delete(ctx context.Context, userID uint64, conten
 	}
 	return nil
 }
-
-// ==================== Like Repository ====================

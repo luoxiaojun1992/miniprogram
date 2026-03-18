@@ -11,8 +11,6 @@ import (
 	"github.com/luoxiaojun1992/miniprogram/internal/repository"
 )
 
-// ==================== Study Record Service ====================
-
 type studyRecordService struct {
 	studyRecordRepo repository.StudyRecordRepository
 	courseUnitRepo  repository.CourseUnitRepository
@@ -68,5 +66,3 @@ func (s *studyRecordService) Update(ctx context.Context, userID uint64, req *dto
 	}
 	return nil
 }
-
-// ==================== Collection Service ====================

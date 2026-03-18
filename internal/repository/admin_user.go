@@ -57,5 +57,3 @@ func (r *adminUserRepository) UpdateLastLogin(ctx context.Context, id uint64) er
 	}
 	return nil
 }
-
-// ==================== UserTag Repository ====================

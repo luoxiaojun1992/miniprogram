@@ -2,7 +2,6 @@ package entity
 
 import "time"
 
-// ContentPermission represents the content_permissions table.
 // Comment represents the comments table.
 type Comment struct {
 	ID          uint64    `gorm:"primarykey" json:"id"`

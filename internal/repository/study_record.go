@@ -11,8 +11,6 @@ import (
 	"github.com/luoxiaojun1992/miniprogram/internal/pkg/errors"
 )
 
-// ==================== ContentPermission Repository ====================
-
 type studyRecordRepository struct {
 	db *gorm.DB
 }
@@ -60,5 +58,3 @@ func (r *studyRecordRepository) Upsert(ctx context.Context, record *entity.UserS
 	}
 	return nil
 }
-
-// ==================== Collection Repository ====================

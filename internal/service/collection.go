@@ -10,8 +10,6 @@ import (
 	"github.com/luoxiaojun1992/miniprogram/internal/repository"
 )
 
-// ==================== Study Record Service ====================
-
 type collectionService struct {
 	collectionRepo repository.CollectionRepository
 	articleRepo    repository.ArticleRepository
@@ -91,5 +89,3 @@ func (s *collectionService) Remove(ctx context.Context, userID uint64, contentTy
 	}
 	return nil
 }
-
-// ==================== Like Service ====================

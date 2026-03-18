@@ -126,5 +126,3 @@ func (r *roleRepository) HasUsers(ctx context.Context, roleID uint) (bool, error
 	}
 	return count > 0, nil
 }
-
-// ==================== Permission Repository ====================

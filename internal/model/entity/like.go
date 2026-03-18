@@ -2,7 +2,6 @@ package entity
 
 import "time"
 
-// ContentPermission represents the content_permissions table.
 // Like represents the likes table.
 type Like struct {
 	ID          uint64    `gorm:"primarykey" json:"id"`

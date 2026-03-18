@@ -2,7 +2,6 @@ package entity
 
 import "time"
 
-// File represents uploaded file metadata and bound COS object information.
 // CourseAttachment represents course and attachment relation.
 type CourseAttachment struct {
 	ID        uint64    `gorm:"primarykey" json:"id"`

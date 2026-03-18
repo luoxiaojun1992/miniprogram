@@ -9,8 +9,6 @@ import (
 	"github.com/luoxiaojun1992/miniprogram/internal/repository"
 )
 
-// ==================== Study Record Service ====================
-
 type notificationService struct {
 	notifRepo repository.NotificationRepository
 	log       *logrus.Logger
@@ -44,5 +42,3 @@ func (s *notificationService) MarkAllRead(ctx context.Context, userID uint64) er
 func (s *notificationService) Send(ctx context.Context, notification *entity.Notification) error {
 	return s.notifRepo.Create(ctx, notification)
 }
-
-// ==================== WechatConfig Service ====================

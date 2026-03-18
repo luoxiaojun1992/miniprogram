@@ -2,7 +2,6 @@ package entity
 
 import "time"
 
-// Course represents the courses table.
 // CourseUnit represents the course_units table.
 type CourseUnit struct {
 	ID          uint64    `gorm:"primarykey" json:"id"`

@@ -76,5 +76,3 @@ func (r *moduleRepository) HasAssociations(ctx context.Context, id uint) (bool, 
 	}
 	return count > 0, nil
 }
-
-// ==================== ModulePage Repository ====================

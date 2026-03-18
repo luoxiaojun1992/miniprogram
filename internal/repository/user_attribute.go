@@ -10,8 +10,6 @@ import (
 	"github.com/luoxiaojun1992/miniprogram/internal/pkg/errors"
 )
 
-// ==================== Attribute Repository ====================
-
 type userAttributeRepository struct {
 	db *gorm.DB
 }

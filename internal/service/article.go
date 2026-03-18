@@ -13,8 +13,6 @@ import (
 	"github.com/luoxiaojun1992/miniprogram/internal/repository"
 )
 
-// ==================== Module Service ====================
-
 type articleService struct {
 	articleRepo       repository.ArticleRepository
 	attachmentRepo    repository.ArticleAttachmentRepository
@@ -257,4 +255,16 @@ func (s *articleService) Copy(ctx context.Context, id uint64, authorID uint64) (
 	return dup.ID, nil
 }
 
-// ==================== Course Service ====================
+func (s *articleService) bindArticleAttachmentIDs(ctx context.Context, article *entity.Article) {
+	if article == nil || s.attachmentRepo == nil {
+		return
+	}
+	ids, err := s.attachmentRepo.ListFileIDs(ctx, article.ID)
+	if err == nil {
+		article.AttachmentFileIDs = ids
+	}
+}
+
+func (s *articleService) canAccessContent(ctx context.Context, contentType int8, contentID uint64, userID *uint64) (bool, error) {
+	return canAccessContentByRole(ctx, s.contentPermRepo, s.roleRepo, contentType, contentID, userID)
+}

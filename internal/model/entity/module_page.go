@@ -2,7 +2,6 @@ package entity
 
 import "time"
 
-// Module represents the modules table.
 // ModulePage represents the module_pages table.
 type ModulePage struct {
 	ID          uint      `gorm:"primarykey" json:"id"`

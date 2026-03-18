@@ -4,7 +4,6 @@ import (
 	"time"
 )
 
-// User represents the users table.
 // UserTag represents the user_tags table.
 type UserTag struct {
 	ID        uint      `gorm:"primarykey" json:"id"`

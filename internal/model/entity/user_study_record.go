@@ -2,7 +2,6 @@ package entity
 
 import "time"
 
-// ContentPermission represents the content_permissions table.
 // UserStudyRecord represents the user_study_records table.
 type UserStudyRecord struct {
 	ID          uint64     `gorm:"primarykey" json:"id"`

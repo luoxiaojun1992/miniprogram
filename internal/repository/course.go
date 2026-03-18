@@ -154,5 +154,3 @@ func (r *courseRepository) HasAssociations(ctx context.Context, id uint64) (bool
 	}
 	return count > 0, nil
 }
-
-// ==================== CourseUnit Repository ====================
