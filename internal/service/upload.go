@@ -173,6 +173,13 @@ func (s *uploadFileService) GenerateBusinessDownload(ctx context.Context, fileID
 	if !containsCategory(allowedCategories, file.Category) {
 		return nil, errors.NewForbidden("文件类型与业务不匹配", nil)
 	}
+	contentType, contentTypeErr := s.cos.ObjectContentType(ctx, file.Key)
+	if contentTypeErr != nil {
+		return nil, errors.NewInternal("校验文件类型失败", contentTypeErr)
+	}
+	if !contentTypeMatchesCategory(file.Category, contentType, file.Filename, file.Key) {
+		return nil, errors.NewForbidden(fmt.Sprintf("文件MIME类型(%s)与业务类别(%s)不匹配", contentType, file.Category), nil)
+	}
 	expiresIn, parseErr := parseExpiresIn(expiresInRaw, 300)
 	if parseErr != nil {
 		return nil, parseErr
@@ -254,4 +261,66 @@ func parseExpiresIn(raw string, defaultValue int) (int, error) {
 
 func generateObjectKey(prefix, ext string) string {
 	return fmt.Sprintf("%s/%s/%s%s", prefix, time.Now().Format("20060102"), uuid.NewString(), ext)
+}
+
+func contentTypeMatchesCategory(category, contentType, filename, key string) bool {
+	ct := strings.ToLower(strings.TrimSpace(contentType))
+	if ct == "" {
+		return false
+	}
+	if idx := strings.Index(ct, ";"); idx >= 0 {
+		ct = strings.TrimSpace(ct[:idx])
+	}
+	switch category {
+	case "image":
+		return strings.HasPrefix(ct, "image/")
+	case "video":
+		return strings.HasPrefix(ct, "video/")
+	case "attachment":
+		ext := resolveFileExtension(filename, key)
+		return attachmentContentTypeAllowed(ext, ct)
+	default:
+		return false
+	}
+}
+
+func attachmentContentTypeAllowed(extension, contentType string) bool {
+	if contentType == "application/octet-stream" {
+		return true
+	}
+	switch extension {
+	case ".pdf":
+		return contentType == "application/pdf"
+	case ".doc":
+		return contentType == "application/msword"
+	case ".docx":
+		return contentType == "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+	case ".xls":
+		return contentType == "application/vnd.ms-excel"
+	case ".xlsx":
+		return contentType == "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+	case ".ppt":
+		return contentType == "application/vnd.ms-powerpoint"
+	case ".pptx":
+		return contentType == "application/vnd.openxmlformats-officedocument.presentationml.presentation"
+	case ".zip":
+		return contentType == "application/zip" || contentType == "application/x-zip-compressed"
+	case ".rar":
+		return contentType == "application/vnd.rar" || contentType == "application/x-rar-compressed"
+	case ".7z":
+		return contentType == "application/x-7z-compressed"
+	case ".txt":
+		return contentType == "text/plain"
+	default:
+		return false
+	}
+}
+
+func resolveFileExtension(filename, key string) string {
+	ext := strings.ToLower(filepath.Ext(filename))
+	if ext != "" {
+		return ext
+	}
+	keyExt := filepath.Ext(key)
+	return strings.ToLower(keyExt)
 }

@@ -202,7 +202,7 @@ func (c *UploadController) GenerateCourseVideoPresignURL(ctx *gin.Context) {
 		ctx.Error(apperrors.NewForbidden("仅管理员可上传课程视频", nil))
 		return
 	}
-	c.generatePresignUploadURL(ctx, "course-video", ".mp4")
+	c.generatePresignUploadURL(ctx, "course-video", ".mp4", nil, "")
 }
 
 // GenerateBannerMediaPresignURL handles GET /upload/banner/media/presign.
@@ -243,7 +243,7 @@ func (c *UploadController) GenerateArticleAttachmentPresignURL(ctx *gin.Context)
 		ctx.Error(apperrors.NewForbidden("仅管理员可上传文章附件", nil))
 		return
 	}
-	c.generatePresignUploadURL(ctx, "article-attachment", "")
+	c.generatePresignUploadURL(ctx, "article-attachment", "", nil, "附件扩展名不支持")
 }
 
 // GenerateCourseAttachmentPresignURL handles GET /upload/course/attachment/presign.
@@ -252,7 +252,7 @@ func (c *UploadController) GenerateCourseAttachmentPresignURL(ctx *gin.Context) 
 		ctx.Error(apperrors.NewForbidden("仅管理员可上传课程附件", nil))
 		return
 	}
-	c.generatePresignUploadURL(ctx, "course-attachment", "")
+	c.generatePresignUploadURL(ctx, "course-attachment", "", courseAttachmentTypePattern, "课程附件扩展名不支持")
 }
 
 // GenerateCourseVideoDownloadURL handles GET /download/course/video.
@@ -512,7 +512,7 @@ func (c *UploadController) uploadImageWithPrefix(ctx *gin.Context, prefix string
 	response.SuccessWithStatus(ctx, http.StatusOK, gin.H{"url": uploadedURL, "key": key})
 }
 
-func (c *UploadController) generatePresignUploadURL(ctx *gin.Context, businessType, forceExt string) {
+func (c *UploadController) generatePresignUploadURL(ctx *gin.Context, businessType, forceExt string, attachmentPattern *regexp.Regexp, extErrMsg string) {
 	if c.cos == nil {
 		ctx.Error(apperrors.NewBadRequest("当前存储不支持预签名上传", nil))
 		return
@@ -528,9 +528,15 @@ func (c *UploadController) generatePresignUploadURL(ctx *gin.Context, businessTy
 		ctx.Error(apperrors.NewBadRequest("文件扩展名不合法", nil))
 		return
 	}
-	if forceExt == "" && !attachmentTypePattern.MatchString(ext) {
-		ctx.Error(apperrors.NewBadRequest("附件扩展名不支持", nil))
-		return
+	if forceExt == "" {
+		pattern := attachmentTypePattern
+		if attachmentPattern != nil {
+			pattern = attachmentPattern
+		}
+		if !pattern.MatchString(ext) {
+			ctx.Error(apperrors.NewBadRequest(extErrMsg, nil))
+			return
+		}
 	}
 
 	expiresIn := 900
@@ -777,6 +783,7 @@ func (u *cosUploader) upload(ctx context.Context, key string, file io.Reader, co
 
 var uploadTypePattern = regexp.MustCompile(`^(avatar|article|course|cover)$`)
 var attachmentTypePattern = regexp.MustCompile(`^\.(pdf|doc|docx|xls|xlsx|ppt|pptx|zip|rar|7z|txt)$`)
+var courseAttachmentTypePattern = regexp.MustCompile(`^\.(pdf|doc|docx|xls|xlsx|ppt|pptx)$`)
 
 func classifyFileCategory(ext string) string {
 	switch ext {
