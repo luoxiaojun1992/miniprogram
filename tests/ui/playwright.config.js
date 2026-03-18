@@ -25,7 +25,7 @@ module.exports = defineConfig({
     baseURL: process.env.UI_BASE_URL || 'http://localhost:8081',
     screenshot: 'on',
     trace: 'retain-on-failure',
-    video: 'retain-on-failure',
+    video: 'on',
     actionTimeout: 10_000,
     navigationTimeout: 30_000,
   },
