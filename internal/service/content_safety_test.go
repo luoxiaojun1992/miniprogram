@@ -23,4 +23,3 @@ func TestHasUnsafeRichText(t *testing.T) {
 		assert.False(t, hasUnsafeRichText("normal content"))
 	})
 }
-

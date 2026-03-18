@@ -94,4 +94,3 @@ func TestArticleAttachmentRepository_Replace_OnlyZeroIDs(t *testing.T) {
 	err := repo.Replace(context.Background(), 10, []uint64{0, 0})
 	require.NoError(t, err)
 }
-

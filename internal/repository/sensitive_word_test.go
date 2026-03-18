@@ -44,4 +44,3 @@ func TestSensitiveWordRepository_ListEnabledWords_Error(t *testing.T) {
 	_, err := repo.ListEnabledWords(context.Background())
 	assert.Error(t, err)
 }
-

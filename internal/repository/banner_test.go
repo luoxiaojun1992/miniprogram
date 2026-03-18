@@ -163,4 +163,3 @@ func TestBannerRepository_Delete_Error(t *testing.T) {
 	err := repo.Delete(context.Background(), 1)
 	assert.Error(t, err)
 }
-
