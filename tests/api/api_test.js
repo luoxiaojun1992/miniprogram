@@ -172,6 +172,8 @@ export default function (data) {
   const adminH = headers(adminToken);
   const userH  = headers(userToken);
   const jsonH  = headers(null);
+  const runTag = Date.now();
+  let bannerMediaFileID = 0;
 
   // -------------------------------------------------------------------------
   group('Health', () => {
@@ -264,6 +266,10 @@ export default function (data) {
     // List modules
     const modulesRes = http.get(`${BASE_URL}/v1/modules`);
     check(modulesRes, { 'GET /v1/modules: 200': (r) => r.status === 200 });
+
+    // List banners
+    const bannersRes = http.get(`${BASE_URL}/v1/banners`);
+    check(bannersRes, { 'GET /v1/banners: 200': (r) => r.status === 200 });
 
     // List articles
     const articlesRes = http.get(`${BASE_URL}/v1/articles?page=1&page_size=10`);
@@ -417,6 +423,33 @@ export default function (data) {
       'GET /v1/admin/upload/files/presign: has put_url': (r) => typeof r.json('data.put_url') === 'string',
       'GET /v1/admin/upload/files/presign: has file_id': (r) => typeof r.json('data.file_id') === 'number',
     });
+
+    // Admin gets banner media presign URL
+    const bannerPresignRes = http.get(
+      `${BASE_URL}/v1/admin/upload/banner/media/presign?filename=k6-banner.png&expires_in=600`,
+      adminH,
+    );
+    check(bannerPresignRes, {
+      'GET /v1/admin/upload/banner/media/presign: 200': (r) => r.status === 200,
+      'GET /v1/admin/upload/banner/media/presign: has file_id': (r) => typeof r.json('data.file_id') === 'number',
+    });
+    bannerMediaFileID = bannerPresignRes.json('data.file_id') || 0;
+
+    // Download URL endpoints (use non-existent IDs to avoid object dependency in mock COS)
+    const staticDownloadRes = http.get(`${BASE_URL}/v1/download/static/999999`);
+    check(staticDownloadRes, { 'GET /v1/download/static/:file_id: not 500': (r) => r.status !== 500 });
+
+    const videoDownloadRes = http.get(`${BASE_URL}/v1/download/course/video/999999`, userH);
+    check(videoDownloadRes, { 'GET /v1/download/course/video/:file_id: not 500': (r) => r.status !== 500 });
+
+    const articleAttachDownloadRes = http.get(`${BASE_URL}/v1/download/article/attachment/999999`, userH);
+    check(articleAttachDownloadRes, { 'GET /v1/download/article/attachment/:file_id: not 500': (r) => r.status !== 500 });
+
+    const courseAttachDownloadRes = http.get(`${BASE_URL}/v1/download/course/attachment/999999`, userH);
+    check(courseAttachDownloadRes, { 'GET /v1/download/course/attachment/:file_id: not 500': (r) => r.status !== 500 });
+
+    const bannerDownloadRes = http.get(`${BASE_URL}/v1/download/banner/media/999999`, userH);
+    check(bannerDownloadRes, { 'GET /v1/download/banner/media/:file_id: not 500': (r) => r.status !== 500 });
   });
 
   // -------------------------------------------------------------------------
@@ -463,6 +496,19 @@ export default function (data) {
       );
       check(delTagRes, { 'DELETE /v1/admin/users/:id/tags: 2xx': (r) => ok(r) });
     }
+
+    // Create and delete an extra user to cover full user CRUD
+    const tempUserRes = http.post(
+      `${BASE_URL}/v1/admin/users`,
+      JSON.stringify({ email: `k6_tmp_${runTag}@example.com`, password: 'Test@123456', nickname: `K6 Tmp ${runTag}`, user_type: 2 }),
+      adminH,
+    );
+    check(tempUserRes, { 'POST /v1/admin/users: 201': (r) => r.status === 201 });
+    const tempUserID = tempUserRes.json('data.id');
+    if (tempUserID) {
+      const delUserRes = http.del(`${BASE_URL}/v1/admin/users/${tempUserID}`, null, adminH);
+      check(delUserRes, { 'DELETE /v1/admin/users/:id: 2xx': (r) => ok(r) });
+    }
   });
 
   // -------------------------------------------------------------------------
@@ -486,6 +532,19 @@ export default function (data) {
     // Permissions tree
     const permRes = http.get(`${BASE_URL}/v1/admin/permissions`, adminH);
     check(permRes, { 'GET /v1/admin/permissions: 200': (r) => r.status === 200 });
+
+    // Create and delete an extra role to cover full role CRUD
+    const roleCreateRes = http.post(
+      `${BASE_URL}/v1/admin/roles`,
+      JSON.stringify({ name: `K6 Extra Role ${runTag}`, description: 'Extra role for api coverage' }),
+      adminH,
+    );
+    check(roleCreateRes, { 'POST /v1/admin/roles: 201': (r) => r.status === 201 });
+    const tempRoleID = roleCreateRes.json('data.id');
+    if (tempRoleID) {
+      const roleDeleteRes = http.del(`${BASE_URL}/v1/admin/roles/${tempRoleID}`, null, adminH);
+      check(roleDeleteRes, { 'DELETE /v1/admin/roles/:id: 2xx': (r) => ok(r) });
+    }
   });
 
   // -------------------------------------------------------------------------
@@ -512,6 +571,62 @@ export default function (data) {
       adminH,
     );
     check(updatePageRes, { 'PUT /v1/admin/modules/:id/pages/:pid: 2xx': (r) => ok(r) });
+
+    // Create and delete a temporary page
+    const createPageRes = http.post(
+      `${BASE_URL}/v1/admin/modules/${moduleId}/pages`,
+      JSON.stringify({ title: 'K6 Temp Page', content: 'Temp page content', content_type: 1, sort_order: 2 }),
+      adminH,
+    );
+    check(createPageRes, { 'POST /v1/admin/modules/:id/pages: 201': (r) => r.status === 201 });
+    const tempPageID = createPageRes.json('data.id');
+    if (tempPageID) {
+      const deletePageRes = http.del(`${BASE_URL}/v1/admin/modules/${moduleId}/pages/${tempPageID}`, null, adminH);
+      check(deletePageRes, { 'DELETE /v1/admin/modules/:id/pages/:page_id: 2xx': (r) => ok(r) });
+    }
+  });
+
+  // -------------------------------------------------------------------------
+  group('Admin – Banners', () => {
+    // List
+    const listRes = http.get(`${BASE_URL}/v1/admin/banners`, adminH);
+    check(listRes, { 'GET /v1/admin/banners: 200': (r) => r.status === 200 });
+
+    if (bannerMediaFileID) {
+      // Create
+      const createRes = http.post(
+        `${BASE_URL}/v1/admin/banners`,
+        JSON.stringify({
+          title: `K6 Banner ${runTag}`,
+          image_file_id: bannerMediaFileID,
+          link_url: 'https://example.com/k6',
+          sort_order: 10,
+          status: 1,
+        }),
+        adminH,
+      );
+      check(createRes, { 'POST /v1/admin/banners: 201': (r) => r.status === 201 });
+      const bannerID = createRes.json('data.id');
+      if (bannerID) {
+        // Update
+        const updateRes = http.put(
+          `${BASE_URL}/v1/admin/banners/${bannerID}`,
+          JSON.stringify({
+            title: `K6 Banner Updated ${runTag}`,
+            image_file_id: bannerMediaFileID,
+            link_url: 'https://example.com/k6-updated',
+            sort_order: 11,
+            status: 1,
+          }),
+          adminH,
+        );
+        check(updateRes, { 'PUT /v1/admin/banners/:id: 2xx': (r) => ok(r) });
+
+        // Delete
+        const deleteRes = http.del(`${BASE_URL}/v1/admin/banners/${bannerID}`, null, adminH);
+        check(deleteRes, { 'DELETE /v1/admin/banners/:id: 2xx': (r) => ok(r) });
+      }
+    }
   });
 
   // -------------------------------------------------------------------------
@@ -548,6 +663,23 @@ export default function (data) {
       adminH,
     );
     check(pubRes, { 'POST /v1/admin/articles/:id/publish: 2xx': (r) => ok(r) });
+
+    // Pin
+    const pinRes = http.post(
+      `${BASE_URL}/v1/admin/articles/${articleId}/pin`,
+      JSON.stringify({ sort_order: 1 }),
+      adminH,
+    );
+    check(pinRes, { 'POST /v1/admin/articles/:id/pin: 2xx': (r) => ok(r) });
+
+    // Copy then cleanup
+    const copyRes = http.post(`${BASE_URL}/v1/admin/articles/${articleId}/copy`, null, adminH);
+    check(copyRes, { 'POST /v1/admin/articles/:id/copy: 201': (r) => r.status === 201 });
+    const copiedArticleID = copyRes.json('data.id');
+    if (copiedArticleID) {
+      const deleteCopiedRes = http.del(`${BASE_URL}/v1/admin/articles/${copiedArticleID}`, null, adminH);
+      check(deleteCopiedRes, { 'cleanup copied article: 2xx': (r) => ok(r) });
+    }
   });
 
   // -------------------------------------------------------------------------
@@ -583,6 +715,36 @@ export default function (data) {
       adminH,
     );
     check(updateUnitRes, { 'PUT /v1/admin/courses/:id/units/:uid: 2xx': (r) => ok(r) });
+
+    // Pin
+    const pinRes = http.post(
+      `${BASE_URL}/v1/admin/courses/${courseId}/pin`,
+      JSON.stringify({ sort_order: 1 }),
+      adminH,
+    );
+    check(pinRes, { 'POST /v1/admin/courses/:id/pin: 2xx': (r) => ok(r) });
+
+    // Copy then cleanup
+    const copyRes = http.post(`${BASE_URL}/v1/admin/courses/${courseId}/copy`, null, adminH);
+    check(copyRes, { 'POST /v1/admin/courses/:id/copy: 201': (r) => r.status === 201 });
+    const copiedCourseID = copyRes.json('data.id');
+    if (copiedCourseID) {
+      const deleteCopiedRes = http.del(`${BASE_URL}/v1/admin/courses/${copiedCourseID}`, null, adminH);
+      check(deleteCopiedRes, { 'cleanup copied course: 2xx': (r) => ok(r) });
+    }
+
+    // Create and delete temporary unit
+    const createUnitRes = http.post(
+      `${BASE_URL}/v1/admin/courses/${courseId}/units`,
+      JSON.stringify({ title: 'K6 Temp Unit', video_file_id: 1, duration: 60, sort_order: 2 }),
+      adminH,
+    );
+    check(createUnitRes, { 'POST /v1/admin/courses/:id/units: 201': (r) => r.status === 201 });
+    const tempUnitID = createUnitRes.json('data.id');
+    if (tempUnitID) {
+      const delUnitRes = http.del(`${BASE_URL}/v1/admin/courses/${courseId}/units/${tempUnitID}`, null, adminH);
+      check(delUnitRes, { 'DELETE /v1/admin/courses/:id/units/:unit_id: 2xx': (r) => ok(r) });
+    }
   });
 
   // -------------------------------------------------------------------------
@@ -629,6 +791,55 @@ export default function (data) {
       adminH,
     );
     check(logConfUpdateRes, { 'PUT /v1/admin/log-config: 2xx': (r) => ok(r) });
+  });
+
+  // -------------------------------------------------------------------------
+  group('Admin – Attributes', () => {
+    // List attributes
+    const listRes = http.get(`${BASE_URL}/v1/admin/attributes`, adminH);
+    check(listRes, { 'GET /v1/admin/attributes: 200': (r) => r.status === 200 });
+
+    // Create attribute
+    const createRes = http.post(
+      `${BASE_URL}/v1/admin/attributes`,
+      JSON.stringify({ name: `K6 Attr ${runTag}` }),
+      adminH,
+    );
+    check(createRes, { 'POST /v1/admin/attributes: 201': (r) => r.status === 201 });
+    const attributeID = createRes.json('data.id');
+    if (attributeID) {
+      // Update attribute
+      const updateRes = http.put(
+        `${BASE_URL}/v1/admin/attributes/${attributeID}`,
+        JSON.stringify({ name: `K6 Attr Updated ${runTag}` }),
+        adminH,
+      );
+      check(updateRes, { 'PUT /v1/admin/attributes/:id: 2xx': (r) => ok(r) });
+
+      // Set user attribute
+      const setUserAttrRes = http.post(
+        `${BASE_URL}/v1/admin/users/${newUserId}/attributes`,
+        JSON.stringify({ attribute_id: attributeID, value: 'k6-value' }),
+        adminH,
+      );
+      check(setUserAttrRes, { 'POST /v1/admin/users/:id/attributes: 2xx': (r) => ok(r) });
+
+      // List user attributes
+      const listUserAttrRes = http.get(`${BASE_URL}/v1/admin/users/${newUserId}/attributes`, adminH);
+      check(listUserAttrRes, { 'GET /v1/admin/users/:id/attributes: 200': (r) => r.status === 200 });
+
+      // Delete user attribute
+      const delUserAttrRes = http.del(
+        `${BASE_URL}/v1/admin/users/${newUserId}/attributes?attribute_id=${attributeID}`,
+        null,
+        adminH,
+      );
+      check(delUserAttrRes, { 'DELETE /v1/admin/users/:id/attributes: 2xx': (r) => ok(r) });
+
+      // Delete attribute
+      const deleteRes = http.del(`${BASE_URL}/v1/admin/attributes/${attributeID}`, null, adminH);
+      check(deleteRes, { 'DELETE /v1/admin/attributes/:id: 2xx': (r) => ok(r) });
+    }
   });
 }
 
