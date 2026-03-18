@@ -51,8 +51,10 @@ func TestUploadFileService_GenerateProtectedBusinessPresign_OnlyMedia(t *testing
 }
 
 func TestUploadFileService_GenerateBusinessDownload_AllowsMultipleCategories(t *testing.T) {
+	var gotHeadPath string
 	mockCOS := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.Method == http.MethodHead {
+			gotHeadPath = r.URL.Path
 			w.Header().Set("Content-Type", "video/mp4")
 		}
 		w.WriteHeader(http.StatusOK)
@@ -70,6 +72,7 @@ func TestUploadFileService_GenerateBusinessDownload_AllowsMultipleCategories(t *
 	assert.NoError(t, err)
 	assert.Equal(t, uint64(7), resp.FileID)
 	assert.Contains(t, resp.Download, "protected-video/20260317/a.mp4")
+	assert.Contains(t, gotHeadPath, "/protected-video/20260317/a.mp4")
 }
 
 func TestUploadFileService_GenerateBusinessDownload_MimeMismatchDenied(t *testing.T) {

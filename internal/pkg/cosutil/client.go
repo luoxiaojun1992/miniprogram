@@ -124,7 +124,7 @@ func (c *Client) ObjectContentType(ctx context.Context, key string) (string, err
 	}
 	contentType := strings.ToLower(strings.TrimSpace(resp.Header.Get("Content-Type")))
 	if contentType == "" {
-		return "", fmt.Errorf("empty object content-type")
+		return "", fmt.Errorf("object has no content-type header")
 	}
 	if idx := strings.Index(contentType, ";"); idx >= 0 {
 		contentType = strings.TrimSpace(contentType[:idx])
