@@ -12,6 +12,9 @@ import http from 'k6/http';
 import { check, group } from 'k6';
 
 const BASE_URL = __ENV.BASE_URL || 'http://localhost:8080';
+const ADMIN_TEST_PASSWORD = 'Test@123456';
+const NON_EXISTENT_FILE_ID = 999999;
+const DEFAULT_VIDEO_FILE_ID = 1;
 
 export const options = {
   vus: 1,
@@ -154,7 +157,7 @@ export function setup() {
   // 8. Create a secondary admin user (for CRUD admin-user tests)
   const newUserRes = http.post(
     `${BASE_URL}/v1/admin/users`,
-    JSON.stringify({ email: 'k6_tmp_admin@example.com', password: 'Test@123456', nickname: 'K6 Tmp', user_type: 2 }),
+    JSON.stringify({ email: 'k6_tmp_admin@example.com', password: ADMIN_TEST_PASSWORD, nickname: 'K6 Tmp', user_type: 2 }),
     headers(adminToken),
   );
   check(newUserRes, { 'setup | create admin user: 201': (r) => r.status === 201 });
@@ -172,8 +175,8 @@ export default function (data) {
   const adminH = headers(adminToken);
   const userH  = headers(userToken);
   const jsonH  = headers(null);
-  const runTag = Date.now();
-  let bannerMediaFileID = 0;
+  const uniqueTestId = `${Date.now()}-${Math.floor(Math.random() * 1000000)}`;
+  let bannerMediaFileId = 0;
 
   // -------------------------------------------------------------------------
   group('Health', () => {
@@ -189,7 +192,7 @@ export default function (data) {
     // Admin login
     const loginRes = http.post(
       `${BASE_URL}/v1/auth/admin-login`,
-      JSON.stringify({ email: 'admin@example.com', password: 'Test@123456' }),
+      JSON.stringify({ email: 'admin@example.com', password: ADMIN_TEST_PASSWORD }),
       jsonH,
     );
     check(loginRes, {
@@ -433,23 +436,24 @@ export default function (data) {
       'GET /v1/admin/upload/banner/media/presign: 200': (r) => r.status === 200,
       'GET /v1/admin/upload/banner/media/presign: has file_id': (r) => typeof r.json('data.file_id') === 'number',
     });
-    bannerMediaFileID = bannerPresignRes.json('data.file_id') || 0;
+    bannerMediaFileId = bannerPresignRes.json('data.file_id') || 0;
 
     // Download URL endpoints (use non-existent IDs to avoid object dependency in mock COS)
-    const staticDownloadRes = http.get(`${BASE_URL}/v1/download/static/999999`);
-    check(staticDownloadRes, { 'GET /v1/download/static/:file_id: not 500': (r) => r.status !== 500 });
+    // Static material download is a public endpoint by design.
+    const staticDownloadRes = http.get(`${BASE_URL}/v1/download/static/${NON_EXISTENT_FILE_ID}`);
+    check(staticDownloadRes, { 'GET /v1/download/static/:file_id: 404': (r) => r.status === 404 });
 
-    const videoDownloadRes = http.get(`${BASE_URL}/v1/download/course/video/999999`, userH);
-    check(videoDownloadRes, { 'GET /v1/download/course/video/:file_id: not 500': (r) => r.status !== 500 });
+    const videoDownloadRes = http.get(`${BASE_URL}/v1/download/course/video/${NON_EXISTENT_FILE_ID}`, userH);
+    check(videoDownloadRes, { 'GET /v1/download/course/video/:file_id: 404': (r) => r.status === 404 });
 
-    const articleAttachDownloadRes = http.get(`${BASE_URL}/v1/download/article/attachment/999999`, userH);
-    check(articleAttachDownloadRes, { 'GET /v1/download/article/attachment/:file_id: not 500': (r) => r.status !== 500 });
+    const articleAttachDownloadRes = http.get(`${BASE_URL}/v1/download/article/attachment/${NON_EXISTENT_FILE_ID}`, userH);
+    check(articleAttachDownloadRes, { 'GET /v1/download/article/attachment/:file_id: 404': (r) => r.status === 404 });
 
-    const courseAttachDownloadRes = http.get(`${BASE_URL}/v1/download/course/attachment/999999`, userH);
-    check(courseAttachDownloadRes, { 'GET /v1/download/course/attachment/:file_id: not 500': (r) => r.status !== 500 });
+    const courseAttachDownloadRes = http.get(`${BASE_URL}/v1/download/course/attachment/${NON_EXISTENT_FILE_ID}`, userH);
+    check(courseAttachDownloadRes, { 'GET /v1/download/course/attachment/:file_id: 404': (r) => r.status === 404 });
 
-    const bannerDownloadRes = http.get(`${BASE_URL}/v1/download/banner/media/999999`, userH);
-    check(bannerDownloadRes, { 'GET /v1/download/banner/media/:file_id: not 500': (r) => r.status !== 500 });
+    const bannerDownloadRes = http.get(`${BASE_URL}/v1/download/banner/media/${NON_EXISTENT_FILE_ID}`, userH);
+    check(bannerDownloadRes, { 'GET /v1/download/banner/media/:file_id: 404': (r) => r.status === 404 });
   });
 
   // -------------------------------------------------------------------------
@@ -500,13 +504,18 @@ export default function (data) {
     // Create and delete an extra user to cover full user CRUD
     const tempUserRes = http.post(
       `${BASE_URL}/v1/admin/users`,
-      JSON.stringify({ email: `k6_tmp_${runTag}@example.com`, password: 'Test@123456', nickname: `K6 Tmp ${runTag}`, user_type: 2 }),
+      JSON.stringify({
+        email: `k6_tmp_${uniqueTestId}@example.com`,
+        password: ADMIN_TEST_PASSWORD,
+        nickname: `K6 Tmp ${uniqueTestId}`,
+        user_type: 2,
+      }),
       adminH,
     );
     check(tempUserRes, { 'POST /v1/admin/users: 201': (r) => r.status === 201 });
-    const tempUserID = tempUserRes.json('data.id');
-    if (tempUserID) {
-      const delUserRes = http.del(`${BASE_URL}/v1/admin/users/${tempUserID}`, null, adminH);
+    const tempUserId = tempUserRes.json('data.id');
+    if (tempUserId) {
+      const delUserRes = http.del(`${BASE_URL}/v1/admin/users/${tempUserId}`, null, adminH);
       check(delUserRes, { 'DELETE /v1/admin/users/:id: 2xx': (r) => ok(r) });
     }
   });
@@ -536,13 +545,13 @@ export default function (data) {
     // Create and delete an extra role to cover full role CRUD
     const roleCreateRes = http.post(
       `${BASE_URL}/v1/admin/roles`,
-      JSON.stringify({ name: `K6 Extra Role ${runTag}`, description: 'Extra role for api coverage' }),
+      JSON.stringify({ name: `K6 Extra Role ${uniqueTestId}`, description: 'Extra role for api coverage' }),
       adminH,
     );
     check(roleCreateRes, { 'POST /v1/admin/roles: 201': (r) => r.status === 201 });
-    const tempRoleID = roleCreateRes.json('data.id');
-    if (tempRoleID) {
-      const roleDeleteRes = http.del(`${BASE_URL}/v1/admin/roles/${tempRoleID}`, null, adminH);
+    const tempRoleId = roleCreateRes.json('data.id');
+    if (tempRoleId) {
+      const roleDeleteRes = http.del(`${BASE_URL}/v1/admin/roles/${tempRoleId}`, null, adminH);
       check(roleDeleteRes, { 'DELETE /v1/admin/roles/:id: 2xx': (r) => ok(r) });
     }
   });
@@ -579,9 +588,9 @@ export default function (data) {
       adminH,
     );
     check(createPageRes, { 'POST /v1/admin/modules/:id/pages: 201': (r) => r.status === 201 });
-    const tempPageID = createPageRes.json('data.id');
-    if (tempPageID) {
-      const deletePageRes = http.del(`${BASE_URL}/v1/admin/modules/${moduleId}/pages/${tempPageID}`, null, adminH);
+    const tempPageId = createPageRes.json('data.id');
+    if (tempPageId) {
+      const deletePageRes = http.del(`${BASE_URL}/v1/admin/modules/${moduleId}/pages/${tempPageId}`, null, adminH);
       check(deletePageRes, { 'DELETE /v1/admin/modules/:id/pages/:page_id: 2xx': (r) => ok(r) });
     }
   });
@@ -592,13 +601,13 @@ export default function (data) {
     const listRes = http.get(`${BASE_URL}/v1/admin/banners`, adminH);
     check(listRes, { 'GET /v1/admin/banners: 200': (r) => r.status === 200 });
 
-    if (bannerMediaFileID) {
+    if (bannerMediaFileId) {
       // Create
       const createRes = http.post(
         `${BASE_URL}/v1/admin/banners`,
         JSON.stringify({
-          title: `K6 Banner ${runTag}`,
-          image_file_id: bannerMediaFileID,
+          title: `K6 Banner ${uniqueTestId}`,
+          image_file_id: bannerMediaFileId,
           link_url: 'https://example.com/k6',
           sort_order: 10,
           status: 1,
@@ -606,14 +615,14 @@ export default function (data) {
         adminH,
       );
       check(createRes, { 'POST /v1/admin/banners: 201': (r) => r.status === 201 });
-      const bannerID = createRes.json('data.id');
-      if (bannerID) {
+      const bannerId = createRes.json('data.id');
+      if (bannerId) {
         // Update
         const updateRes = http.put(
-          `${BASE_URL}/v1/admin/banners/${bannerID}`,
+          `${BASE_URL}/v1/admin/banners/${bannerId}`,
           JSON.stringify({
-            title: `K6 Banner Updated ${runTag}`,
-            image_file_id: bannerMediaFileID,
+            title: `K6 Banner Updated ${uniqueTestId}`,
+            image_file_id: bannerMediaFileId,
             link_url: 'https://example.com/k6-updated',
             sort_order: 11,
             status: 1,
@@ -623,7 +632,7 @@ export default function (data) {
         check(updateRes, { 'PUT /v1/admin/banners/:id: 2xx': (r) => ok(r) });
 
         // Delete
-        const deleteRes = http.del(`${BASE_URL}/v1/admin/banners/${bannerID}`, null, adminH);
+        const deleteRes = http.del(`${BASE_URL}/v1/admin/banners/${bannerId}`, null, adminH);
         check(deleteRes, { 'DELETE /v1/admin/banners/:id: 2xx': (r) => ok(r) });
       }
     }
@@ -675,10 +684,10 @@ export default function (data) {
     // Copy then cleanup
     const copyRes = http.post(`${BASE_URL}/v1/admin/articles/${articleId}/copy`, null, adminH);
     check(copyRes, { 'POST /v1/admin/articles/:id/copy: 201': (r) => r.status === 201 });
-    const copiedArticleID = copyRes.json('data.id');
-    if (copiedArticleID) {
-      const deleteCopiedRes = http.del(`${BASE_URL}/v1/admin/articles/${copiedArticleID}`, null, adminH);
-      check(deleteCopiedRes, { 'cleanup copied article: 2xx': (r) => ok(r) });
+    const copiedArticleId = copyRes.json('data.id');
+    if (copiedArticleId) {
+      const deleteCopiedRes = http.del(`${BASE_URL}/v1/admin/articles/${copiedArticleId}`, null, adminH);
+      check(deleteCopiedRes, { 'DELETE /v1/admin/articles/:id (cleanup copied): 2xx': (r) => ok(r) });
     }
   });
 
@@ -727,22 +736,22 @@ export default function (data) {
     // Copy then cleanup
     const copyRes = http.post(`${BASE_URL}/v1/admin/courses/${courseId}/copy`, null, adminH);
     check(copyRes, { 'POST /v1/admin/courses/:id/copy: 201': (r) => r.status === 201 });
-    const copiedCourseID = copyRes.json('data.id');
-    if (copiedCourseID) {
-      const deleteCopiedRes = http.del(`${BASE_URL}/v1/admin/courses/${copiedCourseID}`, null, adminH);
-      check(deleteCopiedRes, { 'cleanup copied course: 2xx': (r) => ok(r) });
+    const copiedCourseId = copyRes.json('data.id');
+    if (copiedCourseId) {
+      const deleteCopiedRes = http.del(`${BASE_URL}/v1/admin/courses/${copiedCourseId}`, null, adminH);
+      check(deleteCopiedRes, { 'DELETE /v1/admin/courses/:id (cleanup copied): 2xx': (r) => ok(r) });
     }
 
     // Create and delete temporary unit
     const createUnitRes = http.post(
       `${BASE_URL}/v1/admin/courses/${courseId}/units`,
-      JSON.stringify({ title: 'K6 Temp Unit', video_file_id: 1, duration: 60, sort_order: 2 }),
+      JSON.stringify({ title: 'K6 Temp Unit', video_file_id: DEFAULT_VIDEO_FILE_ID, duration: 60, sort_order: 2 }),
       adminH,
     );
     check(createUnitRes, { 'POST /v1/admin/courses/:id/units: 201': (r) => r.status === 201 });
-    const tempUnitID = createUnitRes.json('data.id');
-    if (tempUnitID) {
-      const delUnitRes = http.del(`${BASE_URL}/v1/admin/courses/${courseId}/units/${tempUnitID}`, null, adminH);
+    const tempUnitId = createUnitRes.json('data.id');
+    if (tempUnitId) {
+      const delUnitRes = http.del(`${BASE_URL}/v1/admin/courses/${courseId}/units/${tempUnitId}`, null, adminH);
       check(delUnitRes, { 'DELETE /v1/admin/courses/:id/units/:unit_id: 2xx': (r) => ok(r) });
     }
   });
@@ -802,16 +811,16 @@ export default function (data) {
     // Create attribute
     const createRes = http.post(
       `${BASE_URL}/v1/admin/attributes`,
-      JSON.stringify({ name: `K6 Attr ${runTag}` }),
+      JSON.stringify({ name: `K6 Attr ${uniqueTestId}` }),
       adminH,
     );
     check(createRes, { 'POST /v1/admin/attributes: 201': (r) => r.status === 201 });
-    const attributeID = createRes.json('data.id');
-    if (attributeID) {
+    const attributeId = createRes.json('data.id');
+    if (attributeId) {
       // Update attribute
       const updateRes = http.put(
-        `${BASE_URL}/v1/admin/attributes/${attributeID}`,
-        JSON.stringify({ name: `K6 Attr Updated ${runTag}` }),
+        `${BASE_URL}/v1/admin/attributes/${attributeId}`,
+        JSON.stringify({ name: `K6 Attr Updated ${uniqueTestId}` }),
         adminH,
       );
       check(updateRes, { 'PUT /v1/admin/attributes/:id: 2xx': (r) => ok(r) });
@@ -819,7 +828,7 @@ export default function (data) {
       // Set user attribute
       const setUserAttrRes = http.post(
         `${BASE_URL}/v1/admin/users/${newUserId}/attributes`,
-        JSON.stringify({ attribute_id: attributeID, value: 'k6-value' }),
+        JSON.stringify({ attribute_id: attributeId, value: 'k6-value' }),
         adminH,
       );
       check(setUserAttrRes, { 'POST /v1/admin/users/:id/attributes: 2xx': (r) => ok(r) });
@@ -830,14 +839,14 @@ export default function (data) {
 
       // Delete user attribute
       const delUserAttrRes = http.del(
-        `${BASE_URL}/v1/admin/users/${newUserId}/attributes?attribute_id=${attributeID}`,
+        `${BASE_URL}/v1/admin/users/${newUserId}/attributes?attribute_id=${attributeId}`,
         null,
         adminH,
       );
       check(delUserAttrRes, { 'DELETE /v1/admin/users/:id/attributes: 2xx': (r) => ok(r) });
 
       // Delete attribute
-      const deleteRes = http.del(`${BASE_URL}/v1/admin/attributes/${attributeID}`, null, adminH);
+      const deleteRes = http.del(`${BASE_URL}/v1/admin/attributes/${attributeId}`, null, adminH);
       check(deleteRes, { 'DELETE /v1/admin/attributes/:id: 2xx': (r) => ok(r) });
     }
   });
