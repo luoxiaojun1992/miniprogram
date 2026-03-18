@@ -231,6 +231,7 @@ type LogConfigRepository interface {
 // AttributeRepository defines the interface for attribute data access.
 type AttributeRepository interface {
 	GetByID(ctx context.Context, id uint) (*entity.Attribute, error)
+	GetByName(ctx context.Context, name string) (*entity.Attribute, error)
 	List(ctx context.Context) ([]*entity.Attribute, error)
 	Create(ctx context.Context, attr *entity.Attribute) error
 	Update(ctx context.Context, attr *entity.Attribute) error

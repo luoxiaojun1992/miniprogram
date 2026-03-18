@@ -1514,6 +1514,7 @@ func (m *MockLogConfigService) Update(ctx context.Context, req *dto.UpdateLogCon
 // MockAttributeRepository is a test double for repository.AttributeRepository.
 type MockAttributeRepository struct {
 	GetByIDFn             func(ctx context.Context, id uint) (*entity.Attribute, error)
+	GetByNameFn           func(ctx context.Context, name string) (*entity.Attribute, error)
 	ListFn                func(ctx context.Context) ([]*entity.Attribute, error)
 	CreateFn              func(ctx context.Context, attr *entity.Attribute) error
 	UpdateFn              func(ctx context.Context, attr *entity.Attribute) error
@@ -1524,6 +1525,12 @@ type MockAttributeRepository struct {
 func (m *MockAttributeRepository) GetByID(ctx context.Context, id uint) (*entity.Attribute, error) {
 	if m.GetByIDFn != nil {
 		return m.GetByIDFn(ctx, id)
+	}
+	return nil, nil
+}
+func (m *MockAttributeRepository) GetByName(ctx context.Context, name string) (*entity.Attribute, error) {
+	if m.GetByNameFn != nil {
+		return m.GetByNameFn(ctx, name)
 	}
 	return nil, nil
 }

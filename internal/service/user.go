@@ -111,28 +111,20 @@ func (s *userService) upsertAvatarFileIDAttribute(ctx context.Context, userID ui
 	if s.attrRepo == nil || s.uaRepo == nil {
 		return nil
 	}
-	attrs, err := s.attrRepo.List(ctx)
+	attr, err := s.attrRepo.GetByName(ctx, "avatar_file_id")
 	if err != nil {
 		return err
 	}
-	var attrID uint
-	for _, attr := range attrs {
-		if attr != nil && attr.Name == "avatar_file_id" {
-			attrID = attr.ID
-			break
-		}
-	}
-	if attrID == 0 {
-		attr := &entity.Attribute{Name: "avatar_file_id", Type: entity.AttributeTypeBigInt}
+	if attr == nil {
+		attr = &entity.Attribute{Name: "avatar_file_id", Type: entity.AttributeTypeBigInt}
 		if err = s.attrRepo.Create(ctx, attr); err != nil {
 			return err
 		}
-		attrID = attr.ID
 	}
 	v := int64(fileID)
 	return s.uaRepo.Upsert(ctx, &entity.UserAttribute{
 		UserID:      userID,
-		AttributeID: attrID,
+		AttributeID: attr.ID,
 		ValueBigint: &v,
 		ValueString: "",
 	})

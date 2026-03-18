@@ -30,6 +30,18 @@ func (r *attributeRepository) GetByID(ctx context.Context, id uint) (*entity.Att
 	return &a, nil
 }
 
+func (r *attributeRepository) GetByName(ctx context.Context, name string) (*entity.Attribute, error) {
+	var a entity.Attribute
+	res := r.db.WithContext(ctx).Where("name = ?", name).First(&a)
+	if res.Error == gorm.ErrRecordNotFound {
+		return nil, nil
+	}
+	if res.Error != nil {
+		return nil, errors.NewInternal("查询属性失败", res.Error)
+	}
+	return &a, nil
+}
+
 func (r *attributeRepository) List(ctx context.Context) ([]*entity.Attribute, error) {
 	var attrs []*entity.Attribute
 	if err := r.db.WithContext(ctx).Order("id ASC").Find(&attrs).Error; err != nil {
@@ -62,11 +74,13 @@ func (r *attributeRepository) Delete(ctx context.Context, id uint) error {
 func (r *attributeRepository) HasUserAssociations(ctx context.Context, id uint) (bool, error) {
 	var count int64
 	if err := r.db.WithContext(ctx).Raw(`
-		SELECT (
-			(SELECT COUNT(1) FROM user_attributes WHERE attribute_id = ?) +
-			(SELECT COUNT(1) FROM article_attributes WHERE attribute_id = ?) +
-			(SELECT COUNT(1) FROM course_attributes WHERE attribute_id = ?)
-		) AS cnt
+		SELECT COUNT(1) AS cnt FROM (
+			SELECT 1 FROM user_attributes WHERE attribute_id = ?
+			UNION ALL
+			SELECT 1 FROM article_attributes WHERE attribute_id = ?
+			UNION ALL
+			SELECT 1 FROM course_attributes WHERE attribute_id = ?
+		) AS attrs
 	`, id, id, id).Scan(&count).Error; err != nil {
 		return false, errors.NewInternal("查询属性关联失败", err)
 	}

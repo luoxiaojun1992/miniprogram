@@ -21,6 +21,12 @@ func TestAttributeRepository_CRUDAndAssoc(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, uint(1), attr.ID)
 
+	mock.ExpectQuery("SELECT").WillReturnRows(sqlmock.NewRows([]string{"id", "name", "type"}).AddRow(2, "avatar_file_id", 2))
+	byName, err := repo.GetByName(context.Background(), "avatar_file_id")
+	require.NoError(t, err)
+	require.NotNil(t, byName)
+	assert.Equal(t, uint(2), byName.ID)
+
 	mock.ExpectQuery("SELECT").WillReturnRows(sqlmock.NewRows([]string{"id", "name", "type"}).AddRow(1, "性别", 1))
 	attrs, err := repo.List(context.Background())
 	require.NoError(t, err)
@@ -55,6 +61,11 @@ func TestAttributeRepository_NotFoundAndErrorBranches(t *testing.T) {
 	attr, err := repo.GetByID(context.Background(), 999)
 	require.NoError(t, err)
 	assert.Nil(t, attr)
+
+	mock.ExpectQuery("SELECT").WillReturnRows(sqlmock.NewRows([]string{"id", "name", "type"}))
+	byName, err := repo.GetByName(context.Background(), "none")
+	require.NoError(t, err)
+	assert.Nil(t, byName)
 
 	mock.ExpectQuery("SELECT").WillReturnError(fmt.Errorf("list error"))
 	_, err = repo.List(context.Background())

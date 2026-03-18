@@ -133,8 +133,9 @@ func TestUserService_UpdateProfile_WithAvatarFileIDAttribute(t *testing.T) {
 		},
 	}
 	attrRepo := &testutil.MockAttributeRepository{
-		ListFn: func(_ context.Context) ([]*entity.Attribute, error) {
-			return []*entity.Attribute{{ID: 7, Name: "avatar_file_id", Type: entity.AttributeTypeBigInt}}, nil
+		GetByNameFn: func(_ context.Context, name string) (*entity.Attribute, error) {
+			require.Equal(t, "avatar_file_id", name)
+			return &entity.Attribute{ID: 7, Name: "avatar_file_id", Type: entity.AttributeTypeBigInt}, nil
 		},
 	}
 	called := false
