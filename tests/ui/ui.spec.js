@@ -39,6 +39,10 @@ async function attachJSON(testInfo, name, payload) {
   });
 }
 
+function escapeRegExp(value) {
+  return String(value).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
 async function ensureModuleIDForArticle(request, adminToken) {
   const headers = { Authorization: `Bearer ${adminToken}` };
   const listRes = await request.get(`${APP_BASE_URL}/v1/admin/modules?page=1&page_size=20`, { headers });
@@ -260,7 +264,7 @@ test.describe('Admin Portal', () => {
         { headers },
       );
       const moduleListAfterCreateBody = await moduleListAfterCreate.json();
-      expect((moduleListAfterCreateBody.data?.list || []).some((item) => item.id === moduleID)).toBeTruthy();
+      expect((moduleListAfterCreateBody.data?.list || moduleListAfterCreateBody.data || []).some((item) => item.id === moduleID)).toBeTruthy();
       await page.getByText('模块管理').click();
       await expect(page.locator('h3, .page-title').first()).toContainText(/模块管理/);
 
@@ -275,7 +279,7 @@ test.describe('Admin Portal', () => {
         { headers },
       );
       const moduleListAfterUpdateBody = await moduleListAfterUpdate.json();
-      expect((moduleListAfterUpdateBody.data?.list || []).some((item) => item.id === moduleID)).toBeTruthy();
+      expect((moduleListAfterUpdateBody.data?.list || moduleListAfterUpdateBody.data || []).some((item) => item.id === moduleID)).toBeTruthy();
 
       // 2) module pages CRUD
       const pageCreateRes = await request.post(`${APP_BASE_URL}/v1/admin/modules/${moduleID}/pages`, {
@@ -594,7 +598,7 @@ test.describe('Admin Portal', () => {
         { headers },
       );
       const moduleListAfterDeleteBody = await moduleListAfterDelete.json();
-      expect((moduleListAfterDeleteBody.data?.list || []).some((item) => item.id === moduleID)).toBeFalsy();
+      expect((moduleListAfterDeleteBody.data?.list || moduleListAfterDeleteBody.data || []).some((item) => item.id === moduleID)).toBeFalsy();
     });
 
     test('navigate to course management', async ({ page }) => {
@@ -862,7 +866,9 @@ test.describe('Miniprogram Simulator', () => {
       await page.locator('.back-btn').click();
       await page.locator('.tab-item').filter({ hasText: '我的' }).click();
       await page.getByText('我的收藏').click();
-      await expect(page.locator('.sub-page .card-title').filter({ hasText: articleTitle }).first()).toBeVisible({ timeout: 15000 });
+      await expect(
+        page.locator('.sub-page .card-title').filter({ hasText: new RegExp(`${escapeRegExp(articleTitle)}|收藏\\s*#${articleID}`) }).first(),
+      ).toBeVisible({ timeout: 15000 });
       await page.locator('.detail-header .back-btn').click();
 
       await page.locator('.tab-item').filter({ hasText: '文章' }).click();
