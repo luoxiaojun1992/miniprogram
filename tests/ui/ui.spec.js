@@ -227,7 +227,7 @@ test.describe('Admin Portal', () => {
       });
     });
 
-    test('admin CRUD covers users, attributes, modules/pages, articles, courses/units, banners, roles, and comments', async ({ page, request }) => {
+    test('admin CRUD operations for all resource types', async ({ page, request }) => {
       const adminToken = await getAdminToken(request);
       const userToken = await getUserToken(request);
       const headers = { Authorization: `Bearer ${adminToken}` };
@@ -243,6 +243,8 @@ test.describe('Admin Portal', () => {
       const courseTitle = `UI CRUD Course ${unique}`;
       const unitTitle = `UI CRUD Unit ${unique}`;
       const pageTitle = `UI CRUD Page ${unique}`;
+      const UNIT_DURATION_INITIAL = 10;
+      const UNIT_DURATION_UPDATED = 20;
 
       // 1) module CRUD
       const moduleCreateRes = await request.post(`${APP_BASE_URL}/v1/admin/modules`, {
@@ -503,7 +505,7 @@ test.describe('Admin Portal', () => {
 
       const unitCreateRes = await request.post(`${APP_BASE_URL}/v1/admin/courses/${courseID}/units`, {
         headers,
-        data: { title: unitTitle, video_file_id: 0, duration: 10, sort_order: 1 },
+        data: { title: unitTitle, video_file_id: 0, duration: UNIT_DURATION_INITIAL, sort_order: 1 },
       });
       expect(unitCreateRes.ok()).toBeTruthy();
       const unitCreateBody = await unitCreateRes.json();
@@ -515,7 +517,7 @@ test.describe('Admin Portal', () => {
       const unitUpdatedTitle = `${unitTitle} Updated`;
       const unitUpdateRes = await request.put(`${APP_BASE_URL}/v1/admin/courses/${courseID}/units/${unitID}`, {
         headers,
-        data: { title: unitUpdatedTitle, video_file_id: 0, duration: 20, sort_order: 2 },
+        data: { title: unitUpdatedTitle, video_file_id: 0, duration: UNIT_DURATION_UPDATED, sort_order: 2 },
       });
       expect(unitUpdateRes.ok()).toBeTruthy();
       const unitListAfterUpdate = await request.get(`${APP_BASE_URL}/v1/admin/courses/${courseID}/units`, { headers });
@@ -791,7 +793,7 @@ test.describe('Miniprogram Simulator', () => {
       await expect(page.getByText(/收到新的点赞|收到新的评论/).first()).toBeVisible({ timeout: 15000 });
     });
 
-    test('miniprogram CRUD covers article/course like-collect-comment create/read/delete flows', async ({ page, request }) => {
+    test('miniprogram user interactions for articles and courses', async ({ page, request }) => {
       const adminToken = await getAdminToken(request);
       const userToken = await getUserToken(request);
       const headers = { Authorization: `Bearer ${adminToken}` };
@@ -844,7 +846,7 @@ test.describe('Miniprogram Simulator', () => {
       // article create/read/delete by UI (like, collection, comment)
       await page.locator('.tab-item').filter({ hasText: '文章' }).click();
       await page.locator('input[placeholder*="搜索文章"]').fill(articleTitle);
-      await page.waitForTimeout(700);
+      await expect(page.getByText(articleTitle).first()).toBeVisible({ timeout: 15000 });
       await page.getByText(articleTitle).first().click();
       await expect(page.locator('.detail-title').filter({ hasText: '文章详情' })).toBeVisible({ timeout: 15000 });
       await expect(page.getByText(articleTitle).first()).toBeVisible();
@@ -868,7 +870,7 @@ test.describe('Miniprogram Simulator', () => {
 
       await page.locator('.tab-item').filter({ hasText: '文章' }).click();
       await page.locator('input[placeholder*="搜索文章"]').fill(articleTitle);
-      await page.waitForTimeout(700);
+      await expect(page.getByText(articleTitle).first()).toBeVisible({ timeout: 15000 });
       await page.getByText(articleTitle).first().click();
       await page.locator('.detail-actions .action-btn').nth(1).click();
       await expect(page.locator('.detail-actions .action-btn').nth(1)).toContainText('收藏');
@@ -879,7 +881,7 @@ test.describe('Miniprogram Simulator', () => {
       // course create/read/delete by UI (like, collection, comment)
       await page.locator('.tab-item').filter({ hasText: '课程' }).click();
       await page.locator('input[placeholder*="搜索课程"]').fill(courseTitle);
-      await page.waitForTimeout(700);
+      await expect(page.getByText(courseTitle).first()).toBeVisible({ timeout: 15000 });
       await page.getByText(courseTitle).first().click();
       await expect(page.locator('.detail-title').filter({ hasText: '课程详情' })).toBeVisible({ timeout: 15000 });
       await expect(page.getByText(courseTitle).first()).toBeVisible();
@@ -899,7 +901,7 @@ test.describe('Miniprogram Simulator', () => {
 
       await page.locator('.tab-item').filter({ hasText: '课程' }).click();
       await page.locator('input[placeholder*="搜索课程"]').fill(courseTitle);
-      await page.waitForTimeout(700);
+      await expect(page.getByText(courseTitle).first()).toBeVisible({ timeout: 15000 });
       await page.getByText(courseTitle).first().click();
       await page.locator('.detail-actions .action-btn').nth(1).click();
       await expect(page.locator('.detail-actions .action-btn').nth(1)).toContainText('收藏');
