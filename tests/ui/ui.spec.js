@@ -32,6 +32,13 @@ async function getUserToken(request) {
   return body.data?.access_token ?? '';
 }
 
+async function attachJSON(testInfo, name, payload) {
+  await testInfo.attach(name, {
+    body: Buffer.from(JSON.stringify(payload, null, 2), 'utf-8'),
+    contentType: 'application/json',
+  });
+}
+
 /* ═══════════════════════════════════════════════════════════════════ */
 /*  ADMIN PORTAL TESTS                                                */
 /* ═══════════════════════════════════════════════════════════════════ */
@@ -115,6 +122,73 @@ test.describe('Admin Portal', () => {
       await expect(page.locator('.modal-overlay, .modal')).toBeVisible();
       await expect(page.getByText('标题').first()).toBeVisible();
       await expect(page.getByText('内容').first()).toBeVisible();
+    });
+
+    test('report includes created content, created content list, and uploaded file', async ({ page, request }, testInfo) => {
+      const adminToken = await getAdminToken(request);
+      const uniqueTitle = `UI Report Article ${Date.now()}-${Math.floor(Math.random() * 100000)}`;
+
+      let articleId = 0;
+      await test.step('创建内容：创建文章', async () => {
+        const articleRes = await request.post(`${APP_BASE_URL}/v1/admin/articles`, {
+          headers: { Authorization: `Bearer ${adminToken}` },
+          data: { title: uniqueTitle, summary: 'ui-report-summary', content: 'ui-report-content', content_type: 1, module_id: 1 },
+        });
+        expect(articleRes.ok()).toBeTruthy();
+        const articleBody = await articleRes.json();
+        articleId = articleBody.data?.id ?? 0;
+        expect(articleId).toBeGreaterThan(0);
+        await attachJSON(testInfo, 'created-content.json', articleBody);
+      });
+
+      await test.step('创建后的内容列表：接口与页面可见', async () => {
+        const listRes = await request.get(
+          `${APP_BASE_URL}/v1/admin/articles?page=1&page_size=20&keyword=${encodeURIComponent(uniqueTitle)}`,
+          { headers: { Authorization: `Bearer ${adminToken}` } },
+        );
+        expect(listRes.ok()).toBeTruthy();
+        const listBody = await listRes.json();
+        const list = listBody.data?.list ?? [];
+        expect(Array.isArray(list)).toBeTruthy();
+        expect(list.some((item) => item.id === articleId || item.title === uniqueTitle)).toBeTruthy();
+        await attachJSON(testInfo, 'created-content-list.json', listBody);
+
+        await page.getByText('文章管理').click();
+        await expect(page.locator('h3, .page-title').first()).toContainText(/文章管理/);
+        await page.locator('.search-input').first().fill(uniqueTitle);
+        await page.keyboard.press('Enter');
+        await expect(page.getByText(uniqueTitle).first()).toBeVisible({ timeout: 15000 });
+      });
+
+      await test.step('上传成功的文件：预签名上传并验证文件ID', async () => {
+        const filename = `ui-report-${Date.now()}.png`;
+        const presignRes = await request.get(
+          `${APP_BASE_URL}/v1/admin/upload/files/presign?filename=${encodeURIComponent(filename)}&usage=embedded&expires_in=600`,
+          { headers: { Authorization: `Bearer ${adminToken}` } },
+        );
+        expect(presignRes.ok()).toBeTruthy();
+        const presignBody = await presignRes.json();
+        const fileID = presignBody.data?.file_id ?? 0;
+        const putURL = presignBody.data?.put_url ?? '';
+        expect(fileID).toBeGreaterThan(0);
+        expect(typeof putURL).toBe('string');
+        expect(putURL.length).toBeGreaterThan(0);
+
+        const uploadRes = await request.fetch(putURL, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'image/png' },
+          data: Buffer.from('ui-report-upload-png'),
+        });
+        expect(uploadRes.ok()).toBeTruthy();
+        const uploadBody = await uploadRes.text();
+        await attachJSON(testInfo, 'uploaded-file.json', {
+          file_id: fileID,
+          key: presignBody.data?.key,
+          static_url: presignBody.data?.static_url ?? '',
+          upload_status: uploadRes.status(),
+          upload_response: uploadBody,
+        });
+      });
     });
 
     test('navigate to course management', async ({ page }) => {
