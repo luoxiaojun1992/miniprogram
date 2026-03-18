@@ -16,24 +16,3 @@ type WechatConfig struct {
 	CreatedAt       time.Time  `gorm:"comment:创建时间" json:"created_at"`
 	UpdatedAt       time.Time  `gorm:"comment:更新时间" json:"updated_at"`
 }
-
-// AuditLog represents the audit_logs table.
-type AuditLog struct {
-	ID          uint64    `gorm:"primarykey" json:"id"`
-	UserID      uint64    `gorm:"comment:操作用户ID" json:"user_id"`
-	Username    string    `gorm:"size:64;comment:操作人昵称" json:"username"`
-	Action      string    `gorm:"size:64;comment:操作类型" json:"action"`
-	Module      string    `gorm:"size:64;comment:操作模块" json:"module"`
-	Description string    `gorm:"type:text;comment:描述" json:"description"`
-	IPAddress   string    `gorm:"size:45;comment:IP地址" json:"ip_address"`
-	UserAgent   string    `gorm:"size:255;comment:UserAgent" json:"user_agent"`
-	RequestData string    `gorm:"type:json;comment:请求数据" json:"request_data"`
-	CreatedAt   time.Time `gorm:"comment:创建时间" json:"created_at"`
-}
-
-// LogConfig represents the log_configs table.
-type LogConfig struct {
-	ID            uint      `gorm:"primarykey" json:"id"`
-	RetentionDays int       `gorm:"default:90;comment:日志保留天数" json:"retention_days"`
-	UpdatedAt     time.Time `gorm:"comment:更新时间" json:"updated_at"`
-}

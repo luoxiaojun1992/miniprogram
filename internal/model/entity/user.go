@@ -22,20 +22,3 @@ type User struct {
 	Tags          []UserTag      `gorm:"foreignKey:UserID" json:"tags,omitempty"`
 	AdminInfo     *AdminUser     `gorm:"foreignKey:UserID" json:"admin_info,omitempty"`
 }
-
-// AdminUser represents the admin_users table.
-type AdminUser struct {
-	ID           uint64     `gorm:"primarykey" json:"id"`
-	UserID       uint64     `gorm:"not null;comment:关联用户ID" json:"user_id"`
-	Email        string     `gorm:"uniqueIndex;size:128;comment:邮箱" json:"email"`
-	PasswordHash string     `gorm:"size:255;comment:密码哈希" json:"-"`
-	LastLoginAt  *time.Time `gorm:"comment:最后登录时间" json:"last_login_at,omitempty"`
-}
-
-// UserTag represents the user_tags table.
-type UserTag struct {
-	ID        uint      `gorm:"primarykey" json:"id"`
-	UserID    uint64    `gorm:"comment:用户ID" json:"user_id"`
-	TagName   string    `gorm:"size:32;comment:标签名" json:"tag_name"`
-	CreatedAt time.Time `gorm:"comment:创建时间" json:"created_at"`
-}

@@ -104,24 +104,3 @@ func (c *RoleController) Delete(ctx *gin.Context) {
 	}
 	ctx.Status(http.StatusNoContent)
 }
-
-// PermissionController handles permission requests.
-type PermissionController struct {
-	svc service.PermissionService
-	log *logrus.Logger
-}
-
-// NewPermissionController creates a new PermissionController.
-func NewPermissionController(svc service.PermissionService, log *logrus.Logger) *PermissionController {
-	return &PermissionController{svc: svc, log: log}
-}
-
-// GetTree handles GET /admin/permissions.
-func (c *PermissionController) GetTree(ctx *gin.Context) {
-	tree, err := c.svc.GetTree(ctx)
-	if err != nil {
-		ctx.Error(err)
-		return
-	}
-	response.Success(ctx, tree)
-}
