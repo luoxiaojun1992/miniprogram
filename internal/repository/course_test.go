@@ -354,11 +354,25 @@ func TestCourseRepository_IncrLikeCount_Success(t *testing.T) {
 	require.NoError(t, repo.IncrLikeCount(context.Background(), 1))
 }
 
+func TestCourseRepository_IncrLikeCount_Error(t *testing.T) {
+	db, mock := newTestDB(t)
+	repo := NewCourseRepository(db)
+	mock.ExpectExec("UPDATE courses SET like_count").WillReturnError(fmt.Errorf("exec error"))
+	assert.Error(t, repo.IncrLikeCount(context.Background(), 1))
+}
+
 func TestCourseRepository_DecrLikeCount_Success(t *testing.T) {
 	db, mock := newTestDB(t)
 	repo := NewCourseRepository(db)
 	mock.ExpectExec("UPDATE courses SET like_count = CASE").WillReturnResult(sqlmock.NewResult(1, 1))
 	require.NoError(t, repo.DecrLikeCount(context.Background(), 1))
+}
+
+func TestCourseRepository_DecrLikeCount_Error(t *testing.T) {
+	db, mock := newTestDB(t)
+	repo := NewCourseRepository(db)
+	mock.ExpectExec("UPDATE courses SET like_count = CASE").WillReturnError(fmt.Errorf("exec error"))
+	assert.Error(t, repo.DecrLikeCount(context.Background(), 1))
 }
 
 func TestCourseRepository_IncrCollectCount_Success(t *testing.T) {
@@ -368,11 +382,25 @@ func TestCourseRepository_IncrCollectCount_Success(t *testing.T) {
 	require.NoError(t, repo.IncrCollectCount(context.Background(), 1))
 }
 
+func TestCourseRepository_IncrCollectCount_Error(t *testing.T) {
+	db, mock := newTestDB(t)
+	repo := NewCourseRepository(db)
+	mock.ExpectExec("UPDATE courses SET collect_count").WillReturnError(fmt.Errorf("exec error"))
+	assert.Error(t, repo.IncrCollectCount(context.Background(), 1))
+}
+
 func TestCourseRepository_DecrCollectCount_Success(t *testing.T) {
 	db, mock := newTestDB(t)
 	repo := NewCourseRepository(db)
 	mock.ExpectExec("UPDATE courses SET collect_count = CASE").WillReturnResult(sqlmock.NewResult(1, 1))
 	require.NoError(t, repo.DecrCollectCount(context.Background(), 1))
+}
+
+func TestCourseRepository_DecrCollectCount_Error(t *testing.T) {
+	db, mock := newTestDB(t)
+	repo := NewCourseRepository(db)
+	mock.ExpectExec("UPDATE courses SET collect_count = CASE").WillReturnError(fmt.Errorf("exec error"))
+	assert.Error(t, repo.DecrCollectCount(context.Background(), 1))
 }
 
 func TestCourseRepository_IncrCommentCount_Success(t *testing.T) {
@@ -382,11 +410,25 @@ func TestCourseRepository_IncrCommentCount_Success(t *testing.T) {
 	require.NoError(t, repo.IncrCommentCount(context.Background(), 1))
 }
 
+func TestCourseRepository_IncrCommentCount_Error(t *testing.T) {
+	db, mock := newTestDB(t)
+	repo := NewCourseRepository(db)
+	mock.ExpectExec("UPDATE courses SET comment_count").WillReturnError(fmt.Errorf("exec error"))
+	assert.Error(t, repo.IncrCommentCount(context.Background(), 1))
+}
+
 func TestCourseRepository_DecrCommentCount_Success(t *testing.T) {
 	db, mock := newTestDB(t)
 	repo := NewCourseRepository(db)
 	mock.ExpectExec("UPDATE courses SET comment_count = CASE").WillReturnResult(sqlmock.NewResult(1, 1))
 	require.NoError(t, repo.DecrCommentCount(context.Background(), 1))
+}
+
+func TestCourseRepository_DecrCommentCount_Error(t *testing.T) {
+	db, mock := newTestDB(t)
+	repo := NewCourseRepository(db)
+	mock.ExpectExec("UPDATE courses SET comment_count = CASE").WillReturnError(fmt.Errorf("exec error"))
+	assert.Error(t, repo.DecrCommentCount(context.Background(), 1))
 }
 
 func TestCourseRepository_IncrShareCount_Success(t *testing.T) {
@@ -396,11 +438,25 @@ func TestCourseRepository_IncrShareCount_Success(t *testing.T) {
 	require.NoError(t, repo.IncrShareCount(context.Background(), 1))
 }
 
+func TestCourseRepository_IncrShareCount_Error(t *testing.T) {
+	db, mock := newTestDB(t)
+	repo := NewCourseRepository(db)
+	mock.ExpectExec("UPDATE courses SET share_count").WillReturnError(fmt.Errorf("exec error"))
+	assert.Error(t, repo.IncrShareCount(context.Background(), 1))
+}
+
 func TestCourseRepository_IncrStudyCount_Success(t *testing.T) {
 	db, mock := newTestDB(t)
 	repo := NewCourseRepository(db)
 	mock.ExpectExec("UPDATE courses SET study_count").WillReturnResult(sqlmock.NewResult(1, 1))
 	require.NoError(t, repo.IncrStudyCount(context.Background(), 1))
+}
+
+func TestCourseRepository_IncrStudyCount_Error(t *testing.T) {
+	db, mock := newTestDB(t)
+	repo := NewCourseRepository(db)
+	mock.ExpectExec("UPDATE courses SET study_count").WillReturnError(fmt.Errorf("exec error"))
+	assert.Error(t, repo.IncrStudyCount(context.Background(), 1))
 }
 
 func TestCourseRepository_HasAssociations_Success(t *testing.T) {
@@ -412,6 +468,14 @@ func TestCourseRepository_HasAssociations_Success(t *testing.T) {
 	assert.True(t, ok)
 }
 
+func TestCourseRepository_HasAssociations_Error(t *testing.T) {
+	db, mock := newTestDB(t)
+	repo := NewCourseRepository(db)
+	mock.ExpectQuery("SELECT").WillReturnError(fmt.Errorf("query error"))
+	_, err := repo.HasAssociations(context.Background(), 1)
+	assert.Error(t, err)
+}
+
 func TestCourseUnitRepository_HasStudyRecords_Success(t *testing.T) {
 	db, mock := newTestDB(t)
 	repo := NewCourseUnitRepository(db)
@@ -419,4 +483,12 @@ func TestCourseUnitRepository_HasStudyRecords_Success(t *testing.T) {
 	ok, err := repo.HasStudyRecords(context.Background(), 1)
 	require.NoError(t, err)
 	assert.True(t, ok)
+}
+
+func TestCourseUnitRepository_HasStudyRecords_Error(t *testing.T) {
+	db, mock := newTestDB(t)
+	repo := NewCourseUnitRepository(db)
+	mock.ExpectQuery("SELECT count").WillReturnError(fmt.Errorf("query error"))
+	_, err := repo.HasStudyRecords(context.Background(), 1)
+	assert.Error(t, err)
 }

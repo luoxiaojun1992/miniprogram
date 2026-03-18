@@ -263,6 +263,35 @@ func TestCourseCtrl_AdminPin_OK(t *testing.T) {
 	assert.Equal(t, 200, doRequest(r, "POST", "/admin/courses/1/pin", `{"sort_order":999}`).Code)
 }
 
+func TestCourseCtrl_AdminPin_BadID(t *testing.T) {
+	r := newTestRouter()
+	r.POST("/admin/courses/:id/pin", crsCtrl(&testutil.MockCourseService{}).AdminPin)
+	assert.Equal(t, 400, doRequest(r, "POST", "/admin/courses/abc/pin", `{"sort_order":1}`).Code)
+}
+
+func TestCourseCtrl_AdminPin_BadJSON(t *testing.T) {
+	r := newTestRouter()
+	r.POST("/admin/courses/:id/pin", crsCtrl(&testutil.MockCourseService{}).AdminPin)
+	assert.Equal(t, 400, doRequest(r, "POST", "/admin/courses/1/pin", `bad`).Code)
+}
+
+func TestCourseCtrl_AdminPin_Validation(t *testing.T) {
+	r := newTestRouter()
+	r.POST("/admin/courses/:id/pin", crsCtrl(&testutil.MockCourseService{}).AdminPin)
+	assert.Equal(t, 400, doRequest(r, "POST", "/admin/courses/1/pin", `{}`).Code)
+}
+
+func TestCourseCtrl_AdminPin_SvcErr(t *testing.T) {
+	svc := &testutil.MockCourseService{
+		PinFn: func(_ context.Context, _ uint64, _ *dto.PinCourseRequest) error {
+			return apperrors.NewInternal("pin failed", nil)
+		},
+	}
+	r := newTestRouter()
+	r.POST("/admin/courses/:id/pin", crsCtrl(svc).AdminPin)
+	assert.Equal(t, 500, doRequest(r, "POST", "/admin/courses/1/pin", `{"sort_order":1}`).Code)
+}
+
 func TestCourseCtrl_AdminCopy_OK(t *testing.T) {
 	svc := &testutil.MockCourseService{
 		CopyFn: func(_ context.Context, id uint64, authorID uint64) (uint64, error) { return 66, nil },
@@ -270,6 +299,23 @@ func TestCourseCtrl_AdminCopy_OK(t *testing.T) {
 	r := newTestRouter()
 	r.POST("/admin/courses/:id/copy", crsCtrl(svc).AdminCopy)
 	assert.Equal(t, 201, doRequest(r, "POST", "/admin/courses/1/copy", "").Code)
+}
+
+func TestCourseCtrl_AdminCopy_BadID(t *testing.T) {
+	r := newTestRouter()
+	r.POST("/admin/courses/:id/copy", crsCtrl(&testutil.MockCourseService{}).AdminCopy)
+	assert.Equal(t, 400, doRequest(r, "POST", "/admin/courses/abc/copy", "").Code)
+}
+
+func TestCourseCtrl_AdminCopy_SvcErr(t *testing.T) {
+	svc := &testutil.MockCourseService{
+		CopyFn: func(_ context.Context, _ uint64, _ uint64) (uint64, error) {
+			return 0, apperrors.NewInternal("copy failed", nil)
+		},
+	}
+	r := newTestRouterWithAuth(1, 2)
+	r.POST("/admin/courses/:id/copy", crsCtrl(svc).AdminCopy)
+	assert.Equal(t, 500, doRequest(r, "POST", "/admin/courses/1/copy", "").Code)
 }
 
 func TestCourseCtrl_AdminGetUnits_OK(t *testing.T) {
