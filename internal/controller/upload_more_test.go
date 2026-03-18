@@ -495,6 +495,51 @@ func TestUploadCtrl_GenerateCourseVideoPresignURL_NoCOS_AndAuditError(t *testing
 	assert.Equal(t, http.StatusInternalServerError, w2.Code)
 }
 
+func TestUploadCtrl_GenerateCourseAttachmentPresignURL_ForbiddenAndInvalidExpires(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	ctrl := NewUploadControllerWithCOS("/tmp/uploads_test", "http://cos:9000", "http://cos:9000", "miniapp-test", logrus.New())
+
+	r1 := gin.New()
+	r1.Use(middleware.ErrorMiddleware(logrus.New()))
+	r1.Use(withFrontUser())
+	r1.GET("/upload/course/attachment/presign", ctrl.GenerateCourseAttachmentPresignURL)
+	w1 := httptest.NewRecorder()
+	req1, _ := http.NewRequest(http.MethodGet, "/upload/course/attachment/presign?filename=a.pdf", nil)
+	r1.ServeHTTP(w1, req1)
+	assert.Equal(t, http.StatusForbidden, w1.Code)
+
+	r2 := gin.New()
+	r2.Use(middleware.ErrorMiddleware(logrus.New()))
+	r2.Use(withAdmin())
+	r2.GET("/upload/course/attachment/presign", ctrl.GenerateCourseAttachmentPresignURL)
+	w2 := httptest.NewRecorder()
+	req2, _ := http.NewRequest(http.MethodGet, "/upload/course/attachment/presign?filename=a.pdf&expires_in=10", nil)
+	r2.ServeHTTP(w2, req2)
+	assert.Equal(t, http.StatusBadRequest, w2.Code)
+}
+
+func TestUploadCtrl_GenerateStaticMaterialURL_NoCOS(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	auditRepo := &testAuditRepo{
+		byID: map[uint64]*entity.AuditLog{
+			1: {
+				ID:          1,
+				Action:      "file_asset",
+				Module:      "file_upload",
+				RequestData: `{"key":"embedded-image/20260318/a.png","usage":"embedded","category":"image","protected":false}`,
+			},
+		},
+	}
+	ctrl := NewUploadController("/tmp/uploads_test", "http://localhost:8080", logrus.New()).WithAuditRepo(auditRepo)
+	r := gin.New()
+	r.Use(middleware.ErrorMiddleware(logrus.New()))
+	r.GET("/download/static/:file_id", ctrl.GenerateStaticMaterialURL)
+	w := httptest.NewRecorder()
+	req, _ := http.NewRequest(http.MethodGet, "/download/static/1", nil)
+	r.ServeHTTP(w, req)
+	assert.Equal(t, http.StatusBadRequest, w.Code)
+}
+
 func TestUploadCtrl_RecordUploadBusiness_NilAuditRepoNoop(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 	w := httptest.NewRecorder()
