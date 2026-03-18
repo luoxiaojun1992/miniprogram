@@ -2,6 +2,8 @@ package service
 
 import (
 	"context"
+	"net/http"
+	"net/http/httptest"
 	"testing"
 
 	"github.com/sirupsen/logrus"
@@ -49,7 +51,14 @@ func TestUploadFileService_GenerateProtectedBusinessPresign_OnlyMedia(t *testing
 }
 
 func TestUploadFileService_GenerateBusinessDownload_AllowsMultipleCategories(t *testing.T) {
-	cosClient, err := cosutil.NewClient("http://cos:9000", "http://cos:9000", "miniapp-test", "", "")
+	mockCOS := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method == http.MethodHead {
+			w.Header().Set("Content-Type", "video/mp4")
+		}
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer mockCOS.Close()
+	cosClient, err := cosutil.NewClient(mockCOS.URL, mockCOS.URL, "miniapp-test", "", "")
 	assert.NoError(t, err)
 	repo := &inMemoryFileRepo{
 		store: map[uint64]*entity.File{
@@ -61,4 +70,25 @@ func TestUploadFileService_GenerateBusinessDownload_AllowsMultipleCategories(t *
 	assert.NoError(t, err)
 	assert.Equal(t, uint64(7), resp.FileID)
 	assert.Contains(t, resp.Download, "protected-video/20260317/a.mp4")
+}
+
+func TestUploadFileService_GenerateBusinessDownload_MimeMismatchDenied(t *testing.T) {
+	mockCOS := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method == http.MethodHead {
+			w.Header().Set("Content-Type", "image/png")
+		}
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer mockCOS.Close()
+	cosClient, err := cosutil.NewClient(mockCOS.URL, mockCOS.URL, "miniapp-test", "", "")
+	assert.NoError(t, err)
+	repo := &inMemoryFileRepo{
+		store: map[uint64]*entity.File{
+			7: {ID: 7, Key: "protected-video/20260317/a.mp4", Filename: "a.mp4", Usage: "protected", Category: "video"},
+		},
+	}
+	svc := NewUploadFileService(repo, cosClient, logrus.New())
+	resp, err := svc.GenerateBusinessDownload(context.Background(), 7, []string{"video"}, "")
+	assert.Nil(t, resp)
+	assert.Error(t, err)
 }

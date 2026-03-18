@@ -173,6 +173,13 @@ func (s *uploadFileService) GenerateBusinessDownload(ctx context.Context, fileID
 	if !containsCategory(allowedCategories, file.Category) {
 		return nil, errors.NewForbidden("文件类型与业务不匹配", nil)
 	}
+	contentType, headErr := s.cos.ObjectContentType(ctx, file.Key)
+	if headErr != nil {
+		return nil, errors.NewInternal("校验文件类型失败", headErr)
+	}
+	if !contentTypeMatchesCategory(file.Category, contentType, file.Filename, file.Key) {
+		return nil, errors.NewForbidden("文件MIME类型与业务不匹配", nil)
+	}
 	expiresIn, parseErr := parseExpiresIn(expiresInRaw, 300)
 	if parseErr != nil {
 		return nil, parseErr
@@ -254,4 +261,57 @@ func parseExpiresIn(raw string, defaultValue int) (int, error) {
 
 func generateObjectKey(prefix, ext string) string {
 	return fmt.Sprintf("%s/%s/%s%s", prefix, time.Now().Format("20060102"), uuid.NewString(), ext)
+}
+
+func contentTypeMatchesCategory(category, contentType, filename, key string) bool {
+	ct := strings.ToLower(strings.TrimSpace(contentType))
+	if ct == "" {
+		return false
+	}
+	if idx := strings.Index(ct, ";"); idx >= 0 {
+		ct = strings.TrimSpace(ct[:idx])
+	}
+	switch category {
+	case "image":
+		return strings.HasPrefix(ct, "image/")
+	case "video":
+		return strings.HasPrefix(ct, "video/")
+	case "attachment":
+		ext := strings.ToLower(filepath.Ext(filename))
+		if ext == "" {
+			ext = strings.ToLower(filepath.Ext(key))
+		}
+		return attachmentContentTypeAllowed(ext, ct)
+	default:
+		return false
+	}
+}
+
+func attachmentContentTypeAllowed(ext, ct string) bool {
+	switch ext {
+	case ".pdf":
+		return ct == "application/pdf" || ct == "application/octet-stream"
+	case ".doc":
+		return ct == "application/msword" || ct == "application/octet-stream"
+	case ".docx":
+		return ct == "application/vnd.openxmlformats-officedocument.wordprocessingml.document" || ct == "application/octet-stream"
+	case ".xls":
+		return ct == "application/vnd.ms-excel" || ct == "application/octet-stream"
+	case ".xlsx":
+		return ct == "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" || ct == "application/octet-stream"
+	case ".ppt":
+		return ct == "application/vnd.ms-powerpoint" || ct == "application/octet-stream"
+	case ".pptx":
+		return ct == "application/vnd.openxmlformats-officedocument.presentationml.presentation" || ct == "application/octet-stream"
+	case ".zip":
+		return ct == "application/zip" || ct == "application/x-zip-compressed" || ct == "application/octet-stream"
+	case ".rar":
+		return ct == "application/vnd.rar" || ct == "application/x-rar-compressed" || ct == "application/octet-stream"
+	case ".7z":
+		return ct == "application/x-7z-compressed" || ct == "application/octet-stream"
+	case ".txt":
+		return ct == "text/plain" || ct == "application/octet-stream"
+	default:
+		return false
+	}
 }

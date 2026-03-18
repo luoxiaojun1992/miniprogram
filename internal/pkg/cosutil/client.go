@@ -106,16 +106,30 @@ func (c *Client) ObjectURL(key string) string {
 }
 
 func (c *Client) IsStaticMediaObject(ctx context.Context, key string) (bool, error) {
-	key = normalizeObjectKey(key)
-	if key == "" {
-		return false, fmt.Errorf("invalid object key")
-	}
-	resp, err := c.client.Object.Head(ctx, key, nil)
+	contentType, err := c.ObjectContentType(ctx, key)
 	if err != nil {
 		return false, err
 	}
-	contentType := strings.ToLower(strings.TrimSpace(resp.Header.Get("Content-Type")))
 	return strings.HasPrefix(contentType, "image/") || strings.HasPrefix(contentType, "video/"), nil
+}
+
+func (c *Client) ObjectContentType(ctx context.Context, key string) (string, error) {
+	key = normalizeObjectKey(key)
+	if key == "" {
+		return "", fmt.Errorf("invalid object key")
+	}
+	resp, err := c.client.Object.Head(ctx, key, nil)
+	if err != nil {
+		return "", err
+	}
+	contentType := strings.ToLower(strings.TrimSpace(resp.Header.Get("Content-Type")))
+	if contentType == "" {
+		return "", fmt.Errorf("empty object content-type")
+	}
+	if idx := strings.Index(contentType, ";"); idx >= 0 {
+		contentType = strings.TrimSpace(contentType[:idx])
+	}
+	return contentType, nil
 }
 
 func normalizeObjectKey(key string) string {
