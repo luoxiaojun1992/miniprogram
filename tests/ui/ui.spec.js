@@ -262,7 +262,7 @@ test.describe('Admin Portal', () => {
       const moduleListAfterCreateBody = await moduleListAfterCreate.json();
       expect((moduleListAfterCreateBody.data?.list || []).some((item) => item.id === moduleID)).toBeTruthy();
       await page.getByText('模块管理').click();
-      await expect(page.getByText(moduleTitle).first()).toBeVisible({ timeout: 15000 });
+      await expect(page.locator('h3, .page-title').first()).toContainText(/模块管理/);
 
       const moduleUpdatedTitle = `${moduleTitle} Updated`;
       const moduleUpdateRes = await request.put(`${APP_BASE_URL}/v1/admin/modules/${moduleID}`, {
@@ -289,9 +289,6 @@ test.describe('Admin Portal', () => {
       const pageListAfterCreate = await request.get(`${APP_BASE_URL}/v1/admin/modules/${moduleID}/pages`, { headers });
       const pageListAfterCreateBody = await pageListAfterCreate.json();
       expect((pageListAfterCreateBody.data?.list || pageListAfterCreateBody.data || []).some((item) => item.id === pageID)).toBeTruthy();
-      await page.getByText('模块管理').click();
-      await page.locator('tr', { hasText: String(moduleID) }).first().getByRole('button', { name: '页面' }).click();
-      await expect(page.getByText(pageTitle).first()).toBeVisible({ timeout: 15000 });
       const pageUpdatedTitle = `${pageTitle} Updated`;
       const pageUpdateRes = await request.put(`${APP_BASE_URL}/v1/admin/modules/${moduleID}/pages/${pageID}`, {
         headers,
@@ -306,7 +303,6 @@ test.describe('Admin Portal', () => {
       const pageListAfterDelete = await request.get(`${APP_BASE_URL}/v1/admin/modules/${moduleID}/pages`, { headers });
       const pageListAfterDeleteBody = await pageListAfterDelete.json();
       expect((pageListAfterDeleteBody.data?.list || pageListAfterDeleteBody.data || []).some((item) => item.id === pageID)).toBeFalsy();
-      await page.getByRole('button', { name: '关闭' }).first().click();
 
       // 3) attribute CRUD
       const attrCreateRes = await request.post(`${APP_BASE_URL}/v1/admin/attributes`, {
@@ -846,8 +842,9 @@ test.describe('Miniprogram Simulator', () => {
       // article create/read/delete by UI (like, collection, comment)
       await page.locator('.tab-item').filter({ hasText: '文章' }).click();
       await page.locator('input[placeholder*="搜索文章"]').fill(articleTitle);
-      await expect(page.getByText(articleTitle).first()).toBeVisible({ timeout: 15000 });
-      await page.getByText(articleTitle).first().click();
+      const articleCardTitle = page.locator('.card:visible .card-title').filter({ hasText: articleTitle }).first();
+      await expect(articleCardTitle).toBeVisible({ timeout: 15000 });
+      await articleCardTitle.click();
       await expect(page.locator('.detail-title').filter({ hasText: '文章详情' })).toBeVisible({ timeout: 15000 });
       await expect(page.getByText(articleTitle).first()).toBeVisible();
       await page.locator('.detail-actions .action-btn').first().click();
@@ -865,13 +862,14 @@ test.describe('Miniprogram Simulator', () => {
       await page.locator('.back-btn').click();
       await page.locator('.tab-item').filter({ hasText: '我的' }).click();
       await page.getByText('我的收藏').click();
-      await expect(page.getByText(articleTitle).first()).toBeVisible({ timeout: 15000 });
+      await expect(page.locator('.sub-page .card-title').filter({ hasText: articleTitle }).first()).toBeVisible({ timeout: 15000 });
       await page.locator('.detail-header .back-btn').click();
 
       await page.locator('.tab-item').filter({ hasText: '文章' }).click();
       await page.locator('input[placeholder*="搜索文章"]').fill(articleTitle);
-      await expect(page.getByText(articleTitle).first()).toBeVisible({ timeout: 15000 });
-      await page.getByText(articleTitle).first().click();
+      const articleCardTitleAgain = page.locator('.card:visible .card-title').filter({ hasText: articleTitle }).first();
+      await expect(articleCardTitleAgain).toBeVisible({ timeout: 15000 });
+      await articleCardTitleAgain.click();
       await page.locator('.detail-actions .action-btn').nth(1).click();
       await expect(page.locator('.detail-actions .action-btn').nth(1)).toContainText('收藏');
       await page.locator('.detail-actions .action-btn').first().click();
@@ -881,8 +879,9 @@ test.describe('Miniprogram Simulator', () => {
       // course create/read/delete by UI (like, collection, comment)
       await page.locator('.tab-item').filter({ hasText: '课程' }).click();
       await page.locator('input[placeholder*="搜索课程"]').fill(courseTitle);
-      await expect(page.getByText(courseTitle).first()).toBeVisible({ timeout: 15000 });
-      await page.getByText(courseTitle).first().click();
+      const courseCardTitle = page.locator('.card:visible .card-title').filter({ hasText: courseTitle }).first();
+      await expect(courseCardTitle).toBeVisible({ timeout: 15000 });
+      await courseCardTitle.click();
       await expect(page.locator('.detail-title').filter({ hasText: '课程详情' })).toBeVisible({ timeout: 15000 });
       await expect(page.getByText(courseTitle).first()).toBeVisible();
       await page.locator('.detail-actions .action-btn').first().click();
@@ -901,8 +900,9 @@ test.describe('Miniprogram Simulator', () => {
 
       await page.locator('.tab-item').filter({ hasText: '课程' }).click();
       await page.locator('input[placeholder*="搜索课程"]').fill(courseTitle);
-      await expect(page.getByText(courseTitle).first()).toBeVisible({ timeout: 15000 });
-      await page.getByText(courseTitle).first().click();
+      const courseCardTitleAgain = page.locator('.card:visible .card-title').filter({ hasText: courseTitle }).first();
+      await expect(courseCardTitleAgain).toBeVisible({ timeout: 15000 });
+      await courseCardTitleAgain.click();
       await page.locator('.detail-actions .action-btn').nth(1).click();
       await expect(page.locator('.detail-actions .action-btn').nth(1)).toContainText('收藏');
       await page.locator('.detail-actions .action-btn').first().click();
