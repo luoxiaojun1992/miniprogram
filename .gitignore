@@ -34,6 +34,7 @@ tests/ui/node_modules/
 tests/ui/test-results/
 tests/ui/playwright-report/
 tests/ui/html-report/
+tests/ui/allure-results/
 
 # Editor/IDE
 # .idea/
