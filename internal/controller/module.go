@@ -7,21 +7,43 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/sirupsen/logrus"
 
+	"github.com/luoxiaojun1992/miniprogram/internal/middleware"
 	"github.com/luoxiaojun1992/miniprogram/internal/model/dto"
+	"github.com/luoxiaojun1992/miniprogram/internal/model/entity"
 	apperrors "github.com/luoxiaojun1992/miniprogram/internal/pkg/errors"
 	"github.com/luoxiaojun1992/miniprogram/internal/pkg/response"
+	"github.com/luoxiaojun1992/miniprogram/internal/repository"
 	"github.com/luoxiaojun1992/miniprogram/internal/service"
 )
 
 // ModuleController handles module and module page requests.
 type ModuleController struct {
-	svc service.ModuleService
-	log *logrus.Logger
+	svc           service.ModuleService
+	log           *logrus.Logger
+	accessChecker *accessChecker
 }
 
 // NewModuleController creates a new ModuleController.
-func NewModuleController(svc service.ModuleService, log *logrus.Logger) *ModuleController {
-	return &ModuleController{svc: svc, log: log}
+func NewModuleController(
+	svc service.ModuleService,
+	log *logrus.Logger,
+	deps ...interface{},
+) *ModuleController {
+	var contentPermRepo repository.ContentPermissionRepository
+	var roleRepo repository.RoleRepository
+	for _, dep := range deps {
+		switch v := dep.(type) {
+		case repository.ContentPermissionRepository:
+			contentPermRepo = v
+		case repository.RoleRepository:
+			roleRepo = v
+		}
+	}
+	return &ModuleController{
+		svc:           svc,
+		log:           log,
+		accessChecker: newAccessChecker(contentPermRepo, roleRepo),
+	}
 }
 
 // List handles GET /modules.
@@ -37,7 +59,23 @@ func (c *ModuleController) List(ctx *gin.Context) {
 		ctx.Error(err)
 		return
 	}
-	response.Success(ctx, modules)
+	userID, _ := middleware.GetCurrentUserID(ctx)
+	var uid *uint64
+	if userID > 0 {
+		uid = &userID
+	}
+	filtered := make([]*entity.Module, 0, len(modules))
+	for _, item := range modules {
+		allowed, accessErr := c.accessChecker.canAccess(ctx, 3, uint64(item.ID), uid, nil)
+		if accessErr != nil {
+			ctx.Error(accessErr)
+			return
+		}
+		if allowed {
+			filtered = append(filtered, item)
+		}
+	}
+	response.Success(ctx, filtered)
 }
 
 // Create handles POST /admin/modules.

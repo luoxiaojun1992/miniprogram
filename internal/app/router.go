@@ -34,44 +34,57 @@ func InitRouter(p *Provider) *gin.Engine {
 	})
 
 	v1 := r.Group("/v1")
+	optionalJWT := middleware.OptionalJWTAuthMiddleware(p.Config.JWT.Secret)
+	requiredJWT := middleware.JWTAuthMiddleware(p.Config.JWT.Secret)
 
 	// ==================== Auth ====================
 	auth := v1.Group("/auth")
 	{
 		auth.POST("/wechat-login", p.AuthCtrl.WechatLogin)
 		auth.POST("/admin-login", p.AuthCtrl.AdminLogin)
-		auth.POST("/refresh", middleware.JWTAuthMiddleware(p.Config.JWT.Secret), p.AuthCtrl.RefreshToken)
+		auth.POST("/refresh", requiredJWT, p.AuthCtrl.RefreshToken)
 	}
 
-	// ==================== User (self) ====================
-	users := v1.Group("/users", middleware.JWTAuthMiddleware(p.Config.JWT.Secret))
+	// ==================== Must JWT APIs ====================
+	users := v1.Group("/users", requiredJWT)
 	{
 		users.GET("/profile", p.UserCtrl.GetProfile)
 		users.PUT("/profile", p.UserCtrl.UpdateProfile)
 		users.GET("/permissions", p.UserCtrl.GetPermissions)
 	}
 
-	// ==================== Public Content ====================
-	// Modules (public read)
-	v1.GET("/modules", p.ModuleCtrl.List)
-	v1.GET("/banners", p.BannerCtrl.List)
-
-	// Articles (public list/detail with optional auth)
-	articles := v1.Group("/articles")
+	// ==================== Optional JWT APIs ====================
+	optional := v1.Group("", optionalJWT)
 	{
-		articles.GET("", middleware.OptionalJWTAuthMiddleware(p.Config.JWT.Secret), p.ArticleCtrl.List)
-		articles.GET("/:id", middleware.OptionalJWTAuthMiddleware(p.Config.JWT.Secret), p.ArticleCtrl.GetByID)
+		optional.GET("/modules", p.ModuleCtrl.List)
+		optional.GET("/banners", p.BannerCtrl.List)
+
+		articles := optional.Group("/articles")
+		{
+			articles.GET("", p.ArticleCtrl.List)
+			articles.GET("/:id", p.ArticleCtrl.GetByID)
+			articles.GET("/:id/attachments", p.ArticleCtrl.GetAttachments)
+		}
+
+		courses := optional.Group("/courses")
+		{
+			courses.GET("", p.CourseCtrl.List)
+			courses.GET("/:id", p.CourseCtrl.GetByID)
+			courses.GET("/:id/units", p.CourseCtrl.GetUnits)
+			courses.GET("/:id/attachments", p.CourseCtrl.GetAttachments)
+			courses.GET("/:id/units/:unit_id/attachments", p.CourseCtrl.GetUnitAttachments)
+		}
+
+		optional.GET("/download/course/video/:file_id", p.UploadCtrl.GenerateCourseVideoDownloadURL)
+		optional.GET("/download/article/attachment/:file_id", p.UploadCtrl.GenerateArticleAttachmentDownloadURL)
+		optional.GET("/download/course/attachment/:file_id", p.UploadCtrl.GenerateCourseAttachmentDownloadURL)
+		optional.GET("/download/course/unit/attachment/:file_id", p.UploadCtrl.GenerateCourseUnitAttachmentDownloadURL)
+		optional.GET("/download/banner/media/:file_id", p.UploadCtrl.GenerateBannerMediaDownloadURL)
+		optional.GET("/comments/:content_type/:content_id", p.CommentCtrl.List)
 	}
 
-	// Courses (public list with optional auth, detail requires auth)
-	courses := v1.Group("/courses")
-	{
-		courses.GET("", middleware.OptionalJWTAuthMiddleware(p.Config.JWT.Secret), p.CourseCtrl.List)
-		courses.GET("/:id", middleware.JWTAuthMiddleware(p.Config.JWT.Secret), p.CourseCtrl.GetByID)
-	}
-
-	// ==================== Interaction (requires auth) ====================
-	authRequired := v1.Group("", middleware.JWTAuthMiddleware(p.Config.JWT.Secret))
+	// ==================== JWT Required APIs ====================
+	authRequired := v1.Group("", requiredJWT)
 	{
 		// Study records
 		authRequired.GET("/study-records", p.StudyRecordCtrl.List)
@@ -96,20 +109,13 @@ func InitRouter(p *Provider) *gin.Engine {
 
 		// Upload
 		authRequired.POST("/upload/avatar", p.UploadCtrl.UploadAvatar)
-		authRequired.GET("/download/course/video/:file_id", p.UploadCtrl.GenerateCourseVideoDownloadURL)
-		authRequired.GET("/download/article/attachment/:file_id", p.UploadCtrl.GenerateArticleAttachmentDownloadURL)
-		authRequired.GET("/download/course/attachment/:file_id", p.UploadCtrl.GenerateCourseAttachmentDownloadURL)
-		authRequired.GET("/download/banner/media/:file_id", p.UploadCtrl.GenerateBannerMediaDownloadURL)
 	}
 	v1.GET("/download/static/:file_id", p.UploadCtrl.GenerateStaticMaterialURL)
-
-	// Comments (public read)
-	v1.GET("/comments/:content_type/:content_id", p.CommentCtrl.List)
 
 	// ==================== Admin ====================
 	admin := v1.Group(
 		"/admin",
-		middleware.JWTAuthMiddleware(p.Config.JWT.Secret),
+		requiredJWT,
 		middleware.RequireAdmin(),
 		middleware.AuditLogMiddleware(p.AuditLogSvc),
 	)
@@ -191,6 +197,10 @@ func InitRouter(p *Provider) *gin.Engine {
 		// Upload
 		admin.GET("/upload/files/presign", p.UploadCtrl.GenerateAdminUploadPresignURL)
 		admin.GET("/upload/banner/media/presign", p.UploadCtrl.GenerateBannerMediaPresignURL)
+		admin.GET("/upload/course/video/presign", p.UploadCtrl.GenerateCourseVideoPresignURL)
+		admin.GET("/upload/article/attachment/presign", p.UploadCtrl.GenerateArticleAttachmentPresignURL)
+		admin.GET("/upload/course/attachment/presign", p.UploadCtrl.GenerateCourseAttachmentPresignURL)
+		admin.GET("/upload/course/unit/attachment/presign", p.UploadCtrl.GenerateCourseUnitAttachmentPresignURL)
 
 		// Attributes
 		admin.GET("/attributes", p.AttributeCtrl.List)

@@ -37,6 +37,14 @@ type UploadController struct {
 	cos       *cosUploader
 	auditRepo repository.AuditLogRepository
 	uploadSvc service.UploadFileService
+	access    *accessChecker
+
+	articleRepo          repository.ArticleRepository
+	courseRepo           repository.CourseRepository
+	courseUnitRepo       repository.CourseUnitRepository
+	articleAttachRepo    repository.ArticleAttachmentRepository
+	courseAttachRepo     repository.CourseAttachmentRepository
+	courseUnitAttachRepo repository.CourseUnitAttachmentRepository
 }
 
 type fileRecordPayload struct {
@@ -81,6 +89,26 @@ func (c *UploadController) WithAuditRepo(auditRepo repository.AuditLogRepository
 
 func (c *UploadController) WithUploadService(uploadSvc service.UploadFileService) *UploadController {
 	c.uploadSvc = uploadSvc
+	return c
+}
+
+func (c *UploadController) WithPermissionRepos(
+	contentPermRepo repository.ContentPermissionRepository,
+	roleRepo repository.RoleRepository,
+	articleRepo repository.ArticleRepository,
+	courseRepo repository.CourseRepository,
+	courseUnitRepo repository.CourseUnitRepository,
+	articleAttachRepo repository.ArticleAttachmentRepository,
+	courseAttachRepo repository.CourseAttachmentRepository,
+	courseUnitAttachRepo repository.CourseUnitAttachmentRepository,
+) *UploadController {
+	c.access = newAccessChecker(contentPermRepo, roleRepo)
+	c.articleRepo = articleRepo
+	c.courseRepo = courseRepo
+	c.courseUnitRepo = courseUnitRepo
+	c.articleAttachRepo = articleAttachRepo
+	c.courseAttachRepo = courseAttachRepo
+	c.courseUnitAttachRepo = courseUnitAttachRepo
 	return c
 }
 
@@ -255,6 +283,15 @@ func (c *UploadController) GenerateCourseAttachmentPresignURL(ctx *gin.Context) 
 	c.generatePresignUploadURL(ctx, "course-attachment", "", courseAttachmentTypePattern, "课程附件扩展名不支持")
 }
 
+// GenerateCourseUnitAttachmentPresignURL handles GET /upload/course/unit/attachment/presign.
+func (c *UploadController) GenerateCourseUnitAttachmentPresignURL(ctx *gin.Context) {
+	if !isAdminUser(ctx) {
+		ctx.Error(apperrors.NewForbidden("仅管理员可上传课程单元附件", nil))
+		return
+	}
+	c.generatePresignUploadURL(ctx, "course-unit-attachment", "", courseAttachmentTypePattern, "课程单元附件扩展名不支持")
+}
+
 // GenerateCourseVideoDownloadURL handles GET /download/course/video.
 func (c *UploadController) GenerateCourseVideoDownloadURL(ctx *gin.Context) {
 	if c.uploadSvc == nil {
@@ -266,6 +303,10 @@ func (c *UploadController) GenerateCourseVideoDownloadURL(ctx *gin.Context) {
 
 // GenerateArticleAttachmentDownloadURL handles GET /download/article/attachment.
 func (c *UploadController) GenerateArticleAttachmentDownloadURL(ctx *gin.Context) {
+	if err := c.checkArticleAttachmentDownloadAccess(ctx); err != nil {
+		ctx.Error(err)
+		return
+	}
 	if c.uploadSvc == nil {
 		c.generateBusinessTemporaryDownloadURL(ctx, "article_attachment", "attachment")
 		return
@@ -275,8 +316,25 @@ func (c *UploadController) GenerateArticleAttachmentDownloadURL(ctx *gin.Context
 
 // GenerateCourseAttachmentDownloadURL handles GET /download/course/attachment.
 func (c *UploadController) GenerateCourseAttachmentDownloadURL(ctx *gin.Context) {
+	if err := c.checkCourseAttachmentDownloadAccess(ctx); err != nil {
+		ctx.Error(err)
+		return
+	}
 	if c.uploadSvc == nil {
 		c.generateBusinessTemporaryDownloadURL(ctx, "course_attachment", "attachment")
+		return
+	}
+	c.generateServiceBusinessDownloadURL(ctx, "attachment")
+}
+
+// GenerateCourseUnitAttachmentDownloadURL handles GET /download/course/unit/attachment/:file_id.
+func (c *UploadController) GenerateCourseUnitAttachmentDownloadURL(ctx *gin.Context) {
+	if err := c.checkCourseUnitAttachmentDownloadAccess(ctx); err != nil {
+		ctx.Error(err)
+		return
+	}
+	if c.uploadSvc == nil {
+		c.generateBusinessTemporaryDownloadURL(ctx, "course_unit_attachment", "attachment")
 		return
 	}
 	c.generateServiceBusinessDownloadURL(ctx, "attachment")
@@ -361,6 +419,142 @@ func (c *UploadController) generateServiceBusinessDownloadURL(ctx *gin.Context, 
 		"expires_in": result.ExpiresIn,
 		"expire_at":  result.ExpireAt,
 	})
+}
+
+func (c *UploadController) checkArticleAttachmentDownloadAccess(ctx *gin.Context) error {
+	if c.access == nil || c.articleAttachRepo == nil || c.articleRepo == nil {
+		return nil
+	}
+	fileID, err := strconv.ParseUint(strings.TrimSpace(ctx.Param("file_id")), 10, 64)
+	if err != nil || fileID == 0 {
+		return apperrors.NewBadRequest("file_id不合法", err)
+	}
+	row, err := c.articleAttachRepo.GetByFileID(ctx, fileID)
+	if err != nil {
+		return err
+	}
+	if row == nil {
+		return apperrors.NewNotFound("附件不存在", nil)
+	}
+	article, err := c.articleRepo.GetByID(ctx, row.ArticleID)
+	if err != nil {
+		return err
+	}
+	if article == nil {
+		return apperrors.NewNotFound("文章不存在", nil)
+	}
+	var uid *uint64
+	if userID, ok := middleware.GetCurrentUserID(ctx); ok && userID > 0 {
+		uid = &userID
+	}
+	allowed, accessErr := c.access.canAccess(ctx, 1, article.ID, uid, &article.AuthorID)
+	if accessErr != nil {
+		return accessErr
+	}
+	if !allowed {
+		return apperrors.NewForbidden("无权限访问该附件", nil)
+	}
+	allowed, accessErr = c.access.canAccess(ctx, 4, row.ID, uid, &article.AuthorID)
+	if accessErr != nil {
+		return accessErr
+	}
+	if !allowed {
+		return apperrors.NewForbidden("无权限访问该附件", nil)
+	}
+	return nil
+}
+
+func (c *UploadController) checkCourseAttachmentDownloadAccess(ctx *gin.Context) error {
+	if c.access == nil || c.courseAttachRepo == nil || c.courseRepo == nil {
+		return nil
+	}
+	fileID, err := strconv.ParseUint(strings.TrimSpace(ctx.Param("file_id")), 10, 64)
+	if err != nil || fileID == 0 {
+		return apperrors.NewBadRequest("file_id不合法", err)
+	}
+	row, err := c.courseAttachRepo.GetByFileID(ctx, fileID)
+	if err != nil {
+		return err
+	}
+	if row == nil {
+		return apperrors.NewNotFound("附件不存在", nil)
+	}
+	course, err := c.courseRepo.GetByID(ctx, row.CourseID)
+	if err != nil {
+		return err
+	}
+	if course == nil {
+		return apperrors.NewNotFound("课程不存在", nil)
+	}
+	var uid *uint64
+	if userID, ok := middleware.GetCurrentUserID(ctx); ok && userID > 0 {
+		uid = &userID
+	}
+	allowed, accessErr := c.access.canAccess(ctx, 2, course.ID, uid, &course.AuthorID)
+	if accessErr != nil {
+		return accessErr
+	}
+	if !allowed {
+		return apperrors.NewForbidden("无权限访问该附件", nil)
+	}
+	allowed, accessErr = c.access.canAccess(ctx, 5, row.ID, uid, &course.AuthorID)
+	if accessErr != nil {
+		return accessErr
+	}
+	if !allowed {
+		return apperrors.NewForbidden("无权限访问该附件", nil)
+	}
+	return nil
+}
+
+func (c *UploadController) checkCourseUnitAttachmentDownloadAccess(ctx *gin.Context) error {
+	if c.access == nil || c.courseUnitAttachRepo == nil || c.courseUnitRepo == nil || c.courseRepo == nil {
+		return nil
+	}
+	fileID, err := strconv.ParseUint(strings.TrimSpace(ctx.Param("file_id")), 10, 64)
+	if err != nil || fileID == 0 {
+		return apperrors.NewBadRequest("file_id不合法", err)
+	}
+	row, err := c.courseUnitAttachRepo.GetByFileID(ctx, fileID)
+	if err != nil {
+		return err
+	}
+	if row == nil {
+		return apperrors.NewNotFound("附件不存在", nil)
+	}
+	unit, err := c.courseUnitRepo.GetByID(ctx, row.UnitID)
+	if err != nil {
+		return err
+	}
+	if unit == nil {
+		return apperrors.NewNotFound("课程单元不存在", nil)
+	}
+	course, err := c.courseRepo.GetByID(ctx, unit.CourseID)
+	if err != nil {
+		return err
+	}
+	if course == nil {
+		return apperrors.NewNotFound("课程不存在", nil)
+	}
+	var uid *uint64
+	if userID, ok := middleware.GetCurrentUserID(ctx); ok && userID > 0 {
+		uid = &userID
+	}
+	allowed, accessErr := c.access.canAccess(ctx, 6, unit.ID, uid, &course.AuthorID)
+	if accessErr != nil {
+		return accessErr
+	}
+	if !allowed {
+		return apperrors.NewForbidden("无权限访问该单元附件", nil)
+	}
+	allowed, accessErr = c.access.canAccess(ctx, 7, row.ID, uid, &course.AuthorID)
+	if accessErr != nil {
+		return accessErr
+	}
+	if !allowed {
+		return apperrors.NewForbidden("无权限访问该单元附件", nil)
+	}
+	return nil
 }
 
 // UploadImage handles POST /upload/image.

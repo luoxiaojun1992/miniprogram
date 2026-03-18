@@ -19,8 +19,8 @@ func NewCourseAttachmentRepository(db *gorm.DB) CourseAttachmentRepository {
 }
 
 func (r *courseAttachmentRepository) ListFileIDs(ctx context.Context, courseID uint64) ([]uint64, error) {
-	var rows []*entity.CourseAttachment
-	if err := r.db.WithContext(ctx).Where("course_id = ?", courseID).Order("sort_order ASC, id ASC").Find(&rows).Error; err != nil {
+	rows, err := r.ListByCourseID(ctx, courseID)
+	if err != nil {
 		return nil, errors.NewInternal("查询课程附件失败", err)
 	}
 	ids := make([]uint64, 0, len(rows))
@@ -28,6 +28,26 @@ func (r *courseAttachmentRepository) ListFileIDs(ctx context.Context, courseID u
 		ids = append(ids, row.FileID)
 	}
 	return ids, nil
+}
+
+func (r *courseAttachmentRepository) ListByCourseID(ctx context.Context, courseID uint64) ([]*entity.CourseAttachment, error) {
+	var rows []*entity.CourseAttachment
+	if err := r.db.WithContext(ctx).Where("course_id = ?", courseID).Order("sort_order ASC, id ASC").Find(&rows).Error; err != nil {
+		return nil, errors.NewInternal("查询课程附件失败", err)
+	}
+	return rows, nil
+}
+
+func (r *courseAttachmentRepository) GetByFileID(ctx context.Context, fileID uint64) (*entity.CourseAttachment, error) {
+	var row entity.CourseAttachment
+	res := r.db.WithContext(ctx).Where("file_id = ?", fileID).Order("id DESC").First(&row)
+	if res.Error == gorm.ErrRecordNotFound {
+		return nil, nil
+	}
+	if res.Error != nil {
+		return nil, errors.NewInternal("查询课程附件失败", res.Error)
+	}
+	return &row, nil
 }
 
 func (r *courseAttachmentRepository) Replace(ctx context.Context, courseID uint64, fileIDs []uint64) error {

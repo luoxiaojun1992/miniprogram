@@ -50,8 +50,9 @@ type LoginResponseData struct {
 
 // UserProfileUpdateRequest is the request body for updating user profile.
 type UserProfileUpdateRequest struct {
-	Nickname  string `json:"nickname"`
-	AvatarURL string `json:"avatar_url"`
+	Nickname     string `json:"nickname"`
+	AvatarURL    string `json:"avatar_url"`
+	AvatarFileID uint64 `json:"avatar_file_id"`
 }
 
 // Validate validates UserProfileUpdateRequest.
@@ -60,6 +61,12 @@ func (r UserProfileUpdateRequest) Validate() error {
 		validation.Field(&r.Nickname, validation.Length(0, 64)),
 		validation.Field(&r.AvatarURL, validation.Length(0, 255)),
 	)
+}
+
+// AttachmentPermissionRequest defines optional role permissions for a file attachment.
+type AttachmentPermissionRequest struct {
+	FileID          uint64 `json:"file_id"`
+	RolePermissions []uint `json:"role_permissions"`
 }
 
 // CreateAdminUserRequest is the request body for creating an admin user.
@@ -209,16 +216,18 @@ func (r CreateBannerRequest) Validate() error {
 
 // CreateArticleRequest is the request body for creating an article.
 type CreateArticleRequest struct {
-	Title             string     `json:"title"`
-	Summary           string     `json:"summary"`
-	Content           string     `json:"content"`
-	ContentType       int8       `json:"content_type"`
-	CoverImage        string     `json:"cover_image"`
-	ModuleID          uint       `json:"module_id"`
-	Status            int8       `json:"status"`
-	PublishTime       *time.Time `json:"publish_time"`
-	AttachmentFileIDs []uint64   `json:"attachment_file_ids"`
-	RolePermissions   []uint     `json:"role_permissions"`
+	Title                 string                        `json:"title"`
+	Summary               string                        `json:"summary"`
+	Content               string                        `json:"content"`
+	ContentType           int8                          `json:"content_type"`
+	CoverImage            string                        `json:"cover_image"`
+	CoverFileID           uint64                        `json:"cover_file_id"`
+	ModuleID              uint                          `json:"module_id"`
+	Status                int8                          `json:"status"`
+	PublishTime           *time.Time                    `json:"publish_time"`
+	AttachmentFileIDs     []uint64                      `json:"attachment_file_ids"`
+	AttachmentPermissions []AttachmentPermissionRequest `json:"attachment_permissions"`
+	RolePermissions       []uint                        `json:"role_permissions"`
 }
 
 // Validate validates CreateArticleRequest.
@@ -233,16 +242,18 @@ func (r CreateArticleRequest) Validate() error {
 
 // UpdateArticleRequest is the request body for updating an article.
 type UpdateArticleRequest struct {
-	Title             string     `json:"title"`
-	Summary           string     `json:"summary"`
-	Content           string     `json:"content"`
-	ContentType       int8       `json:"content_type"`
-	CoverImage        string     `json:"cover_image"`
-	ModuleID          uint       `json:"module_id"`
-	Status            int8       `json:"status"`
-	PublishTime       *time.Time `json:"publish_time"`
-	AttachmentFileIDs []uint64   `json:"attachment_file_ids"`
-	RolePermissions   []uint     `json:"role_permissions"`
+	Title                 string                        `json:"title"`
+	Summary               string                        `json:"summary"`
+	Content               string                        `json:"content"`
+	ContentType           int8                          `json:"content_type"`
+	CoverImage            string                        `json:"cover_image"`
+	CoverFileID           uint64                        `json:"cover_file_id"`
+	ModuleID              uint                          `json:"module_id"`
+	Status                int8                          `json:"status"`
+	PublishTime           *time.Time                    `json:"publish_time"`
+	AttachmentFileIDs     []uint64                      `json:"attachment_file_ids"`
+	AttachmentPermissions []AttachmentPermissionRequest `json:"attachment_permissions"`
+	RolePermissions       []uint                        `json:"role_permissions"`
 }
 
 // Validate validates UpdateArticleRequest.
@@ -283,15 +294,17 @@ func (r PinArticleRequest) Validate() error {
 
 // CreateCourseRequest is the request body for creating a course.
 type CreateCourseRequest struct {
-	Title             string     `json:"title"`
-	Description       string     `json:"description"`
-	CoverImage        string     `json:"cover_image"`
-	Price             float64    `json:"price"`
-	ModuleID          uint       `json:"module_id"`
-	Status            int8       `json:"status"`
-	PublishTime       *time.Time `json:"publish_time"`
-	AttachmentFileIDs []uint64   `json:"attachment_file_ids"`
-	RolePermissions   []uint     `json:"role_permissions"`
+	Title                 string                        `json:"title"`
+	Description           string                        `json:"description"`
+	CoverImage            string                        `json:"cover_image"`
+	CoverFileID           uint64                        `json:"cover_file_id"`
+	Price                 float64                       `json:"price"`
+	ModuleID              uint                          `json:"module_id"`
+	Status                int8                          `json:"status"`
+	PublishTime           *time.Time                    `json:"publish_time"`
+	AttachmentFileIDs     []uint64                      `json:"attachment_file_ids"`
+	AttachmentPermissions []AttachmentPermissionRequest `json:"attachment_permissions"`
+	RolePermissions       []uint                        `json:"role_permissions"`
 }
 
 // Validate validates CreateCourseRequest.
@@ -304,15 +317,17 @@ func (r CreateCourseRequest) Validate() error {
 
 // UpdateCourseRequest is the request body for updating a course.
 type UpdateCourseRequest struct {
-	Title             string     `json:"title"`
-	Description       string     `json:"description"`
-	CoverImage        string     `json:"cover_image"`
-	Price             float64    `json:"price"`
-	ModuleID          uint       `json:"module_id"`
-	Status            int8       `json:"status"`
-	PublishTime       *time.Time `json:"publish_time"`
-	AttachmentFileIDs []uint64   `json:"attachment_file_ids"`
-	RolePermissions   []uint     `json:"role_permissions"`
+	Title                 string                        `json:"title"`
+	Description           string                        `json:"description"`
+	CoverImage            string                        `json:"cover_image"`
+	CoverFileID           uint64                        `json:"cover_file_id"`
+	Price                 float64                       `json:"price"`
+	ModuleID              uint                          `json:"module_id"`
+	Status                int8                          `json:"status"`
+	PublishTime           *time.Time                    `json:"publish_time"`
+	AttachmentFileIDs     []uint64                      `json:"attachment_file_ids"`
+	AttachmentPermissions []AttachmentPermissionRequest `json:"attachment_permissions"`
+	RolePermissions       []uint                        `json:"role_permissions"`
 }
 
 // Validate validates UpdateCourseRequest.
@@ -349,10 +364,13 @@ func (r PinCourseRequest) Validate() error {
 
 // CreateCourseUnitRequest is the request body for creating a course unit.
 type CreateCourseUnitRequest struct {
-	Title       string `json:"title"`
-	VideoFileID uint64 `json:"video_file_id"`
-	Duration    uint   `json:"duration"`
-	SortOrder   int    `json:"sort_order"`
+	Title                 string                        `json:"title"`
+	VideoFileID           uint64                        `json:"video_file_id"`
+	Duration              uint                          `json:"duration"`
+	SortOrder             int                           `json:"sort_order"`
+	AttachmentFileIDs     []uint64                      `json:"attachment_file_ids"`
+	AttachmentPermissions []AttachmentPermissionRequest `json:"attachment_permissions"`
+	RolePermissions       []uint                        `json:"role_permissions"`
 }
 
 // Validate validates CreateCourseUnitRequest.

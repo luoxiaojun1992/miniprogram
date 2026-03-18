@@ -13,6 +13,7 @@ type User struct {
 	UnionID       string         `gorm:"size:64;comment:微信UnionID" json:"unionid,omitempty"`
 	Nickname      string         `gorm:"size:64;comment:用户昵称" json:"nickname"`
 	AvatarURL     string         `gorm:"size:255;comment:头像URL" json:"avatar_url"`
+	AvatarFileID  *uint64        `gorm:"comment:头像文件ID" json:"avatar_file_id,omitempty"`
 	UserType      int8           `gorm:"default:1;comment:1前台用户 2普通管理员 3系统管理员" json:"user_type"`
 	Status        int8           `gorm:"default:1;comment:0冻结 1正常" json:"status"`
 	FreezeEndTime *time.Time     `gorm:"comment:冻结结束时间" json:"freeze_end_time,omitempty"`

@@ -33,6 +33,22 @@ func (s *articleAttachmentRepoStub) Replace(ctx context.Context, articleID uint6
 	return nil
 }
 
+func (s *articleAttachmentRepoStub) ListByArticleID(ctx context.Context, articleID uint64) ([]*entity.ArticleAttachment, error) {
+	ids, err := s.ListFileIDs(ctx, articleID)
+	if err != nil {
+		return nil, err
+	}
+	rows := make([]*entity.ArticleAttachment, 0, len(ids))
+	for i, id := range ids {
+		rows = append(rows, &entity.ArticleAttachment{ID: uint64(i + 1), ArticleID: articleID, FileID: id})
+	}
+	return rows, nil
+}
+
+func (s *articleAttachmentRepoStub) GetByFileID(_ context.Context, _ uint64) (*entity.ArticleAttachment, error) {
+	return nil, nil
+}
+
 type courseAttachmentRepoStub struct {
 	listFn    func(ctx context.Context, courseID uint64) ([]uint64, error)
 	replaceFn func(ctx context.Context, courseID uint64, fileIDs []uint64) error
@@ -50,6 +66,22 @@ func (s *courseAttachmentRepoStub) Replace(ctx context.Context, courseID uint64,
 		return s.replaceFn(ctx, courseID, fileIDs)
 	}
 	return nil
+}
+
+func (s *courseAttachmentRepoStub) ListByCourseID(ctx context.Context, courseID uint64) ([]*entity.CourseAttachment, error) {
+	ids, err := s.ListFileIDs(ctx, courseID)
+	if err != nil {
+		return nil, err
+	}
+	rows := make([]*entity.CourseAttachment, 0, len(ids))
+	for i, id := range ids {
+		rows = append(rows, &entity.CourseAttachment{ID: uint64(i + 1), CourseID: courseID, FileID: id})
+	}
+	return rows, nil
+}
+
+func (s *courseAttachmentRepoStub) GetByFileID(_ context.Context, _ uint64) (*entity.CourseAttachment, error) {
+	return nil, nil
 }
 
 // ==================== ModuleService ====================
@@ -984,7 +1016,9 @@ func TestArticleService_Pin_NotFoundAndGetError(t *testing.T) {
 	require.Error(t, svcNotFound.Pin(context.Background(), 1, &dto.PinArticleRequest{SortOrder: 1}))
 
 	repoErr := &testutil.MockArticleRepository{
-		GetByIDFn: func(_ context.Context, id uint64) (*entity.Article, error) { return nil, apperrors.NewInternal("db", nil) },
+		GetByIDFn: func(_ context.Context, id uint64) (*entity.Article, error) {
+			return nil, apperrors.NewInternal("db", nil)
+		},
 	}
 	svcErr := newArticleService(repoErr, nil)
 	require.Error(t, svcErr.Pin(context.Background(), 1, &dto.PinArticleRequest{SortOrder: 1}))
@@ -1014,7 +1048,9 @@ func TestArticleService_Copy_Success(t *testing.T) {
 
 func TestArticleService_Copy_ErrorBranches(t *testing.T) {
 	repoGetErr := &testutil.MockArticleRepository{
-		GetByIDFn: func(_ context.Context, id uint64) (*entity.Article, error) { return nil, apperrors.NewInternal("db", nil) },
+		GetByIDFn: func(_ context.Context, id uint64) (*entity.Article, error) {
+			return nil, apperrors.NewInternal("db", nil)
+		},
 	}
 	_, err := newArticleService(repoGetErr, nil).Copy(context.Background(), 1, 2)
 	require.Error(t, err)
@@ -1144,7 +1180,9 @@ func TestCourseService_Pin_NotFoundAndGetError(t *testing.T) {
 	require.Error(t, newCourseService(repoNotFound, nil, nil).Pin(context.Background(), 1, &dto.PinCourseRequest{SortOrder: 1}))
 
 	repoErr := &testutil.MockCourseRepository{
-		GetByIDFn: func(_ context.Context, id uint64) (*entity.Course, error) { return nil, apperrors.NewInternal("db", nil) },
+		GetByIDFn: func(_ context.Context, id uint64) (*entity.Course, error) {
+			return nil, apperrors.NewInternal("db", nil)
+		},
 	}
 	require.Error(t, newCourseService(repoErr, nil, nil).Pin(context.Background(), 1, &dto.PinCourseRequest{SortOrder: 1}))
 }
@@ -1179,7 +1217,9 @@ func TestCourseService_Copy_Success(t *testing.T) {
 
 func TestCourseService_Copy_ErrorBranches(t *testing.T) {
 	repoGetErr := &testutil.MockCourseRepository{
-		GetByIDFn: func(_ context.Context, id uint64) (*entity.Course, error) { return nil, apperrors.NewInternal("db", nil) },
+		GetByIDFn: func(_ context.Context, id uint64) (*entity.Course, error) {
+			return nil, apperrors.NewInternal("db", nil)
+		},
 	}
 	_, err := newCourseService(repoGetErr, &testutil.MockCourseUnitRepository{}, nil).Copy(context.Background(), 1, 2)
 	require.Error(t, err)

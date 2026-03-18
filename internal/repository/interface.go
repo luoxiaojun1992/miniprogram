@@ -139,13 +139,25 @@ type FileRepository interface {
 // ArticleAttachmentRepository defines article attachment relation access.
 type ArticleAttachmentRepository interface {
 	ListFileIDs(ctx context.Context, articleID uint64) ([]uint64, error)
+	ListByArticleID(ctx context.Context, articleID uint64) ([]*entity.ArticleAttachment, error)
+	GetByFileID(ctx context.Context, fileID uint64) (*entity.ArticleAttachment, error)
 	Replace(ctx context.Context, articleID uint64, fileIDs []uint64) error
 }
 
 // CourseAttachmentRepository defines course attachment relation access.
 type CourseAttachmentRepository interface {
 	ListFileIDs(ctx context.Context, courseID uint64) ([]uint64, error)
+	ListByCourseID(ctx context.Context, courseID uint64) ([]*entity.CourseAttachment, error)
+	GetByFileID(ctx context.Context, fileID uint64) (*entity.CourseAttachment, error)
 	Replace(ctx context.Context, courseID uint64, fileIDs []uint64) error
+}
+
+// CourseUnitAttachmentRepository defines course unit attachment relation access.
+type CourseUnitAttachmentRepository interface {
+	ListFileIDs(ctx context.Context, unitID uint64) ([]uint64, error)
+	ListByUnitID(ctx context.Context, unitID uint64) ([]*entity.CourseUnitAttachment, error)
+	GetByFileID(ctx context.Context, fileID uint64) (*entity.CourseUnitAttachment, error)
+	Replace(ctx context.Context, unitID uint64, fileIDs []uint64) error
 }
 
 // ContentPermissionRepository defines the interface for content permission data access.

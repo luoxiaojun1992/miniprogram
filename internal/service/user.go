@@ -65,6 +65,9 @@ func (s *userService) UpdateProfile(ctx context.Context, userID uint64, req *dto
 	if req.AvatarURL != "" {
 		user.AvatarURL = req.AvatarURL
 	}
+	if req.AvatarFileID > 0 {
+		user.AvatarFileID = &req.AvatarFileID
+	}
 	return s.userRepo.Update(ctx, user)
 }
 

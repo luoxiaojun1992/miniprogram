@@ -10,6 +10,7 @@ type Article struct {
 	Content           string     `gorm:"type:longtext;comment:内容" json:"content"`
 	ContentType       int8       `gorm:"default:1;comment:1富文本 2HTML 3Markdown" json:"content_type"`
 	CoverImage        string     `gorm:"size:255;comment:封面图" json:"cover_image"`
+	CoverFileID       *uint64    `gorm:"comment:封面文件ID" json:"cover_file_id,omitempty"`
 	AuthorID          uint64     `gorm:"comment:作者ID" json:"author_id"`
 	ModuleID          uint       `gorm:"comment:模块ID" json:"module_id"`
 	Status            int8       `gorm:"default:0;comment:0草稿 1已发布 2定时发布" json:"status"`

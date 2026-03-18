@@ -16,6 +16,7 @@ import (
 type courseService struct {
 	courseRepo        repository.CourseRepository
 	courseUnitRepo    repository.CourseUnitRepository
+	unitAttachRepo    repository.CourseUnitAttachmentRepository
 	attachmentRepo    repository.CourseAttachmentRepository
 	contentPermRepo   repository.ContentPermissionRepository
 	roleRepo          repository.RoleRepository
@@ -33,6 +34,7 @@ func NewCourseService(
 ) CourseService {
 	var swRepo repository.SensitiveWordRepository
 	var attachmentRepo repository.CourseAttachmentRepository
+	var unitAttachRepo repository.CourseUnitAttachmentRepository
 	var roleRepo repository.RoleRepository
 	for _, dep := range deps {
 		switch v := dep.(type) {
@@ -40,6 +42,8 @@ func NewCourseService(
 			swRepo = v
 		case repository.CourseAttachmentRepository:
 			attachmentRepo = v
+		case repository.CourseUnitAttachmentRepository:
+			unitAttachRepo = v
 		case repository.RoleRepository:
 			roleRepo = v
 		}
@@ -47,6 +51,7 @@ func NewCourseService(
 	return &courseService{
 		courseRepo:        courseRepo,
 		courseUnitRepo:    courseUnitRepo,
+		unitAttachRepo:    unitAttachRepo,
 		attachmentRepo:    attachmentRepo,
 		contentPermRepo:   normalizeContentPermRepo(contentPermRepo),
 		roleRepo:          roleRepo,
@@ -71,7 +76,7 @@ func (s *courseService) GetByID(ctx context.Context, id uint64, userID *uint64) 
 	if course.Status != 1 {
 		return nil, errors.NewNotFound("课程不存在", nil)
 	}
-	allowed, accessErr := s.canAccessContent(ctx, 2, id, userID)
+	allowed, accessErr := s.canAccessContent(ctx, 2, id, userID, &course.AuthorID)
 	if accessErr != nil {
 		return nil, accessErr
 	}
@@ -107,6 +112,7 @@ func (s *courseService) Create(ctx context.Context, req *dto.CreateCourseRequest
 		Title:       maskText(req.Title, words),
 		Description: maskText(req.Description, words),
 		CoverImage:  req.CoverImage,
+		CoverFileID: toOptionalUint64(req.CoverFileID),
 		Price:       req.Price,
 		AuthorID:    authorID,
 		ModuleID:    req.ModuleID,
@@ -130,6 +136,7 @@ func (s *courseService) Create(ctx context.Context, req *dto.CreateCourseRequest
 			s.log.WithError(err).Warn("设置课程权限失败")
 		}
 	}
+	s.bindCourseAttachmentPermissions(ctx, course.ID, req.AttachmentPermissions)
 	return course.ID, nil
 }
 
@@ -145,6 +152,7 @@ func (s *courseService) Update(ctx context.Context, id uint64, req *dto.UpdateCo
 	course.Title = maskText(req.Title, words)
 	course.Description = maskText(req.Description, words)
 	course.CoverImage = req.CoverImage
+	course.CoverFileID = toOptionalUint64(req.CoverFileID)
 	course.Price = req.Price
 	course.ModuleID = req.ModuleID
 	course.Status = req.Status
@@ -157,7 +165,11 @@ func (s *courseService) Update(ctx context.Context, id uint64, req *dto.UpdateCo
 			return err
 		}
 	}
-	return s.contentPermRepo.SetContentPermissions(ctx, 2, id, req.RolePermissions)
+	if err = s.contentPermRepo.SetContentPermissions(ctx, 2, id, req.RolePermissions); err != nil {
+		return err
+	}
+	s.bindCourseAttachmentPermissions(ctx, id, req.AttachmentPermissions)
+	return nil
 }
 
 func (s *courseService) Delete(ctx context.Context, id uint64) error {
@@ -279,6 +291,17 @@ func (s *courseService) CreateUnit(ctx context.Context, courseID uint64, req *dt
 	if err := s.courseUnitRepo.Create(ctx, unit); err != nil {
 		return 0, err
 	}
+	if s.unitAttachRepo != nil {
+		if err := s.unitAttachRepo.Replace(ctx, unit.ID, req.AttachmentFileIDs); err != nil {
+			return 0, err
+		}
+	}
+	if s.contentPermRepo != nil {
+		if err := s.contentPermRepo.SetContentPermissions(ctx, 6, unit.ID, req.RolePermissions); err != nil {
+			return 0, err
+		}
+	}
+	s.bindUnitAttachmentPermissions(ctx, unit.ID, req.AttachmentPermissions)
 	return unit.ID, nil
 }
 
@@ -294,7 +317,21 @@ func (s *courseService) UpdateUnit(ctx context.Context, courseID, unitID uint64,
 	unit.VideoFileID = toOptionalUint64(req.VideoFileID)
 	unit.Duration = req.Duration
 	unit.SortOrder = req.SortOrder
-	return s.courseUnitRepo.Update(ctx, unit)
+	if err = s.courseUnitRepo.Update(ctx, unit); err != nil {
+		return err
+	}
+	if s.unitAttachRepo != nil {
+		if err := s.unitAttachRepo.Replace(ctx, unit.ID, req.AttachmentFileIDs); err != nil {
+			return err
+		}
+	}
+	if s.contentPermRepo != nil {
+		if err = s.contentPermRepo.SetContentPermissions(ctx, 6, unit.ID, req.RolePermissions); err != nil {
+			return err
+		}
+	}
+	s.bindUnitAttachmentPermissions(ctx, unit.ID, req.AttachmentPermissions)
+	return nil
 }
 
 func (s *courseService) bindCourseAttachmentIDs(ctx context.Context, course *entity.Course) {
@@ -314,8 +351,8 @@ func toOptionalUint64(v uint64) *uint64 {
 	return &v
 }
 
-func (s *courseService) canAccessContent(ctx context.Context, contentType int8, contentID uint64, userID *uint64) (bool, error) {
-	return canAccessContentByRole(ctx, s.contentPermRepo, s.roleRepo, contentType, contentID, userID)
+func (s *courseService) canAccessContent(ctx context.Context, contentType int8, contentID uint64, userID *uint64, ownerID *uint64) (bool, error) {
+	return canAccessContentByRole(ctx, s.contentPermRepo, s.roleRepo, contentType, contentID, userID, ownerID)
 }
 
 func (s *courseService) DeleteUnit(ctx context.Context, courseID, unitID uint64) error {
@@ -334,4 +371,38 @@ func (s *courseService) DeleteUnit(ctx context.Context, courseID, unitID uint64)
 		return errors.NewBadRequest("课程单元存在学习记录，禁止删除", nil)
 	}
 	return s.courseUnitRepo.Delete(ctx, unitID)
+}
+
+func (s *courseService) bindCourseAttachmentPermissions(ctx context.Context, courseID uint64, reqs []dto.AttachmentPermissionRequest) {
+	if s.attachmentRepo == nil || s.contentPermRepo == nil {
+		return
+	}
+	rows, err := s.attachmentRepo.ListByCourseID(ctx, courseID)
+	if err != nil {
+		return
+	}
+	roleMap := make(map[uint64][]uint, len(reqs))
+	for _, req := range reqs {
+		roleMap[req.FileID] = req.RolePermissions
+	}
+	for _, row := range rows {
+		_ = s.contentPermRepo.SetContentPermissions(ctx, 5, row.ID, roleMap[row.FileID])
+	}
+}
+
+func (s *courseService) bindUnitAttachmentPermissions(ctx context.Context, unitID uint64, reqs []dto.AttachmentPermissionRequest) {
+	if s.unitAttachRepo == nil || s.contentPermRepo == nil {
+		return
+	}
+	rows, err := s.unitAttachRepo.ListByUnitID(ctx, unitID)
+	if err != nil {
+		return
+	}
+	roleMap := make(map[uint64][]uint, len(reqs))
+	for _, req := range reqs {
+		roleMap[req.FileID] = req.RolePermissions
+	}
+	for _, row := range rows {
+		_ = s.contentPermRepo.SetContentPermissions(ctx, 7, row.ID, roleMap[row.FileID])
+	}
 }

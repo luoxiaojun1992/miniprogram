@@ -16,13 +16,18 @@ import (
 
 // UserController handles user-related requests.
 type UserController struct {
-	svc service.UserService
-	log *logrus.Logger
+	svc       service.UserService
+	log       *logrus.Logger
+	uploadSvc service.UploadFileService
 }
 
 // NewUserController creates a new UserController.
-func NewUserController(svc service.UserService, log *logrus.Logger) *UserController {
-	return &UserController{svc: svc, log: log}
+func NewUserController(svc service.UserService, log *logrus.Logger, uploadSvc ...service.UploadFileService) *UserController {
+	var svcUpload service.UploadFileService
+	if len(uploadSvc) > 0 {
+		svcUpload = uploadSvc[0]
+	}
+	return &UserController{svc: svc, log: log, uploadSvc: svcUpload}
 }
 
 // GetProfile handles GET /users/profile.
@@ -36,6 +41,11 @@ func (c *UserController) GetProfile(ctx *gin.Context) {
 	if err != nil {
 		ctx.Error(err)
 		return
+	}
+	if c.uploadSvc != nil && user.AvatarFileID != nil && *user.AvatarFileID > 0 {
+		if download, downloadErr := c.uploadSvc.GenerateBusinessDownload(ctx.Request.Context(), *user.AvatarFileID, []string{"image"}, "300"); downloadErr == nil {
+			user.AvatarURL = download.Download
+		}
 	}
 	response.Success(ctx, user)
 }

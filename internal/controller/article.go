@@ -9,20 +9,51 @@ import (
 
 	"github.com/luoxiaojun1992/miniprogram/internal/middleware"
 	"github.com/luoxiaojun1992/miniprogram/internal/model/dto"
+	"github.com/luoxiaojun1992/miniprogram/internal/model/entity"
 	apperrors "github.com/luoxiaojun1992/miniprogram/internal/pkg/errors"
 	"github.com/luoxiaojun1992/miniprogram/internal/pkg/response"
+	"github.com/luoxiaojun1992/miniprogram/internal/repository"
 	"github.com/luoxiaojun1992/miniprogram/internal/service"
 )
 
 // ArticleController handles article requests.
 type ArticleController struct {
-	svc service.ArticleService
-	log *logrus.Logger
+	svc           service.ArticleService
+	log           *logrus.Logger
+	accessChecker *accessChecker
+	articleRepo   repository.ArticleRepository
+	attachRepo    repository.ArticleAttachmentRepository
 }
 
 // NewArticleController creates a new ArticleController.
-func NewArticleController(svc service.ArticleService, log *logrus.Logger) *ArticleController {
-	return &ArticleController{svc: svc, log: log}
+func NewArticleController(
+	svc service.ArticleService,
+	log *logrus.Logger,
+	deps ...interface{},
+) *ArticleController {
+	var contentPermRepo repository.ContentPermissionRepository
+	var roleRepo repository.RoleRepository
+	var articleRepo repository.ArticleRepository
+	var attachRepo repository.ArticleAttachmentRepository
+	for _, dep := range deps {
+		switch v := dep.(type) {
+		case repository.ContentPermissionRepository:
+			contentPermRepo = v
+		case repository.RoleRepository:
+			roleRepo = v
+		case repository.ArticleRepository:
+			articleRepo = v
+		case repository.ArticleAttachmentRepository:
+			attachRepo = v
+		}
+	}
+	return &ArticleController{
+		svc:           svc,
+		log:           log,
+		accessChecker: newAccessChecker(contentPermRepo, roleRepo),
+		articleRepo:   articleRepo,
+		attachRepo:    attachRepo,
+	}
 }
 
 // List handles GET /articles.
@@ -43,12 +74,23 @@ func (c *ArticleController) List(ctx *gin.Context) {
 	if userID > 0 {
 		uid = &userID
 	}
-	articles, total, err := c.svc.List(ctx, q.GetPage(), q.GetPageSize(), q.Keyword, moduleID, q.Sort, uid)
+	articles, _, err := c.svc.List(ctx, q.GetPage(), q.GetPageSize(), q.Keyword, moduleID, q.Sort, uid)
 	if err != nil {
 		ctx.Error(err)
 		return
 	}
-	response.PaginatedSuccess(ctx, articles, total, q.GetPage(), q.GetPageSize())
+	filtered := make([]*entity.Article, 0, len(articles))
+	for _, item := range articles {
+		allowed, accessErr := c.accessChecker.canAccess(ctx, 3, uint64(item.ModuleID), uid, nil)
+		if accessErr != nil {
+			ctx.Error(accessErr)
+			return
+		}
+		if allowed {
+			filtered = append(filtered, item)
+		}
+	}
+	response.PaginatedSuccess(ctx, filtered, int64(len(filtered)), q.GetPage(), q.GetPageSize())
 }
 
 // GetByID handles GET /articles/:id.
@@ -230,4 +272,46 @@ func (c *ArticleController) AdminCopy(ctx *gin.Context) {
 		return
 	}
 	response.SuccessWithStatus(ctx, http.StatusCreated, gin.H{"id": newID})
+}
+
+// GetAttachments handles GET /articles/:id/attachments.
+func (c *ArticleController) GetAttachments(ctx *gin.Context) {
+	articleID, err := strconv.ParseUint(ctx.Param("id"), 10, 64)
+	if err != nil {
+		ctx.Error(apperrors.NewBadRequest("无效的文章ID", err))
+		return
+	}
+	if c.articleRepo == nil || c.attachRepo == nil {
+		ctx.Error(apperrors.NewBadRequest("文章附件仓储未初始化", nil))
+		return
+	}
+	article, repoErr := c.articleRepo.GetByID(ctx, articleID)
+	if repoErr != nil {
+		ctx.Error(repoErr)
+		return
+	}
+	if article == nil {
+		ctx.Error(apperrors.NewNotFound("文章不存在", nil))
+		return
+	}
+	userID, _ := middleware.GetCurrentUserID(ctx)
+	var uid *uint64
+	if userID > 0 {
+		uid = &userID
+	}
+	allowed, accessErr := c.accessChecker.canAccess(ctx, 1, articleID, uid, &article.AuthorID)
+	if accessErr != nil {
+		ctx.Error(accessErr)
+		return
+	}
+	if !allowed {
+		ctx.Error(apperrors.NewForbidden("无权限访问该文章附件", nil))
+		return
+	}
+	fileIDs, listErr := c.attachRepo.ListFileIDs(ctx, articleID)
+	if listErr != nil {
+		ctx.Error(listErr)
+		return
+	}
+	response.Success(ctx, fileIDs)
 }

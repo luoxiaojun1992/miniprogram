@@ -13,6 +13,11 @@ import (
 	"github.com/luoxiaojun1992/miniprogram/internal/repository"
 )
 
+const (
+	contentTypeArticle           int8 = 1
+	contentTypeArticleAttachment int8 = 4
+)
+
 type articleService struct {
 	articleRepo       repository.ArticleRepository
 	attachmentRepo    repository.ArticleAttachmentRepository
@@ -68,7 +73,7 @@ func (s *articleService) GetByID(ctx context.Context, id uint64, userID *uint64)
 	if article.Status != 1 {
 		return nil, errors.NewNotFound("文章不存在", nil)
 	}
-	allowed, accessErr := s.canAccessContent(ctx, 1, id, userID)
+	allowed, accessErr := s.canAccessContent(ctx, 1, id, userID, &article.AuthorID)
 	if accessErr != nil {
 		return nil, accessErr
 	}
@@ -106,6 +111,7 @@ func (s *articleService) Create(ctx context.Context, req *dto.CreateArticleReque
 		Content:     maskText(req.Content, words),
 		ContentType: req.ContentType,
 		CoverImage:  req.CoverImage,
+		CoverFileID: toOptionalUint64(req.CoverFileID),
 		AuthorID:    authorID,
 		ModuleID:    req.ModuleID,
 		Status:      req.Status,
@@ -127,10 +133,11 @@ func (s *articleService) Create(ctx context.Context, req *dto.CreateArticleReque
 		}
 	}
 	if len(req.RolePermissions) > 0 {
-		if err := s.contentPermRepo.SetContentPermissions(ctx, 1, article.ID, req.RolePermissions); err != nil {
+		if err := s.contentPermRepo.SetContentPermissions(ctx, contentTypeArticle, article.ID, req.RolePermissions); err != nil {
 			s.log.WithError(err).Warn("设置文章权限失败")
 		}
 	}
+	s.bindAttachmentPermissions(ctx, article.ID, req.AttachmentPermissions)
 	return article.ID, nil
 }
 
@@ -148,6 +155,7 @@ func (s *articleService) Update(ctx context.Context, id uint64, req *dto.UpdateA
 	article.Content = maskText(req.Content, words)
 	article.ContentType = req.ContentType
 	article.CoverImage = req.CoverImage
+	article.CoverFileID = toOptionalUint64(req.CoverFileID)
 	article.ModuleID = req.ModuleID
 	article.Status = req.Status
 	article.PublishTime = req.PublishTime
@@ -159,7 +167,11 @@ func (s *articleService) Update(ctx context.Context, id uint64, req *dto.UpdateA
 			return err
 		}
 	}
-	return s.contentPermRepo.SetContentPermissions(ctx, 1, id, req.RolePermissions)
+	if err = s.contentPermRepo.SetContentPermissions(ctx, contentTypeArticle, id, req.RolePermissions); err != nil {
+		return err
+	}
+	s.bindAttachmentPermissions(ctx, id, req.AttachmentPermissions)
+	return nil
 }
 
 func (s *articleService) Delete(ctx context.Context, id uint64) error {
@@ -255,6 +267,23 @@ func (s *articleService) Copy(ctx context.Context, id uint64, authorID uint64) (
 	return dup.ID, nil
 }
 
+func (s *articleService) bindAttachmentPermissions(ctx context.Context, articleID uint64, reqs []dto.AttachmentPermissionRequest) {
+	if s.attachmentRepo == nil || s.contentPermRepo == nil {
+		return
+	}
+	rows, err := s.attachmentRepo.ListByArticleID(ctx, articleID)
+	if err != nil {
+		return
+	}
+	roleMap := make(map[uint64][]uint, len(reqs))
+	for _, req := range reqs {
+		roleMap[req.FileID] = req.RolePermissions
+	}
+	for _, row := range rows {
+		_ = s.contentPermRepo.SetContentPermissions(ctx, contentTypeArticleAttachment, row.ID, roleMap[row.FileID])
+	}
+}
+
 func (s *articleService) bindArticleAttachmentIDs(ctx context.Context, article *entity.Article) {
 	if article == nil || s.attachmentRepo == nil {
 		return
@@ -265,6 +294,6 @@ func (s *articleService) bindArticleAttachmentIDs(ctx context.Context, article *
 	}
 }
 
-func (s *articleService) canAccessContent(ctx context.Context, contentType int8, contentID uint64, userID *uint64) (bool, error) {
-	return canAccessContentByRole(ctx, s.contentPermRepo, s.roleRepo, contentType, contentID, userID)
+func (s *articleService) canAccessContent(ctx context.Context, contentType int8, contentID uint64, userID *uint64, ownerID *uint64) (bool, error) {
+	return canAccessContentByRole(ctx, s.contentPermRepo, s.roleRepo, contentType, contentID, userID, ownerID)
 }

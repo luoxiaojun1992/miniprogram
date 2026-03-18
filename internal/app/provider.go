@@ -35,6 +35,7 @@ type Provider struct {
 	ArticleRepo           repository.ArticleRepository
 	CourseRepo            repository.CourseRepository
 	CourseUnitRepo        repository.CourseUnitRepository
+	CourseUnitAttachRepo  repository.CourseUnitAttachmentRepository
 	FileRepo              repository.FileRepository
 	ArticleAttachmentRepo repository.ArticleAttachmentRepository
 	CourseAttachmentRepo  repository.CourseAttachmentRepository
@@ -171,6 +172,7 @@ func (p *Provider) initRepositories() {
 	p.ArticleRepo = repository.NewArticleRepository(p.DB)
 	p.CourseRepo = repository.NewCourseRepository(p.DB)
 	p.CourseUnitRepo = repository.NewCourseUnitRepository(p.DB)
+	p.CourseUnitAttachRepo = repository.NewCourseUnitAttachmentRepository(p.DB)
 	p.FileRepo = repository.NewFileRepository(p.DB)
 	p.ArticleAttachmentRepo = repository.NewArticleAttachmentRepository(p.DB)
 	p.CourseAttachmentRepo = repository.NewCourseAttachmentRepository(p.DB)
@@ -207,7 +209,7 @@ func (p *Provider) initServices() {
 		p.ArticleRepo, p.ContentPermissionRepo, p.Log, p.SensitiveWordRepo, p.ArticleAttachmentRepo, p.RoleRepo,
 	)
 	p.CourseSvc = service.NewCourseService(
-		p.CourseRepo, p.CourseUnitRepo, p.ContentPermissionRepo, p.Log, p.SensitiveWordRepo, p.CourseAttachmentRepo, p.RoleRepo,
+		p.CourseRepo, p.CourseUnitRepo, p.ContentPermissionRepo, p.Log, p.SensitiveWordRepo, p.CourseAttachmentRepo, p.RoleRepo, p.CourseUnitAttachRepo,
 	)
 	p.StudyRecordSvc = service.NewStudyRecordService(p.StudyRecordRepo, p.CourseUnitRepo, p.CourseRepo, p.Log)
 	p.CollectionSvc = service.NewCollectionService(p.CollectionRepo, p.ArticleRepo, p.CourseRepo, p.Log)
@@ -236,13 +238,17 @@ func (p *Provider) initServices() {
 
 func (p *Provider) initControllers() {
 	p.AuthCtrl = controller.NewAuthController(p.AuthSvc, p.Log)
-	p.UserCtrl = controller.NewUserController(p.UserSvc, p.Log)
+	p.UserCtrl = controller.NewUserController(p.UserSvc, p.Log, p.UploadFileSvc)
 	p.RoleCtrl = controller.NewRoleController(p.RoleSvc, p.Log)
 	p.PermissionCtrl = controller.NewPermissionController(p.PermissionSvc, p.Log)
-	p.ModuleCtrl = controller.NewModuleController(p.ModuleSvc, p.Log)
+	p.ModuleCtrl = controller.NewModuleController(p.ModuleSvc, p.Log, p.ContentPermissionRepo, p.RoleRepo)
 	p.BannerCtrl = controller.NewBannerController(p.BannerSvc, p.Log)
-	p.ArticleCtrl = controller.NewArticleController(p.ArticleSvc, p.Log)
-	p.CourseCtrl = controller.NewCourseController(p.CourseSvc, p.Log)
+	p.ArticleCtrl = controller.NewArticleController(
+		p.ArticleSvc, p.Log, p.ContentPermissionRepo, p.RoleRepo, p.ModuleRepo, p.ArticleRepo, p.ArticleAttachmentRepo,
+	)
+	p.CourseCtrl = controller.NewCourseController(
+		p.CourseSvc, p.Log, p.ContentPermissionRepo, p.RoleRepo, p.ModuleRepo, p.CourseRepo, p.CourseUnitRepo, p.CourseAttachmentRepo, p.CourseUnitAttachRepo,
+	)
 	p.StudyRecordCtrl = controller.NewStudyRecordController(p.StudyRecordSvc, p.Log)
 	p.CollectionCtrl = controller.NewCollectionController(p.CollectionSvc, p.Log)
 	p.LikeCtrl = controller.NewLikeController(p.LikeSvc, p.Log)
@@ -256,11 +262,15 @@ func (p *Provider) initControllers() {
 			p.Config.Upload.COSEndpoint,
 			p.Config.Upload.COSBucket,
 			p.Log,
-		).WithAuditRepo(p.AuditLogRepo).WithUploadService(p.UploadFileSvc)
+		).WithAuditRepo(p.AuditLogRepo).WithUploadService(p.UploadFileSvc).WithPermissionRepos(
+			p.ContentPermissionRepo, p.RoleRepo, p.ArticleRepo, p.CourseRepo, p.CourseUnitRepo, p.ArticleAttachmentRepo, p.CourseAttachmentRepo, p.CourseUnitAttachRepo,
+		)
 	} else {
 		p.UploadCtrl = controller.NewUploadController(
 			p.Config.Upload.Dir, p.Config.Upload.BaseURL, p.Log,
-		).WithAuditRepo(p.AuditLogRepo).WithUploadService(p.UploadFileSvc)
+		).WithAuditRepo(p.AuditLogRepo).WithUploadService(p.UploadFileSvc).WithPermissionRepos(
+			p.ContentPermissionRepo, p.RoleRepo, p.ArticleRepo, p.CourseRepo, p.CourseUnitRepo, p.ArticleAttachmentRepo, p.CourseAttachmentRepo, p.CourseUnitAttachRepo,
+		)
 	}
 	p.DebugCtrl = controller.NewDebugController(
 		p.UserRepo, p.Config.JWT.Secret, p.Config.JWT.Expiry, p.Log,

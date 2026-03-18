@@ -1,37 +1,29 @@
-package service
+package controller
 
 import (
 	"context"
-	"reflect"
 
 	"github.com/luoxiaojun1992/miniprogram/internal/model/entity"
 	"github.com/luoxiaojun1992/miniprogram/internal/repository"
 )
 
-func normalizeContentPermRepo(repo repository.ContentPermissionRepository) repository.ContentPermissionRepository {
-	if repo == nil {
-		return nil
-	}
-	rv := reflect.ValueOf(repo)
-	if rv.Kind() == reflect.Ptr && rv.IsNil() {
-		return nil
-	}
-	return repo
+type accessChecker struct {
+	contentPermRepo repository.ContentPermissionRepository
+	roleRepo        repository.RoleRepository
 }
 
-func canAccessContentByRole(
-	ctx context.Context,
-	contentPermRepo repository.ContentPermissionRepository,
-	roleRepo repository.RoleRepository,
-	contentType int8,
-	contentID uint64,
-	userID *uint64,
-	ownerID *uint64,
-) (bool, error) {
-	if contentPermRepo == nil {
+func newAccessChecker(contentPermRepo repository.ContentPermissionRepository, roleRepo repository.RoleRepository) *accessChecker {
+	return &accessChecker{
+		contentPermRepo: contentPermRepo,
+		roleRepo:        roleRepo,
+	}
+}
+
+func (c *accessChecker) canAccess(ctx context.Context, contentType int8, contentID uint64, userID *uint64, ownerID *uint64) (bool, error) {
+	if c == nil || c.contentPermRepo == nil {
 		return true, nil
 	}
-	perms, err := contentPermRepo.GetByContent(ctx, contentType, contentID)
+	perms, err := c.contentPermRepo.GetByContent(ctx, contentType, contentID)
 	if err != nil {
 		return false, err
 	}
@@ -45,18 +37,18 @@ func canAccessContentByRole(
 		}
 		allowedRoles[*perm.RoleID] = struct{}{}
 	}
+	if ownerID != nil && userID != nil && *ownerID > 0 && *ownerID == *userID {
+		return true, nil
+	}
 	if len(allowedRoles) == 0 {
 		return true, nil
 	}
-	if ownerID != nil && userID != nil && *ownerID > 0 && *userID == *ownerID {
-		return true, nil
-	}
-	if userID == nil || *userID == 0 || roleRepo == nil {
+	if c.roleRepo == nil || userID == nil || *userID == 0 {
 		return false, nil
 	}
-	roles, roleErr := roleRepo.GetUserRoles(ctx, *userID)
-	if roleErr != nil {
-		return false, roleErr
+	roles, err := c.roleRepo.GetUserRoles(ctx, *userID)
+	if err != nil {
+		return false, err
 	}
 	userRoleIDs := map[uint]struct{}{}
 	for _, role := range roles {
@@ -67,17 +59,14 @@ func canAccessContentByRole(
 			return true, nil
 		}
 	}
-	allRoles, listErr := roleRepo.List(ctx)
-	if listErr != nil {
-		return false, listErr
+	allRoles, err := c.roleRepo.List(ctx)
+	if err != nil {
+		return false, err
 	}
-	if hasRoleHierarchyMatch(userRoleIDs, allowedRoles, allRoles) {
-		return true, nil
-	}
-	return false, nil
+	return hasRoleHierarchyAccess(userRoleIDs, allowedRoles, allRoles), nil
 }
 
-func hasRoleHierarchyMatch(userRoleIDs, allowedRoles map[uint]struct{}, allRoles []*entity.Role) bool {
+func hasRoleHierarchyAccess(userRoleIDs, allowedRoles map[uint]struct{}, allRoles []*entity.Role) bool {
 	parentByRole := make(map[uint]uint, len(allRoles))
 	childrenByRole := make(map[uint][]uint, len(allRoles))
 	for _, role := range allRoles {
@@ -95,7 +84,7 @@ func hasRoleHierarchyMatch(userRoleIDs, allowedRoles map[uint]struct{}, allRoles
 		n := len(stack) - 1
 		roleID := stack[n]
 		stack = stack[:n]
-		if _, seen := visited[roleID]; seen {
+		if _, ok := visited[roleID]; ok {
 			continue
 		}
 		visited[roleID] = struct{}{}
