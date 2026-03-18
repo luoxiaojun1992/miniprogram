@@ -16,12 +16,12 @@ func TestAttributeRepository_CRUDAndAssoc(t *testing.T) {
 	db, mock := newTestDB(t)
 	repo := NewAttributeRepository(db)
 
-	mock.ExpectQuery("SELECT").WillReturnRows(sqlmock.NewRows([]string{"id", "name"}).AddRow(1, "性别"))
+	mock.ExpectQuery("SELECT").WillReturnRows(sqlmock.NewRows([]string{"id", "name", "type"}).AddRow(1, "性别", 1))
 	attr, err := repo.GetByID(context.Background(), 1)
 	require.NoError(t, err)
 	assert.Equal(t, uint(1), attr.ID)
 
-	mock.ExpectQuery("SELECT").WillReturnRows(sqlmock.NewRows([]string{"id", "name"}).AddRow(1, "性别"))
+	mock.ExpectQuery("SELECT").WillReturnRows(sqlmock.NewRows([]string{"id", "name", "type"}).AddRow(1, "性别", 1))
 	attrs, err := repo.List(context.Background())
 	require.NoError(t, err)
 	assert.Len(t, attrs, 1)
@@ -41,7 +41,7 @@ func TestAttributeRepository_CRUDAndAssoc(t *testing.T) {
 	mock.ExpectCommit()
 	require.NoError(t, repo.Delete(context.Background(), 1))
 
-	mock.ExpectQuery("SELECT count").WillReturnRows(sqlmock.NewRows([]string{"count"}).AddRow(1))
+	mock.ExpectQuery("SELECT").WillReturnRows(sqlmock.NewRows([]string{"cnt"}).AddRow(1))
 	has, err := repo.HasUserAssociations(context.Background(), 1)
 	require.NoError(t, err)
 	assert.True(t, has)
@@ -51,7 +51,7 @@ func TestAttributeRepository_NotFoundAndErrorBranches(t *testing.T) {
 	db, mock := newTestDB(t)
 	repo := NewAttributeRepository(db)
 
-	mock.ExpectQuery("SELECT").WillReturnRows(sqlmock.NewRows([]string{"id", "name"}))
+	mock.ExpectQuery("SELECT").WillReturnRows(sqlmock.NewRows([]string{"id", "name", "type"}))
 	attr, err := repo.GetByID(context.Background(), 999)
 	require.NoError(t, err)
 	assert.Nil(t, attr)
@@ -78,7 +78,7 @@ func TestAttributeRepository_NotFoundAndErrorBranches(t *testing.T) {
 	err = repo.Delete(context.Background(), 1)
 	assert.Error(t, err)
 
-	mock.ExpectQuery("SELECT count").WillReturnError(fmt.Errorf("count error"))
+	mock.ExpectQuery("SELECT").WillReturnError(fmt.Errorf("count error"))
 	_, err = repo.HasUserAssociations(context.Background(), 1)
 	assert.Error(t, err)
 }
@@ -88,9 +88,9 @@ func TestUserAttributeRepository_CRUDAndErrors(t *testing.T) {
 	repo := NewUserAttributeRepository(db)
 
 	mock.ExpectQuery("SELECT").WillReturnRows(
-		sqlmock.NewRows([]string{"id", "user_id", "attribute_id", "value"}).AddRow(1, 2, 3, "男"),
+		sqlmock.NewRows([]string{"id", "user_id", "attribute_id", "value_string", "value_bigint"}).AddRow(1, 2, 3, "男", nil),
 	)
-	mock.ExpectQuery("SELECT").WillReturnRows(sqlmock.NewRows([]string{"id", "name"}).AddRow(3, "性别"))
+	mock.ExpectQuery("SELECT").WillReturnRows(sqlmock.NewRows([]string{"id", "name", "type"}).AddRow(3, "性别", 1))
 	uas, err := repo.ListByUserID(context.Background(), 2)
 	require.NoError(t, err)
 	assert.Len(t, uas, 1)
@@ -98,7 +98,7 @@ func TestUserAttributeRepository_CRUDAndErrors(t *testing.T) {
 	mock.ExpectBegin()
 	mock.ExpectExec("INSERT").WillReturnResult(sqlmock.NewResult(1, 1))
 	mock.ExpectCommit()
-	require.NoError(t, repo.Upsert(context.Background(), &entity.UserAttribute{UserID: 2, AttributeID: 3, Value: "女"}))
+	require.NoError(t, repo.Upsert(context.Background(), &entity.UserAttribute{UserID: 2, AttributeID: 3, ValueString: "女"}))
 
 	mock.ExpectBegin()
 	mock.ExpectExec("DELETE").WillReturnResult(sqlmock.NewResult(1, 1))
@@ -123,7 +123,7 @@ func TestUserAttributeRepository_ErrorBranches(t *testing.T) {
 	mock.ExpectBegin()
 	mock.ExpectExec("INSERT").WillReturnError(fmt.Errorf("upsert error"))
 	mock.ExpectRollback()
-	err = repo.Upsert(context.Background(), &entity.UserAttribute{UserID: 2, AttributeID: 3, Value: "x"})
+	err = repo.Upsert(context.Background(), &entity.UserAttribute{UserID: 2, AttributeID: 3, ValueString: "x"})
 	assert.Error(t, err)
 
 	mock.ExpectBegin()

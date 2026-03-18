@@ -217,7 +217,7 @@ func TestArticleRepository_IncrViewCount_Success(t *testing.T) {
 	db, mock := newTestDB(t)
 	repo := NewArticleRepository(db)
 
-	mock.ExpectExec("UPDATE articles SET view_count").WillReturnResult(sqlmock.NewResult(1, 1))
+	mock.ExpectExec("INSERT INTO article_attributes").WillReturnResult(sqlmock.NewResult(1, 1))
 
 	err := repo.IncrViewCount(context.Background(), 1)
 	require.NoError(t, err)
@@ -227,7 +227,7 @@ func TestArticleRepository_IncrViewCount_Error(t *testing.T) {
 	db, mock := newTestDB(t)
 	repo := NewArticleRepository(db)
 
-	mock.ExpectExec("UPDATE articles SET view_count").WillReturnError(fmt.Errorf("exec error"))
+	mock.ExpectExec("INSERT INTO article_attributes").WillReturnError(fmt.Errorf("exec error"))
 
 	err := repo.IncrViewCount(context.Background(), 1)
 	assert.Error(t, err)
@@ -236,98 +236,98 @@ func TestArticleRepository_IncrViewCount_Error(t *testing.T) {
 func TestArticleRepository_IncrLikeCount_Success(t *testing.T) {
 	db, mock := newTestDB(t)
 	repo := NewArticleRepository(db)
-	mock.ExpectExec("UPDATE articles SET like_count").WillReturnResult(sqlmock.NewResult(1, 1))
+	mock.ExpectExec("INSERT INTO article_attributes").WillReturnResult(sqlmock.NewResult(1, 1))
 	require.NoError(t, repo.IncrLikeCount(context.Background(), 1))
 }
 
 func TestArticleRepository_IncrLikeCount_Error(t *testing.T) {
 	db, mock := newTestDB(t)
 	repo := NewArticleRepository(db)
-	mock.ExpectExec("UPDATE articles SET like_count").WillReturnError(fmt.Errorf("exec error"))
+	mock.ExpectExec("INSERT INTO article_attributes").WillReturnError(fmt.Errorf("exec error"))
 	assert.Error(t, repo.IncrLikeCount(context.Background(), 1))
 }
 
 func TestArticleRepository_DecrLikeCount_Success(t *testing.T) {
 	db, mock := newTestDB(t)
 	repo := NewArticleRepository(db)
-	mock.ExpectExec("UPDATE articles SET like_count = CASE").WillReturnResult(sqlmock.NewResult(1, 1))
+	mock.ExpectExec("INSERT INTO article_attributes").WillReturnResult(sqlmock.NewResult(1, 1))
 	require.NoError(t, repo.DecrLikeCount(context.Background(), 1))
 }
 
 func TestArticleRepository_DecrLikeCount_Error(t *testing.T) {
 	db, mock := newTestDB(t)
 	repo := NewArticleRepository(db)
-	mock.ExpectExec("UPDATE articles SET like_count = CASE").WillReturnError(fmt.Errorf("exec error"))
+	mock.ExpectExec("INSERT INTO article_attributes").WillReturnError(fmt.Errorf("exec error"))
 	assert.Error(t, repo.DecrLikeCount(context.Background(), 1))
 }
 
 func TestArticleRepository_IncrCollectCount_Success(t *testing.T) {
 	db, mock := newTestDB(t)
 	repo := NewArticleRepository(db)
-	mock.ExpectExec("UPDATE articles SET collect_count").WillReturnResult(sqlmock.NewResult(1, 1))
+	mock.ExpectExec("INSERT INTO article_attributes").WillReturnResult(sqlmock.NewResult(1, 1))
 	require.NoError(t, repo.IncrCollectCount(context.Background(), 1))
 }
 
 func TestArticleRepository_IncrCollectCount_Error(t *testing.T) {
 	db, mock := newTestDB(t)
 	repo := NewArticleRepository(db)
-	mock.ExpectExec("UPDATE articles SET collect_count").WillReturnError(fmt.Errorf("exec error"))
+	mock.ExpectExec("INSERT INTO article_attributes").WillReturnError(fmt.Errorf("exec error"))
 	assert.Error(t, repo.IncrCollectCount(context.Background(), 1))
 }
 
 func TestArticleRepository_DecrCollectCount_Success(t *testing.T) {
 	db, mock := newTestDB(t)
 	repo := NewArticleRepository(db)
-	mock.ExpectExec("UPDATE articles SET collect_count = CASE").WillReturnResult(sqlmock.NewResult(1, 1))
+	mock.ExpectExec("INSERT INTO article_attributes").WillReturnResult(sqlmock.NewResult(1, 1))
 	require.NoError(t, repo.DecrCollectCount(context.Background(), 1))
 }
 
 func TestArticleRepository_DecrCollectCount_Error(t *testing.T) {
 	db, mock := newTestDB(t)
 	repo := NewArticleRepository(db)
-	mock.ExpectExec("UPDATE articles SET collect_count = CASE").WillReturnError(fmt.Errorf("exec error"))
+	mock.ExpectExec("INSERT INTO article_attributes").WillReturnError(fmt.Errorf("exec error"))
 	assert.Error(t, repo.DecrCollectCount(context.Background(), 1))
 }
 
 func TestArticleRepository_IncrCommentCount_Success(t *testing.T) {
 	db, mock := newTestDB(t)
 	repo := NewArticleRepository(db)
-	mock.ExpectExec("UPDATE articles SET comment_count").WillReturnResult(sqlmock.NewResult(1, 1))
+	mock.ExpectExec("INSERT INTO article_attributes").WillReturnResult(sqlmock.NewResult(1, 1))
 	require.NoError(t, repo.IncrCommentCount(context.Background(), 1))
 }
 
 func TestArticleRepository_IncrCommentCount_Error(t *testing.T) {
 	db, mock := newTestDB(t)
 	repo := NewArticleRepository(db)
-	mock.ExpectExec("UPDATE articles SET comment_count").WillReturnError(fmt.Errorf("exec error"))
+	mock.ExpectExec("INSERT INTO article_attributes").WillReturnError(fmt.Errorf("exec error"))
 	assert.Error(t, repo.IncrCommentCount(context.Background(), 1))
 }
 
 func TestArticleRepository_DecrCommentCount_Success(t *testing.T) {
 	db, mock := newTestDB(t)
 	repo := NewArticleRepository(db)
-	mock.ExpectExec("UPDATE articles SET comment_count = CASE").WillReturnResult(sqlmock.NewResult(1, 1))
+	mock.ExpectExec("INSERT INTO article_attributes").WillReturnResult(sqlmock.NewResult(1, 1))
 	require.NoError(t, repo.DecrCommentCount(context.Background(), 1))
 }
 
 func TestArticleRepository_DecrCommentCount_Error(t *testing.T) {
 	db, mock := newTestDB(t)
 	repo := NewArticleRepository(db)
-	mock.ExpectExec("UPDATE articles SET comment_count = CASE").WillReturnError(fmt.Errorf("exec error"))
+	mock.ExpectExec("INSERT INTO article_attributes").WillReturnError(fmt.Errorf("exec error"))
 	assert.Error(t, repo.DecrCommentCount(context.Background(), 1))
 }
 
 func TestArticleRepository_IncrShareCount_Success(t *testing.T) {
 	db, mock := newTestDB(t)
 	repo := NewArticleRepository(db)
-	mock.ExpectExec("UPDATE articles SET share_count").WillReturnResult(sqlmock.NewResult(1, 1))
+	mock.ExpectExec("INSERT INTO article_attributes").WillReturnResult(sqlmock.NewResult(1, 1))
 	require.NoError(t, repo.IncrShareCount(context.Background(), 1))
 }
 
 func TestArticleRepository_IncrShareCount_Error(t *testing.T) {
 	db, mock := newTestDB(t)
 	repo := NewArticleRepository(db)
-	mock.ExpectExec("UPDATE articles SET share_count").WillReturnError(fmt.Errorf("exec error"))
+	mock.ExpectExec("INSERT INTO article_attributes").WillReturnError(fmt.Errorf("exec error"))
 	assert.Error(t, repo.IncrShareCount(context.Background(), 1))
 }
 

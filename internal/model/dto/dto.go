@@ -488,24 +488,28 @@ func (q *ListQuery) GetOffset() int {
 // CreateAttributeRequest is the request body for creating an attribute.
 type CreateAttributeRequest struct {
 	Name string `json:"name"`
+	Type int8   `json:"type"`
 }
 
 // Validate validates CreateAttributeRequest.
 func (r CreateAttributeRequest) Validate() error {
 	return validation.ValidateStruct(&r,
 		validation.Field(&r.Name, validation.Required, validation.Length(1, 64)),
+		validation.Field(&r.Type, validation.In(int8(0), int8(1), int8(2))),
 	)
 }
 
 // UpdateAttributeRequest is the request body for updating an attribute.
 type UpdateAttributeRequest struct {
 	Name string `json:"name"`
+	Type int8   `json:"type"`
 }
 
 // Validate validates UpdateAttributeRequest.
 func (r UpdateAttributeRequest) Validate() error {
 	return validation.ValidateStruct(&r,
 		validation.Field(&r.Name, validation.Required, validation.Length(1, 64)),
+		validation.Field(&r.Type, validation.In(int8(0), int8(1), int8(2))),
 	)
 }
 
@@ -513,6 +517,8 @@ func (r UpdateAttributeRequest) Validate() error {
 type SetUserAttributeRequest struct {
 	AttributeID uint   `json:"attribute_id"`
 	Value       string `json:"value"`
+	ValueString string `json:"value_string"`
+	ValueBigint *int64 `json:"value_bigint"`
 }
 
 // Validate validates SetUserAttributeRequest.

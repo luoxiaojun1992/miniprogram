@@ -38,8 +38,13 @@ func (s *attributeService) List(ctx context.Context) ([]*entity.Attribute, error
 }
 
 func (s *attributeService) Create(ctx context.Context, req *dto.CreateAttributeRequest) (uint, error) {
+	attrType := req.Type
+	if attrType == 0 {
+		attrType = entity.AttributeTypeString
+	}
 	attr := &entity.Attribute{
 		Name: req.Name,
+		Type: attrType,
 	}
 	if err := s.attrRepo.Create(ctx, attr); err != nil {
 		return 0, err
@@ -56,6 +61,9 @@ func (s *attributeService) Update(ctx context.Context, id uint, req *dto.UpdateA
 		return errors.NewNotFound("属性不存在", nil)
 	}
 	attr.Name = req.Name
+	if req.Type != 0 {
+		attr.Type = req.Type
+	}
 	return s.attrRepo.Update(ctx, attr)
 }
 
@@ -106,7 +114,20 @@ func (s *attributeService) SetUserAttribute(ctx context.Context, userID uint64, 
 	ua := &entity.UserAttribute{
 		UserID:      userID,
 		AttributeID: req.AttributeID,
-		Value:       req.Value,
+	}
+	if attr.Type == entity.AttributeTypeBigInt {
+		if req.ValueBigint == nil {
+			return errors.NewBadRequest("BigInt属性必须传value_bigint", nil)
+		}
+		ua.ValueString = ""
+		ua.ValueBigint = req.ValueBigint
+	} else {
+		val := req.ValueString
+		if val == "" {
+			val = req.Value
+		}
+		ua.ValueString = val
+		ua.ValueBigint = nil
 	}
 	return s.uaRepo.Upsert(ctx, ua)
 }

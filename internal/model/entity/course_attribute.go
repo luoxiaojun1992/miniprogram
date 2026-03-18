@@ -2,10 +2,10 @@ package entity
 
 import "time"
 
-// UserAttribute represents the user_attributes table.
-type UserAttribute struct {
+// CourseAttribute represents course_attributes table.
+type CourseAttribute struct {
 	ID          uint64     `gorm:"primarykey;comment:ID" json:"id"`
-	UserID      uint64     `gorm:"not null;comment:用户ID" json:"user_id"`
+	CourseID    uint64     `gorm:"not null;comment:课程ID" json:"course_id"`
 	AttributeID uint       `gorm:"not null;comment:属性ID" json:"attribute_id"`
 	ValueString string     `gorm:"size:255;not null;default:'';comment:字符串属性值" json:"value_string,omitempty"`
 	ValueBigint *int64     `gorm:"comment:BigInt属性值" json:"value_bigint,omitempty"`

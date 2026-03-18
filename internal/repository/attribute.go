@@ -61,7 +61,13 @@ func (r *attributeRepository) Delete(ctx context.Context, id uint) error {
 
 func (r *attributeRepository) HasUserAssociations(ctx context.Context, id uint) (bool, error) {
 	var count int64
-	if err := r.db.WithContext(ctx).Model(&entity.UserAttribute{}).Where("attribute_id = ?", id).Count(&count).Error; err != nil {
+	if err := r.db.WithContext(ctx).Raw(`
+		SELECT (
+			(SELECT COUNT(1) FROM user_attributes WHERE attribute_id = ?) +
+			(SELECT COUNT(1) FROM article_attributes WHERE attribute_id = ?) +
+			(SELECT COUNT(1) FROM course_attributes WHERE attribute_id = ?)
+		) AS cnt
+	`, id, id, id).Scan(&count).Error; err != nil {
 		return false, errors.NewInternal("查询属性关联失败", err)
 	}
 	return count > 0, nil

@@ -57,7 +57,7 @@ func TestAttrService_Create_OK(t *testing.T) {
 		},
 	}
 	svc := newAttrService(repo, nil, nil)
-	id, err := svc.Create(context.Background(), &dto.CreateAttributeRequest{Name: "性别"})
+	id, err := svc.Create(context.Background(), &dto.CreateAttributeRequest{Name: "性别", Type: entity.AttributeTypeString})
 	require.NoError(t, err)
 	assert.Equal(t, uint(1), id)
 }
@@ -69,7 +69,7 @@ func TestAttrService_Create_Error(t *testing.T) {
 		},
 	}
 	svc := newAttrService(repo, nil, nil)
-	_, err := svc.Create(context.Background(), &dto.CreateAttributeRequest{Name: "性别"})
+	_, err := svc.Create(context.Background(), &dto.CreateAttributeRequest{Name: "性别", Type: entity.AttributeTypeString})
 	require.Error(t, err)
 }
 
@@ -83,7 +83,7 @@ func TestAttrService_Update_OK(t *testing.T) {
 		UpdateFn: func(_ context.Context, attr *entity.Attribute) error { return nil },
 	}
 	svc := newAttrService(repo, nil, nil)
-	err := svc.Update(context.Background(), 1, &dto.UpdateAttributeRequest{Name: "新名"})
+	err := svc.Update(context.Background(), 1, &dto.UpdateAttributeRequest{Name: "新名", Type: entity.AttributeTypeString})
 	require.NoError(t, err)
 }
 
@@ -92,7 +92,7 @@ func TestAttrService_Update_NotFound(t *testing.T) {
 		GetByIDFn: func(_ context.Context, id uint) (*entity.Attribute, error) { return nil, nil },
 	}
 	svc := newAttrService(repo, nil, nil)
-	err := svc.Update(context.Background(), 999, &dto.UpdateAttributeRequest{Name: "新名"})
+	err := svc.Update(context.Background(), 999, &dto.UpdateAttributeRequest{Name: "新名", Type: entity.AttributeTypeString})
 	require.Error(t, err)
 	assert.IsType(t, &apperrors.AppError{}, err)
 }
@@ -140,7 +140,7 @@ func TestAttrService_ListUserAttributes_OK(t *testing.T) {
 	}
 	uaRepo := &testutil.MockUserAttributeRepository{
 		ListByUserIDFn: func(_ context.Context, userID uint64) ([]*entity.UserAttribute, error) {
-			return []*entity.UserAttribute{{ID: 1, UserID: userID, AttributeID: 1, Value: "男"}}, nil
+			return []*entity.UserAttribute{{ID: 1, UserID: userID, AttributeID: 1, ValueString: "男"}}, nil
 		},
 	}
 	svc := newAttrService(nil, uaRepo, userRepo)
@@ -168,14 +168,14 @@ func TestAttrService_SetUserAttribute_OK(t *testing.T) {
 	}
 	attrRepo := &testutil.MockAttributeRepository{
 		GetByIDFn: func(_ context.Context, id uint) (*entity.Attribute, error) {
-			return &entity.Attribute{ID: id, Name: "性别"}, nil
+			return &entity.Attribute{ID: id, Name: "性别", Type: entity.AttributeTypeString}, nil
 		},
 	}
 	uaRepo := &testutil.MockUserAttributeRepository{
 		UpsertFn: func(_ context.Context, ua *entity.UserAttribute) error { return nil },
 	}
 	svc := newAttrService(attrRepo, uaRepo, userRepo)
-	err := svc.SetUserAttribute(context.Background(), 1, &dto.SetUserAttributeRequest{AttributeID: 1, Value: "男"})
+	err := svc.SetUserAttribute(context.Background(), 1, &dto.SetUserAttributeRequest{AttributeID: 1, ValueString: "男"})
 	require.NoError(t, err)
 }
 
@@ -184,7 +184,7 @@ func TestAttrService_SetUserAttribute_UserNotFound(t *testing.T) {
 		GetByIDFn: func(_ context.Context, id uint64) (*entity.User, error) { return nil, nil },
 	}
 	svc := newAttrService(nil, nil, userRepo)
-	err := svc.SetUserAttribute(context.Background(), 999, &dto.SetUserAttributeRequest{AttributeID: 1, Value: "男"})
+	err := svc.SetUserAttribute(context.Background(), 999, &dto.SetUserAttributeRequest{AttributeID: 1, ValueString: "男"})
 	require.Error(t, err)
 }
 
@@ -198,7 +198,7 @@ func TestAttrService_SetUserAttribute_AttrNotFound(t *testing.T) {
 		GetByIDFn: func(_ context.Context, id uint) (*entity.Attribute, error) { return nil, nil },
 	}
 	svc := newAttrService(attrRepo, nil, userRepo)
-	err := svc.SetUserAttribute(context.Background(), 1, &dto.SetUserAttributeRequest{AttributeID: 999, Value: "男"})
+	err := svc.SetUserAttribute(context.Background(), 1, &dto.SetUserAttributeRequest{AttributeID: 999, ValueString: "男"})
 	require.Error(t, err)
 }
 

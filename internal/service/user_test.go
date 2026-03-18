@@ -25,6 +25,18 @@ func newUserService(
 	return NewUserService(userRepo, adminRepo, tagRepo, roleRepo, permRepo, logrus.New())
 }
 
+func newUserServiceWithAttr(
+	userRepo *testutil.MockUserRepository,
+	adminRepo *testutil.MockAdminUserRepository,
+	tagRepo *testutil.MockUserTagRepository,
+	roleRepo *testutil.MockRoleRepository,
+	permRepo *testutil.MockPermissionRepository,
+	attrRepo *testutil.MockAttributeRepository,
+	uaRepo *testutil.MockUserAttributeRepository,
+) UserService {
+	return NewUserService(userRepo, adminRepo, tagRepo, roleRepo, permRepo, logrus.New(), attrRepo, uaRepo)
+}
+
 // ==================== GetProfile ====================
 
 func TestUserService_GetProfile_Found(t *testing.T) {
@@ -38,6 +50,33 @@ func TestUserService_GetProfile_Found(t *testing.T) {
 	got, err := svc.GetProfile(context.Background(), 1)
 	require.NoError(t, err)
 	assert.Equal(t, user, got)
+}
+
+func TestUserService_GetProfile_WithAvatarFileIDAttribute(t *testing.T) {
+	user := &entity.User{ID: 1, Nickname: "Alice"}
+	userRepo := &testutil.MockUserRepository{
+		GetWithTagsFn: func(_ context.Context, id uint64) (*entity.User, error) {
+			return user, nil
+		},
+	}
+	avatar := int64(99)
+	uaRepo := &testutil.MockUserAttributeRepository{
+		ListByUserIDFn: func(_ context.Context, userID uint64) ([]*entity.UserAttribute, error) {
+			return []*entity.UserAttribute{
+				{
+					UserID:      userID,
+					AttributeID: 1,
+					ValueBigint: &avatar,
+					Attribute:   &entity.Attribute{Name: "avatar_file_id", Type: entity.AttributeTypeBigInt},
+				},
+			}, nil
+		},
+	}
+	svc := newUserServiceWithAttr(userRepo, nil, nil, nil, nil, nil, uaRepo)
+	got, err := svc.GetProfile(context.Background(), 1)
+	require.NoError(t, err)
+	require.NotNil(t, got.AvatarFileID)
+	assert.Equal(t, uint64(99), *got.AvatarFileID)
 }
 
 func TestUserService_GetProfile_NotFound(t *testing.T) {
@@ -81,6 +120,38 @@ func TestUserService_UpdateProfile_Success(t *testing.T) {
 	})
 	require.NoError(t, err)
 	assert.Equal(t, "Bob", user.Nickname)
+}
+
+func TestUserService_UpdateProfile_WithAvatarFileIDAttribute(t *testing.T) {
+	user := &entity.User{ID: 1, Nickname: "Alice"}
+	userRepo := &testutil.MockUserRepository{
+		GetByIDFn: func(_ context.Context, id uint64) (*entity.User, error) {
+			return user, nil
+		},
+		UpdateFn: func(_ context.Context, u *entity.User) error {
+			return nil
+		},
+	}
+	attrRepo := &testutil.MockAttributeRepository{
+		ListFn: func(_ context.Context) ([]*entity.Attribute, error) {
+			return []*entity.Attribute{{ID: 7, Name: "avatar_file_id", Type: entity.AttributeTypeBigInt}}, nil
+		},
+	}
+	called := false
+	uaRepo := &testutil.MockUserAttributeRepository{
+		UpsertFn: func(_ context.Context, ua *entity.UserAttribute) error {
+			called = true
+			assert.Equal(t, uint64(1), ua.UserID)
+			assert.Equal(t, uint(7), ua.AttributeID)
+			require.NotNil(t, ua.ValueBigint)
+			assert.Equal(t, int64(123), *ua.ValueBigint)
+			return nil
+		},
+	}
+	svc := newUserServiceWithAttr(userRepo, nil, nil, nil, nil, attrRepo, uaRepo)
+	err := svc.UpdateProfile(context.Background(), 1, &dto.UserProfileUpdateRequest{AvatarFileID: 123})
+	require.NoError(t, err)
+	assert.True(t, called)
 }
 
 func TestUserService_UpdateProfile_NoChange(t *testing.T) {

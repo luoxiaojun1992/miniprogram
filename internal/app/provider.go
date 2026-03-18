@@ -199,7 +199,7 @@ func (p *Provider) initServices() {
 	)
 	p.UserSvc = service.NewUserService(
 		p.UserRepo, p.AdminUserRepo, p.UserTagRepo,
-		p.RoleRepo, p.PermissionRepo, p.Log,
+		p.RoleRepo, p.PermissionRepo, p.Log, p.AttributeRepo, p.UserAttributeRepo,
 	)
 	p.RoleSvc = service.NewRoleService(p.RoleRepo, p.Log)
 	p.PermissionSvc = service.NewPermissionService(p.PermissionRepo, p.Log)

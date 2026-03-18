@@ -30,7 +30,7 @@ func (r *userAttributeRepository) ListByUserID(ctx context.Context, userID uint6
 func (r *userAttributeRepository) Upsert(ctx context.Context, ua *entity.UserAttribute) error {
 	res := r.db.WithContext(ctx).Clauses(clause.OnConflict{
 		Columns:   []clause.Column{{Name: "user_id"}, {Name: "attribute_id"}},
-		DoUpdates: clause.AssignmentColumns([]string{"value", "updated_at"}),
+		DoUpdates: clause.AssignmentColumns([]string{"value_string", "value_bigint", "updated_at"}),
 	}).Create(ua)
 	if res.Error != nil {
 		return errors.NewInternal("设置用户属性失败", res.Error)

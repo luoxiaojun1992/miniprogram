@@ -18,6 +18,8 @@ type userService struct {
 	tagRepo       repository.UserTagRepository
 	roleRepo      repository.RoleRepository
 	permRepo      repository.PermissionRepository
+	attrRepo      repository.AttributeRepository
+	uaRepo        repository.UserAttributeRepository
 	log           *logrus.Logger
 }
 
@@ -29,13 +31,26 @@ func NewUserService(
 	roleRepo repository.RoleRepository,
 	permRepo repository.PermissionRepository,
 	log *logrus.Logger,
+	deps ...interface{},
 ) UserService {
+	var attrRepo repository.AttributeRepository
+	var uaRepo repository.UserAttributeRepository
+	for _, dep := range deps {
+		switch v := dep.(type) {
+		case repository.AttributeRepository:
+			attrRepo = v
+		case repository.UserAttributeRepository:
+			uaRepo = v
+		}
+	}
 	return &userService{
 		userRepo:      userRepo,
 		adminUserRepo: adminUserRepo,
 		tagRepo:       tagRepo,
 		roleRepo:      roleRepo,
 		permRepo:      permRepo,
+		attrRepo:      attrRepo,
+		uaRepo:        uaRepo,
 		log:           log,
 	}
 }
@@ -48,6 +63,7 @@ func (s *userService) GetProfile(ctx context.Context, userID uint64) (*entity.Us
 	if user == nil {
 		return nil, errors.NewNotFound("用户不存在", nil)
 	}
+	s.bindAvatarFileIDFromUserAttributes(ctx, user)
 	return user, nil
 }
 
@@ -66,9 +82,60 @@ func (s *userService) UpdateProfile(ctx context.Context, userID uint64, req *dto
 		user.AvatarURL = req.AvatarURL
 	}
 	if req.AvatarFileID > 0 {
-		user.AvatarFileID = &req.AvatarFileID
+		if err = s.upsertAvatarFileIDAttribute(ctx, userID, req.AvatarFileID); err != nil {
+			return err
+		}
 	}
 	return s.userRepo.Update(ctx, user)
+}
+
+func (s *userService) bindAvatarFileIDFromUserAttributes(ctx context.Context, user *entity.User) {
+	if user == nil || s.uaRepo == nil {
+		return
+	}
+	uas, err := s.uaRepo.ListByUserID(ctx, user.ID)
+	if err != nil {
+		return
+	}
+	for _, ua := range uas {
+		if ua == nil || ua.Attribute == nil || ua.Attribute.Name != "avatar_file_id" || ua.ValueBigint == nil || *ua.ValueBigint <= 0 {
+			continue
+		}
+		v := uint64(*ua.ValueBigint)
+		user.AvatarFileID = &v
+		return
+	}
+}
+
+func (s *userService) upsertAvatarFileIDAttribute(ctx context.Context, userID uint64, fileID uint64) error {
+	if s.attrRepo == nil || s.uaRepo == nil {
+		return nil
+	}
+	attrs, err := s.attrRepo.List(ctx)
+	if err != nil {
+		return err
+	}
+	var attrID uint
+	for _, attr := range attrs {
+		if attr != nil && attr.Name == "avatar_file_id" {
+			attrID = attr.ID
+			break
+		}
+	}
+	if attrID == 0 {
+		attr := &entity.Attribute{Name: "avatar_file_id", Type: entity.AttributeTypeBigInt}
+		if err = s.attrRepo.Create(ctx, attr); err != nil {
+			return err
+		}
+		attrID = attr.ID
+	}
+	v := int64(fileID)
+	return s.uaRepo.Upsert(ctx, &entity.UserAttribute{
+		UserID:      userID,
+		AttributeID: attrID,
+		ValueBigint: &v,
+		ValueString: "",
+	})
 }
 
 func (s *userService) GetPermissions(ctx context.Context, userID uint64) ([]string, []string, error) {

@@ -142,7 +142,7 @@ func TestAttrCtrl_Delete_SvcErr(t *testing.T) {
 func TestAttrCtrl_ListUserAttributes_OK(t *testing.T) {
 	svc := &testutil.MockAttributeService{
 		ListUserAttrsFn: func(_ context.Context, userID uint64) ([]*entity.UserAttribute, error) {
-			return []*entity.UserAttribute{{ID: 1, UserID: userID, AttributeID: 1, Value: "男"}}, nil
+			return []*entity.UserAttribute{{ID: 1, UserID: userID, AttributeID: 1, ValueString: "男"}}, nil
 		},
 	}
 	r := newTestRouter()

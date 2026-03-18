@@ -77,63 +77,99 @@ func (r *courseRepository) Delete(ctx context.Context, id uint64) error {
 }
 
 func (r *courseRepository) IncrViewCount(ctx context.Context, id uint64) error {
-	if err := r.db.WithContext(ctx).Exec("UPDATE courses SET view_count = view_count + 1 WHERE id = ?", id).Error; err != nil {
+	if err := r.db.WithContext(ctx).Exec(`
+		INSERT INTO course_attributes (course_id, attribute_id, value_bigint)
+		SELECT ?, id, 1 FROM attributes WHERE name = 'view_count' LIMIT 1
+		ON DUPLICATE KEY UPDATE value_bigint = COALESCE(value_bigint, 0) + 1
+	`, id).Error; err != nil {
 		return errors.NewInternal("更新浏览量失败", err)
 	}
 	return nil
 }
 
 func (r *courseRepository) IncrLikeCount(ctx context.Context, id uint64) error {
-	if err := r.db.WithContext(ctx).Exec("UPDATE courses SET like_count = like_count + 1 WHERE id = ?", id).Error; err != nil {
+	if err := r.db.WithContext(ctx).Exec(`
+		INSERT INTO course_attributes (course_id, attribute_id, value_bigint)
+		SELECT ?, id, 1 FROM attributes WHERE name = 'like_count' LIMIT 1
+		ON DUPLICATE KEY UPDATE value_bigint = COALESCE(value_bigint, 0) + 1
+	`, id).Error; err != nil {
 		return errors.NewInternal("更新点赞数失败", err)
 	}
 	return nil
 }
 
 func (r *courseRepository) DecrLikeCount(ctx context.Context, id uint64) error {
-	if err := r.db.WithContext(ctx).Exec("UPDATE courses SET like_count = CASE WHEN like_count > 0 THEN like_count - 1 ELSE 0 END WHERE id = ?", id).Error; err != nil {
+	if err := r.db.WithContext(ctx).Exec(`
+		INSERT INTO course_attributes (course_id, attribute_id, value_bigint)
+		SELECT ?, id, 0 FROM attributes WHERE name = 'like_count' LIMIT 1
+		ON DUPLICATE KEY UPDATE value_bigint = GREATEST(0, COALESCE(value_bigint, 0) - 1)
+	`, id).Error; err != nil {
 		return errors.NewInternal("更新点赞数失败", err)
 	}
 	return nil
 }
 
 func (r *courseRepository) IncrCollectCount(ctx context.Context, id uint64) error {
-	if err := r.db.WithContext(ctx).Exec("UPDATE courses SET collect_count = collect_count + 1 WHERE id = ?", id).Error; err != nil {
+	if err := r.db.WithContext(ctx).Exec(`
+		INSERT INTO course_attributes (course_id, attribute_id, value_bigint)
+		SELECT ?, id, 1 FROM attributes WHERE name = 'collect_count' LIMIT 1
+		ON DUPLICATE KEY UPDATE value_bigint = COALESCE(value_bigint, 0) + 1
+	`, id).Error; err != nil {
 		return errors.NewInternal("更新收藏数失败", err)
 	}
 	return nil
 }
 
 func (r *courseRepository) DecrCollectCount(ctx context.Context, id uint64) error {
-	if err := r.db.WithContext(ctx).Exec("UPDATE courses SET collect_count = CASE WHEN collect_count > 0 THEN collect_count - 1 ELSE 0 END WHERE id = ?", id).Error; err != nil {
+	if err := r.db.WithContext(ctx).Exec(`
+		INSERT INTO course_attributes (course_id, attribute_id, value_bigint)
+		SELECT ?, id, 0 FROM attributes WHERE name = 'collect_count' LIMIT 1
+		ON DUPLICATE KEY UPDATE value_bigint = GREATEST(0, COALESCE(value_bigint, 0) - 1)
+	`, id).Error; err != nil {
 		return errors.NewInternal("更新收藏数失败", err)
 	}
 	return nil
 }
 
 func (r *courseRepository) IncrCommentCount(ctx context.Context, id uint64) error {
-	if err := r.db.WithContext(ctx).Exec("UPDATE courses SET comment_count = comment_count + 1 WHERE id = ?", id).Error; err != nil {
+	if err := r.db.WithContext(ctx).Exec(`
+		INSERT INTO course_attributes (course_id, attribute_id, value_bigint)
+		SELECT ?, id, 1 FROM attributes WHERE name = 'comment_count' LIMIT 1
+		ON DUPLICATE KEY UPDATE value_bigint = COALESCE(value_bigint, 0) + 1
+	`, id).Error; err != nil {
 		return errors.NewInternal("更新评论数失败", err)
 	}
 	return nil
 }
 
 func (r *courseRepository) DecrCommentCount(ctx context.Context, id uint64) error {
-	if err := r.db.WithContext(ctx).Exec("UPDATE courses SET comment_count = CASE WHEN comment_count > 0 THEN comment_count - 1 ELSE 0 END WHERE id = ?", id).Error; err != nil {
+	if err := r.db.WithContext(ctx).Exec(`
+		INSERT INTO course_attributes (course_id, attribute_id, value_bigint)
+		SELECT ?, id, 0 FROM attributes WHERE name = 'comment_count' LIMIT 1
+		ON DUPLICATE KEY UPDATE value_bigint = GREATEST(0, COALESCE(value_bigint, 0) - 1)
+	`, id).Error; err != nil {
 		return errors.NewInternal("更新评论数失败", err)
 	}
 	return nil
 }
 
 func (r *courseRepository) IncrShareCount(ctx context.Context, id uint64) error {
-	if err := r.db.WithContext(ctx).Exec("UPDATE courses SET share_count = share_count + 1 WHERE id = ?", id).Error; err != nil {
+	if err := r.db.WithContext(ctx).Exec(`
+		INSERT INTO course_attributes (course_id, attribute_id, value_bigint)
+		SELECT ?, id, 1 FROM attributes WHERE name = 'share_count' LIMIT 1
+		ON DUPLICATE KEY UPDATE value_bigint = COALESCE(value_bigint, 0) + 1
+	`, id).Error; err != nil {
 		return errors.NewInternal("更新分享数失败", err)
 	}
 	return nil
 }
 
 func (r *courseRepository) IncrStudyCount(ctx context.Context, id uint64) error {
-	if err := r.db.WithContext(ctx).Exec("UPDATE courses SET study_count = study_count + 1 WHERE id = ?", id).Error; err != nil {
+	if err := r.db.WithContext(ctx).Exec(`
+		INSERT INTO course_attributes (course_id, attribute_id, value_bigint)
+		SELECT ?, id, 1 FROM attributes WHERE name = 'study_count' LIMIT 1
+		ON DUPLICATE KEY UPDATE value_bigint = COALESCE(value_bigint, 0) + 1
+	`, id).Error; err != nil {
 		return errors.NewInternal("更新学习人数失败", err)
 	}
 	return nil
