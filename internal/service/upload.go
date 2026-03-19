@@ -47,6 +47,20 @@ type StaticURLResult struct {
 	Category  string `json:"category"`
 }
 
+const (
+	usageEmbedded  = "embedded"
+	usageProtected = "protected"
+
+	categoryImage      = "image"
+	categoryVideo      = "video"
+	categoryAttachment = "attachment"
+
+	defaultAdminExpiresIn    = 900
+	defaultDownloadExpiresIn = 300
+	minExpiresIn             = 60
+	maxExpiresIn             = 3600
+)
+
 type uploadFileService struct {
 	fileRepo repository.FileRepository
 	cos      *cosutil.Client
@@ -62,8 +76,8 @@ func NewUploadFileService(fileRepo repository.FileRepository, cosClient *cosutil
 }
 
 func (s *uploadFileService) GenerateAdminPresign(ctx context.Context, userID uint64, filename, usage, expiresInRaw string) (*AdminPresignResult, error) {
-	if s.cos == nil {
-		return nil, errors.NewBadRequest("当前存储不支持预签名上传", nil)
+	if err := s.validateCOS("当前存储不支持预签名上传"); err != nil {
+		return nil, err
 	}
 	filename = strings.TrimSpace(filename)
 	if filename == "" {
@@ -71,9 +85,9 @@ func (s *uploadFileService) GenerateAdminPresign(ctx context.Context, userID uin
 	}
 	usage = strings.ToLower(strings.TrimSpace(usage))
 	if usage == "" {
-		usage = "protected"
+		usage = usageProtected
 	}
-	if usage != "embedded" && usage != "protected" {
+	if usage != usageEmbedded && usage != usageProtected {
 		return nil, errors.NewBadRequest("usage仅支持embedded或protected", nil)
 	}
 	ext := strings.ToLower(filepath.Ext(filename))
@@ -81,16 +95,16 @@ func (s *uploadFileService) GenerateAdminPresign(ctx context.Context, userID uin
 	if category == "" {
 		return nil, errors.NewBadRequest("不支持的文件扩展名", nil)
 	}
-	if usage == "embedded" && category == "attachment" {
+	if usage == usageEmbedded && category == categoryAttachment {
 		return nil, errors.NewBadRequest("内嵌素材仅支持图片或视频", nil)
 	}
-	expiresIn, err := parseExpiresIn(expiresInRaw, 900)
+	expiresIn, err := parseExpiresIn(expiresInRaw, defaultAdminExpiresIn)
 	if err != nil {
 		return nil, err
 	}
 	key := generateObjectKey(usage+"-"+category, ext)
 	staticURL := ""
-	if usage == "embedded" {
+	if usage == usageEmbedded {
 		staticURL = s.cos.ObjectURL(key)
 	}
 	file := &entity.File{
@@ -116,8 +130,8 @@ func (s *uploadFileService) GenerateAdminPresign(ctx context.Context, userID uin
 }
 
 func (s *uploadFileService) GenerateProtectedBusinessPresign(ctx context.Context, userID uint64, filename, business, expiresInRaw string, allowedCategories []string) (*AdminPresignResult, error) {
-	if s.cos == nil {
-		return nil, errors.NewBadRequest("当前存储不支持预签名上传", nil)
+	if err := s.validateCOS("当前存储不支持预签名上传"); err != nil {
+		return nil, err
 	}
 	filename = strings.TrimSpace(filename)
 	if filename == "" {
@@ -131,15 +145,15 @@ func (s *uploadFileService) GenerateProtectedBusinessPresign(ctx context.Context
 	if !containsCategory(allowedCategories, category) {
 		return nil, errors.NewBadRequest("该业务仅支持图片或视频文件", nil)
 	}
-	expiresIn, err := parseExpiresIn(expiresInRaw, 900)
+	expiresIn, err := parseExpiresIn(expiresInRaw, defaultAdminExpiresIn)
 	if err != nil {
 		return nil, err
 	}
-	key := generateObjectKey("protected-"+category, ext)
+	key := generateObjectKey(usageProtected+"-"+category, ext)
 	file := &entity.File{
 		Key:       key,
 		Filename:  filename,
-		Usage:     "protected",
+		Usage:     usageProtected,
 		Category:  category,
 		Business:  business,
 		CreatedBy: userID,
@@ -157,8 +171,8 @@ func (s *uploadFileService) GenerateProtectedBusinessPresign(ctx context.Context
 }
 
 func (s *uploadFileService) GenerateBusinessDownload(ctx context.Context, fileID uint64, allowedCategories []string, expiresInRaw string) (*BusinessDownloadResult, error) {
-	if s.cos == nil {
-		return nil, errors.NewBadRequest("当前存储不支持临时下载链接", nil)
+	if err := s.validateCOS("当前存储不支持临时下载链接"); err != nil {
+		return nil, err
 	}
 	file, err := s.fileRepo.GetByID(ctx, fileID)
 	if err != nil {
@@ -167,7 +181,7 @@ func (s *uploadFileService) GenerateBusinessDownload(ctx context.Context, fileID
 	if file == nil {
 		return nil, errors.NewNotFound("文件不存在", nil)
 	}
-	if file.Usage != "protected" {
+	if file.Usage != usageProtected {
 		return nil, errors.NewForbidden("该文件无需临时链接下载", nil)
 	}
 	if !containsCategory(allowedCategories, file.Category) {
@@ -180,7 +194,7 @@ func (s *uploadFileService) GenerateBusinessDownload(ctx context.Context, fileID
 	if !contentTypeMatchesCategory(file.Category, contentType, file.Filename, file.Key) {
 		return nil, errors.NewForbidden(fmt.Sprintf("文件MIME类型(%s)与业务类别(%s)不匹配", contentType, file.Category), nil)
 	}
-	expiresIn, parseErr := parseExpiresIn(expiresInRaw, 300)
+	expiresIn, parseErr := parseExpiresIn(expiresInRaw, defaultDownloadExpiresIn)
 	if parseErr != nil {
 		return nil, parseErr
 	}
@@ -193,8 +207,8 @@ func (s *uploadFileService) GenerateBusinessDownload(ctx context.Context, fileID
 }
 
 func (s *uploadFileService) GenerateStaticURL(ctx context.Context, fileID uint64) (*StaticURLResult, error) {
-	if s.cos == nil {
-		return nil, errors.NewBadRequest("当前存储不支持静态链接校验", nil)
+	if err := s.validateCOS("当前存储不支持静态链接校验"); err != nil {
+		return nil, err
 	}
 	file, err := s.fileRepo.GetByID(ctx, fileID)
 	if err != nil {
@@ -203,7 +217,7 @@ func (s *uploadFileService) GenerateStaticURL(ctx context.Context, fileID uint64
 	if file == nil {
 		return nil, errors.NewNotFound("文件不存在", nil)
 	}
-	if file.Usage != "embedded" || (file.Category != "image" && file.Category != "video") {
+	if file.Usage != usageEmbedded || (file.Category != categoryImage && file.Category != categoryVideo) {
 		return nil, errors.NewForbidden("该文件不支持静态访问", nil)
 	}
 	ok, checkErr := s.cos.IsStaticMediaObject(ctx, file.Key)
@@ -218,6 +232,14 @@ func (s *uploadFileService) GenerateStaticURL(ctx context.Context, fileID uint64
 		StaticURL: s.cos.ObjectURL(file.Key),
 		Category:  file.Category,
 	}, nil
+}
+
+// Validation and helper functions.
+func (s *uploadFileService) validateCOS(errMsg string) error {
+	if s.cos == nil {
+		return errors.NewBadRequest(errMsg, nil)
+	}
+	return nil
 }
 
 func containsCategory(allowed []string, category string) bool {
@@ -237,12 +259,12 @@ var fileAttachmentTypePattern = regexp.MustCompile(`^\.(pdf|doc|docx|xls|xlsx|pp
 func classifyFileCategory(ext string) string {
 	switch ext {
 	case ".jpg", ".jpeg", ".png", ".gif":
-		return "image"
+		return categoryImage
 	case ".mp4":
-		return "video"
+		return categoryVideo
 	default:
 		if fileAttachmentTypePattern.MatchString(ext) {
-			return "attachment"
+			return categoryAttachment
 		}
 		return ""
 	}
@@ -253,8 +275,8 @@ func parseExpiresIn(raw string, defaultValue int) (int, error) {
 		return defaultValue, nil
 	}
 	v, err := strconv.Atoi(strings.TrimSpace(raw))
-	if err != nil || v < 60 || v > 3600 {
-		return 0, errors.NewBadRequest("expires_in必须在60-3600秒之间", err)
+	if err != nil || v < minExpiresIn || v > maxExpiresIn {
+		return 0, errors.NewBadRequest(fmt.Sprintf("expires_in必须在%d-%d秒之间", minExpiresIn, maxExpiresIn), err)
 	}
 	return v, nil
 }
@@ -272,11 +294,11 @@ func contentTypeMatchesCategory(category, contentType, filename, key string) boo
 		ct = strings.TrimSpace(ct[:idx])
 	}
 	switch category {
-	case "image":
+	case categoryImage:
 		return strings.HasPrefix(ct, "image/")
-	case "video":
+	case categoryVideo:
 		return strings.HasPrefix(ct, "video/")
-	case "attachment":
+	case categoryAttachment:
 		ext := resolveFileExtension(filename, key)
 		return attachmentContentTypeAllowed(ext, ct)
 	default:
