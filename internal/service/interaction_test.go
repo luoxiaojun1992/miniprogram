@@ -1068,9 +1068,10 @@ func TestCommentService_Delete_HasReplies(t *testing.T) {
 }
 
 func TestCommentService_Delete_DecrCourseCommentCount(t *testing.T) {
+	const commentAuthorID uint64 = 3
 	repo := &testutil.MockCommentRepository{
 		GetByIDFn: func(_ context.Context, id uint64) (*entity.Comment, error) {
-			return &entity.Comment{ID: id, UserID: 3, ContentType: 2, ContentID: 5}, nil
+			return &entity.Comment{ID: id, UserID: commentAuthorID, ContentType: 2, ContentID: 5}, nil
 		},
 		HasRepliesFn: func(_ context.Context, id uint64) (bool, error) { return false, nil },
 		DeleteFn:     func(_ context.Context, id uint64) error { return nil },
@@ -1089,7 +1090,7 @@ func TestCommentService_Delete_DecrCourseCommentCount(t *testing.T) {
 	}
 	uaRepo := &testutil.MockUserAttributeRepository{
 		ListByUserIDFn: func(_ context.Context, userID uint64) ([]*entity.UserAttribute, error) {
-			require.Equal(t, uint64(3), userID)
+			require.Equal(t, commentAuthorID, userID)
 			v := int64(1)
 			return []*entity.UserAttribute{{UserID: userID, AttributeID: 10, ValueBigint: &v}}, nil
 		},
