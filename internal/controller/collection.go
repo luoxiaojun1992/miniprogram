@@ -39,8 +39,16 @@ func (c *CollectionController) List(ctx *gin.Context) {
 	}
 	var contentType *int8
 	if ct := ctx.Query("content_type"); ct != "" {
-		v, _ := strconv.ParseInt(ct, 10, 8)
+		v, err := strconv.ParseInt(ct, 10, 8)
+		if err != nil {
+			ctx.Error(apperrors.NewBadRequest("无效的内容类型", err))
+			return
+		}
 		t := int8(v)
+		if !isInteractionContentType(t) {
+			ctx.Error(apperrors.NewBadRequest("无效的内容类型", nil))
+			return
+		}
 		contentType = &t
 	}
 	cols, total, err := c.svc.List(ctx, userID, q.GetPage(), q.GetPageSize(), contentType)
@@ -61,6 +69,10 @@ func (c *CollectionController) Add(ctx *gin.Context) {
 	ct, err := strconv.ParseInt(ctx.Param("content_type"), 10, 8)
 	if err != nil {
 		ctx.Error(apperrors.NewBadRequest("无效的内容类型", err))
+		return
+	}
+	if !isInteractionContentType(int8(ct)) {
+		ctx.Error(apperrors.NewBadRequest("无效的内容类型", nil))
 		return
 	}
 	cid, err := strconv.ParseUint(ctx.Param("content_id"), 10, 64)
@@ -85,6 +97,10 @@ func (c *CollectionController) Remove(ctx *gin.Context) {
 	ct, err := strconv.ParseInt(ctx.Param("content_type"), 10, 8)
 	if err != nil {
 		ctx.Error(apperrors.NewBadRequest("无效的内容类型", err))
+		return
+	}
+	if !isInteractionContentType(int8(ct)) {
+		ctx.Error(apperrors.NewBadRequest("无效的内容类型", nil))
 		return
 	}
 	cid, err := strconv.ParseUint(ctx.Param("content_id"), 10, 64)

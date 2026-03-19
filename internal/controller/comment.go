@@ -32,6 +32,10 @@ func (c *CommentController) List(ctx *gin.Context) {
 		ctx.Error(apperrors.NewBadRequest("无效的内容类型", err))
 		return
 	}
+	if !isInteractionContentType(int8(ct)) {
+		ctx.Error(apperrors.NewBadRequest("无效的内容类型", nil))
+		return
+	}
 	cid, err := strconv.ParseUint(ctx.Param("content_id"), 10, 64)
 	if err != nil {
 		ctx.Error(apperrors.NewBadRequest("无效的内容ID", err))
@@ -60,6 +64,10 @@ func (c *CommentController) Create(ctx *gin.Context) {
 	ct, err := strconv.ParseInt(ctx.Param("content_type"), 10, 8)
 	if err != nil {
 		ctx.Error(apperrors.NewBadRequest("无效的内容类型", err))
+		return
+	}
+	if !isInteractionContentType(int8(ct)) {
+		ctx.Error(apperrors.NewBadRequest("无效的内容类型", nil))
 		return
 	}
 	cid, err := strconv.ParseUint(ctx.Param("content_id"), 10, 64)
