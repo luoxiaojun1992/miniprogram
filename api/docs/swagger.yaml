@@ -1534,7 +1534,7 @@ paths:
                     type: array
                     items:
                       $ref: "#/definitions/Role"
-                      
+
     post:
       tags:
         - 权限管理
@@ -1657,6 +1657,138 @@ paths:
                     type: array
                     items:
                       $ref: "#/definitions/Module"
+
+  /banners:
+    get:
+      tags:
+        - 轮播图
+      summary: 轮播图列表
+      description: 前台展示轮播图列表
+      responses:
+        200:
+          description: 成功
+          schema:
+            allOf:
+              - $ref: "#/definitions/ApiResponse"
+              - properties:
+                  data:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: integer
+                        title:
+                          type: string
+                        image_file_id:
+                          type: integer
+                          format: int64
+                        image_url:
+                          type: string
+                        link_url:
+                          type: string
+                        sort_order:
+                          type: integer
+                        status:
+                          type: integer
+
+  /admin/banners:
+    get:
+      tags:
+        - 轮播图管理
+      summary: 管理端轮播图列表
+      security:
+        - Bearer: []
+      parameters:
+        - name: status
+          in: query
+          type: integer
+          enum: [0, 1]
+      responses:
+        200:
+          $ref: "#/responses/Success"
+
+    post:
+      tags:
+        - 轮播图管理
+      summary: 创建轮播图
+      security:
+        - Bearer: []
+      parameters:
+        - in: body
+          name: body
+          required: true
+          schema:
+            type: object
+            properties:
+              title:
+                type: string
+                maxLength: 128
+              image_file_id:
+                type: integer
+                format: int64
+              link_url:
+                type: string
+                maxLength: 255
+              sort_order:
+                type: integer
+              status:
+                type: integer
+                enum: [0, 1]
+            required:
+              - title
+              - image_file_id
+      responses:
+        201:
+          $ref: "#/responses/Created"
+
+  /admin/banners/{id}:
+    parameters:
+      - $ref: "#/parameters/IdPathParam"
+
+    put:
+      tags:
+        - 轮播图管理
+      summary: 更新轮播图
+      security:
+        - Bearer: []
+      parameters:
+        - in: body
+          name: body
+          required: true
+          schema:
+            type: object
+            properties:
+              title:
+                type: string
+                maxLength: 128
+              image_file_id:
+                type: integer
+                format: int64
+              link_url:
+                type: string
+                maxLength: 255
+              sort_order:
+                type: integer
+              status:
+                type: integer
+                enum: [0, 1]
+            required:
+              - title
+              - image_file_id
+      responses:
+        200:
+          $ref: "#/responses/Success"
+
+    delete:
+      tags:
+        - 轮播图管理
+      summary: 删除轮播图
+      security:
+        - Bearer: []
+      responses:
+        204:
+          $ref: "#/responses/NoContent"
                       
   /admin/modules:
     post:
@@ -1839,6 +1971,22 @@ paths:
             $ref: "#/definitions/ErrorResponse"
         404:
           $ref: "#/responses/NotFound"
+
+  /articles/{id}/attachments:
+    parameters:
+      - $ref: "#/parameters/IdPathParam"
+
+    get:
+      tags:
+        - 文章
+      summary: 获取文章附件文件ID列表
+      responses:
+        200:
+          $ref: "#/responses/Success"
+        403:
+          $ref: "#/responses/Forbidden"
+        404:
+          $ref: "#/responses/NotFound"
           
   /admin/articles:
     get:
@@ -1968,6 +2116,47 @@ paths:
         200:
           $ref: "#/responses/Success"
 
+  /admin/articles/{id}/pin:
+    parameters:
+      - $ref: "#/parameters/IdPathParam"
+
+    post:
+      tags:
+        - 文章管理
+      summary: 置顶文章
+      security:
+        - Bearer: []
+      x-permission: "article:edit"
+      parameters:
+        - in: body
+          name: body
+          required: true
+          schema:
+            type: object
+            properties:
+              sort_order:
+                type: integer
+            required:
+              - sort_order
+      responses:
+        200:
+          $ref: "#/responses/Success"
+
+  /admin/articles/{id}/copy:
+    parameters:
+      - $ref: "#/parameters/IdPathParam"
+
+    post:
+      tags:
+        - 文章管理
+      summary: 复制文章
+      security:
+        - Bearer: []
+      x-permission: "article:create"
+      responses:
+        201:
+          $ref: "#/responses/Created"
+
   # ==================== 内容管理 - 课程 ====================
   
   /courses:
@@ -2009,8 +2198,6 @@ paths:
         - 课程
       summary: 课程详情
       description: 包含课程单元列表和学习进度
-      security:
-        - Bearer: []
       responses:
         200:
           description: 成功
@@ -2024,6 +2211,55 @@ paths:
           description: 无权限查看或需要购买
           schema:
             $ref: "#/definitions/ErrorResponse"
+
+  /courses/{id}/units:
+    parameters:
+      - $ref: "#/parameters/IdPathParam"
+
+    get:
+      tags:
+        - 课程
+      summary: 获取课程单元列表
+      responses:
+        200:
+          $ref: "#/responses/Success"
+
+  /courses/{id}/attachments:
+    parameters:
+      - $ref: "#/parameters/IdPathParam"
+
+    get:
+      tags:
+        - 课程
+      summary: 获取课程附件文件ID列表
+      responses:
+        200:
+          $ref: "#/responses/Success"
+        403:
+          $ref: "#/responses/Forbidden"
+        404:
+          $ref: "#/responses/NotFound"
+
+  /courses/{id}/units/{unit_id}/attachments:
+    parameters:
+      - $ref: "#/parameters/IdPathParam"
+      - name: unit_id
+        in: path
+        required: true
+        type: integer
+        format: int64
+
+    get:
+      tags:
+        - 课程
+      summary: 获取课程单元附件文件ID列表
+      responses:
+        200:
+          $ref: "#/responses/Success"
+        403:
+          $ref: "#/responses/Forbidden"
+        404:
+          $ref: "#/responses/NotFound"
             
   /admin/courses:
     get:
@@ -2197,6 +2433,74 @@ paths:
         204:
           $ref: "#/responses/NoContent"
 
+  /admin/courses/{id}/publish:
+    parameters:
+      - $ref: "#/parameters/IdPathParam"
+
+    post:
+      tags:
+        - 课程管理
+      summary: 发布/取消发布课程
+      security:
+        - Bearer: []
+      x-permission: "course:publish"
+      parameters:
+        - in: body
+          name: body
+          required: true
+          schema:
+            type: object
+            properties:
+              status:
+                type: integer
+                enum: [0, 1]
+            required:
+              - status
+      responses:
+        200:
+          $ref: "#/responses/Success"
+
+  /admin/courses/{id}/pin:
+    parameters:
+      - $ref: "#/parameters/IdPathParam"
+
+    post:
+      tags:
+        - 课程管理
+      summary: 置顶课程
+      security:
+        - Bearer: []
+      x-permission: "course:edit"
+      parameters:
+        - in: body
+          name: body
+          required: true
+          schema:
+            type: object
+            properties:
+              sort_order:
+                type: integer
+            required:
+              - sort_order
+      responses:
+        200:
+          $ref: "#/responses/Success"
+
+  /admin/courses/{id}/copy:
+    parameters:
+      - $ref: "#/parameters/IdPathParam"
+
+    post:
+      tags:
+        - 课程管理
+      summary: 复制课程
+      security:
+        - Bearer: []
+      x-permission: "course:create"
+      responses:
+        201:
+          $ref: "#/responses/Created"
+
   # ==================== 互动功能 ====================
   
   /study-records:
@@ -2320,7 +2624,7 @@ paths:
           description: 已点赞
           schema:
             $ref: "#/definitions/ErrorResponse"
-            
+
     delete:
       tags:
         - 点赞
@@ -2336,6 +2640,34 @@ paths:
               - properties:
                   data:
                     $ref: "#/definitions/LikeInfo"
+
+  /follows/{user_id}:
+    parameters:
+      - name: user_id
+        in: path
+        required: true
+        type: integer
+        format: int64
+
+    post:
+      tags:
+        - 关注
+      summary: 关注用户
+      security:
+        - Bearer: []
+      responses:
+        201:
+          $ref: "#/responses/Created"
+
+    delete:
+      tags:
+        - 关注
+      summary: 取消关注
+      security:
+        - Bearer: []
+      responses:
+        200:
+          $ref: "#/responses/Success"
                     
   /comments/{content_type}/{content_id}:
     parameters:
@@ -2444,7 +2776,10 @@ paths:
         200:
           $ref: "#/responses/Success"
           
+  /admin/comments/{id}:
     delete:
+      parameters:
+        - $ref: "#/parameters/IdPathParam"
       tags:
         - 评论审核
       summary: 删除评论
@@ -2688,6 +3023,101 @@ paths:
         200:
           $ref: "#/responses/Success"
 
+  /admin/upload/banner/media/presign:
+    get:
+      tags:
+        - 文件上传
+      summary: 获取轮播素材上传预签名URL
+      security:
+        - Bearer: []
+      parameters:
+        - name: filename
+          in: query
+          type: string
+          required: true
+        - name: expires_in
+          in: query
+          type: integer
+      responses:
+        200:
+          $ref: "#/responses/Success"
+
+  /admin/upload/course/video/presign:
+    get:
+      tags:
+        - 文件上传
+      summary: 获取课程视频上传预签名URL
+      security:
+        - Bearer: []
+      parameters:
+        - name: filename
+          in: query
+          type: string
+          required: true
+        - name: expires_in
+          in: query
+          type: integer
+      responses:
+        200:
+          $ref: "#/responses/Success"
+
+  /admin/upload/article/attachment/presign:
+    get:
+      tags:
+        - 文件上传
+      summary: 获取文章附件上传预签名URL
+      security:
+        - Bearer: []
+      parameters:
+        - name: filename
+          in: query
+          type: string
+          required: true
+        - name: expires_in
+          in: query
+          type: integer
+      responses:
+        200:
+          $ref: "#/responses/Success"
+
+  /admin/upload/course/attachment/presign:
+    get:
+      tags:
+        - 文件上传
+      summary: 获取课程附件上传预签名URL
+      security:
+        - Bearer: []
+      parameters:
+        - name: filename
+          in: query
+          type: string
+          required: true
+        - name: expires_in
+          in: query
+          type: integer
+      responses:
+        200:
+          $ref: "#/responses/Success"
+
+  /admin/upload/course/unit/attachment/presign:
+    get:
+      tags:
+        - 文件上传
+      summary: 获取课程单元附件上传预签名URL
+      security:
+        - Bearer: []
+      parameters:
+        - name: filename
+          in: query
+          type: string
+          required: true
+        - name: expires_in
+          in: query
+          type: integer
+      responses:
+        200:
+          $ref: "#/responses/Success"
+
   /download/static/{file_id}:
     get:
       tags:
@@ -2707,8 +3137,6 @@ paths:
       tags:
         - 文件上传
       summary: 获取课程视频临时下载链接（JWT）
-      security:
-        - Bearer: []
       parameters:
         - name: file_id
           in: path
@@ -2728,8 +3156,6 @@ paths:
       tags:
         - 文件上传
       summary: 获取文章附件临时下载链接（JWT）
-      security:
-        - Bearer: []
       parameters:
         - name: file_id
           in: path
@@ -2744,13 +3170,66 @@ paths:
       tags:
         - 文件上传
       summary: 获取课程附件临时下载链接（JWT）
-      security:
-        - Bearer: []
       parameters:
         - name: file_id
           in: path
           type: string
           required: true
+      responses:
+        200:
+          $ref: "#/responses/Success"
+
+  /download/course/unit/attachment/{file_id}:
+    get:
+      tags:
+        - 文件上传
+      summary: 获取课程单元附件临时下载链接（可选JWT）
+      parameters:
+        - name: file_id
+          in: path
+          type: string
+          required: true
+      responses:
+        200:
+          $ref: "#/responses/Success"
+
+  /download/banner/media/{file_id}:
+    get:
+      tags:
+        - 文件上传
+      summary: 获取轮播素材临时下载链接（可选JWT）
+      parameters:
+        - name: file_id
+          in: path
+          type: string
+          required: true
+      responses:
+        200:
+          $ref: "#/responses/Success"
+
+  /debug/token:
+    post:
+      tags:
+        - 调试
+      summary: 生成测试Token（仅在开启调试时可用）
+      description: 仅在服务端开启 debug.enable_test_token 时可访问。
+      parameters:
+        - in: body
+          name: body
+          required: true
+          schema:
+            type: object
+            properties:
+              user_id:
+                type: integer
+                format: int64
+              user_type_override:
+                type: integer
+                enum: [1, 2, 3]
+              expiry_seconds:
+                type: integer
+            required:
+              - user_id
       responses:
         200:
           $ref: "#/responses/Success"
