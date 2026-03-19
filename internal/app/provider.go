@@ -192,6 +192,22 @@ func (p *Provider) initRepositories() {
 
 func (p *Provider) initServices() {
 	wechatClient := wechat.NewClient(p.Config.Wechat.AppID, p.Config.Wechat.AppSecret)
+	var cosClient *cosutil.Client
+	if p.Config.Upload.Provider == "cos" && p.Config.Upload.COSEndpoint != "" && p.Config.Upload.COSBucket != "" {
+		client, err := cosutil.NewClient(
+			p.Config.Upload.COSEndpoint,
+			p.Config.Upload.BaseURL,
+			p.Config.Upload.COSBucket,
+			p.Config.Upload.COSSecretID,
+			p.Config.Upload.COSSecretKey,
+		)
+		if err != nil {
+			p.Log.WithError(err).Warn("初始化COS SDK失败")
+		} else {
+			cosClient = client
+			p.UploadFileSvc = service.NewUploadFileService(p.FileRepo, cosClient, p.Log)
+		}
+	}
 
 	p.AuthSvc = service.NewAuthService(
 		p.UserRepo, p.AdminUserRepo, wechatClient,
@@ -204,12 +220,12 @@ func (p *Provider) initServices() {
 	p.RoleSvc = service.NewRoleService(p.RoleRepo, p.Log)
 	p.PermissionSvc = service.NewPermissionService(p.PermissionRepo, p.Log)
 	p.ModuleSvc = service.NewModuleService(p.ModuleRepo, p.ModulePageRepo, p.Log)
-	p.BannerSvc = service.NewBannerService(p.BannerRepo, p.Log, p.FileRepo)
+	p.BannerSvc = service.NewBannerService(p.BannerRepo, p.Log, p.FileRepo, cosClient)
 	p.ArticleSvc = service.NewArticleService(
-		p.ArticleRepo, p.ContentPermissionRepo, p.Log, p.SensitiveWordRepo, p.ArticleAttachmentRepo, p.RoleRepo,
+		p.ArticleRepo, p.ContentPermissionRepo, p.Log, p.SensitiveWordRepo, p.ArticleAttachmentRepo, p.RoleRepo, p.FileRepo, cosClient,
 	)
 	p.CourseSvc = service.NewCourseService(
-		p.CourseRepo, p.CourseUnitRepo, p.ContentPermissionRepo, p.Log, p.SensitiveWordRepo, p.CourseAttachmentRepo, p.RoleRepo, p.CourseUnitAttachRepo,
+		p.CourseRepo, p.CourseUnitRepo, p.ContentPermissionRepo, p.Log, p.SensitiveWordRepo, p.CourseAttachmentRepo, p.RoleRepo, p.CourseUnitAttachRepo, p.FileRepo, cosClient,
 	)
 	p.StudyRecordSvc = service.NewStudyRecordService(p.StudyRecordRepo, p.CourseUnitRepo, p.CourseRepo, p.Log)
 	p.CollectionSvc = service.NewCollectionService(p.CollectionRepo, p.ArticleRepo, p.CourseRepo, p.Log)
@@ -220,20 +236,6 @@ func (p *Provider) initServices() {
 	p.AuditLogSvc = service.NewAuditLogService(p.AuditLogRepo, p.Log)
 	p.LogConfigSvc = service.NewLogConfigService(p.LogConfigRepo, p.Log)
 	p.AttributeSvc = service.NewAttributeService(p.AttributeRepo, p.UserAttributeRepo, p.UserRepo, p.Log)
-	if p.Config.Upload.Provider == "cos" && p.Config.Upload.COSEndpoint != "" && p.Config.Upload.COSBucket != "" {
-		cosClient, err := cosutil.NewClient(
-			p.Config.Upload.COSEndpoint,
-			p.Config.Upload.BaseURL,
-			p.Config.Upload.COSBucket,
-			p.Config.Upload.COSSecretID,
-			p.Config.Upload.COSSecretKey,
-		)
-		if err != nil {
-			p.Log.WithError(err).Warn("初始化COS SDK失败")
-		} else {
-			p.UploadFileSvc = service.NewUploadFileService(p.FileRepo, cosClient, p.Log)
-		}
-	}
 }
 
 func (p *Provider) initControllers() {

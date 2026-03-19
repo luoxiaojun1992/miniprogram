@@ -183,3 +183,51 @@ func (r *articleRepository) HasAssociations(ctx context.Context, id uint64) (boo
 	}
 	return count > 0, nil
 }
+
+func (r *articleRepository) DeleteCascade(ctx context.Context, id uint64, fileIDs []uint64) error {
+	return r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		if err := tx.Exec(`
+			DELETE FROM content_permissions
+			WHERE content_type = 4 AND content_id IN (
+				SELECT id FROM article_attachments WHERE article_id = ?
+			)
+		`, id).Error; err != nil {
+			return errors.NewInternal("删除文章附件权限失败", err)
+		}
+		if err := tx.Exec("DELETE FROM article_attachments WHERE article_id = ?", id).Error; err != nil {
+			return errors.NewInternal("删除文章附件关联失败", err)
+		}
+		if err := tx.Exec("DELETE FROM content_permissions WHERE content_type = 1 AND content_id = ?", id).Error; err != nil {
+			return errors.NewInternal("删除文章权限失败", err)
+		}
+		if err := tx.Exec("DELETE FROM article_attributes WHERE article_id = ?", id).Error; err != nil {
+			return errors.NewInternal("删除文章属性失败", err)
+		}
+		if err := tx.Exec("DELETE FROM likes WHERE content_type = 1 AND content_id = ?", id).Error; err != nil {
+			return errors.NewInternal("删除文章点赞记录失败", err)
+		}
+		if err := tx.Exec("DELETE FROM collections WHERE content_type = 1 AND content_id = ?", id).Error; err != nil {
+			return errors.NewInternal("删除文章收藏记录失败", err)
+		}
+		if err := tx.Exec("DELETE FROM comments WHERE content_type = 1 AND content_id = ?", id).Error; err != nil {
+			return errors.NewInternal("删除文章评论失败", err)
+		}
+		uniq := make(map[uint64]struct{}, len(fileIDs))
+		for _, fileID := range fileIDs {
+			if fileID == 0 {
+				continue
+			}
+			if _, ok := uniq[fileID]; ok {
+				continue
+			}
+			uniq[fileID] = struct{}{}
+			if err := tx.Delete(&entity.File{}, fileID).Error; err != nil {
+				return errors.NewInternal("删除文件记录失败", err)
+			}
+		}
+		if err := tx.Delete(&entity.Article{}, id).Error; err != nil {
+			return errors.NewInternal("删除文章失败", err)
+		}
+		return nil
+	})
+}

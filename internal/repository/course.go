@@ -190,3 +190,78 @@ func (r *courseRepository) HasAssociations(ctx context.Context, id uint64) (bool
 	}
 	return count > 0, nil
 }
+
+func (r *courseRepository) DeleteCascade(ctx context.Context, id uint64, fileIDs []uint64) error {
+	return r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		if err := tx.Exec(`
+			DELETE FROM content_permissions
+			WHERE content_type = 7 AND content_id IN (
+				SELECT cua.id
+				FROM course_unit_attachments cua
+				JOIN course_units cu ON cu.id = cua.unit_id
+				WHERE cu.course_id = ?
+			)
+		`, id).Error; err != nil {
+			return errors.NewInternal("删除课程单元附件权限失败", err)
+		}
+		if err := tx.Exec(`
+			DELETE cua FROM course_unit_attachments cua
+			JOIN course_units cu ON cu.id = cua.unit_id
+			WHERE cu.course_id = ?
+		`, id).Error; err != nil {
+			return errors.NewInternal("删除课程单元附件关联失败", err)
+		}
+		if err := tx.Exec("DELETE FROM content_permissions WHERE content_type = 6 AND content_id IN (SELECT id FROM course_units WHERE course_id = ?)", id).Error; err != nil {
+			return errors.NewInternal("删除课程单元权限失败", err)
+		}
+		if err := tx.Exec("DELETE FROM user_study_records WHERE course_id = ?", id).Error; err != nil {
+			return errors.NewInternal("删除课程学习记录失败", err)
+		}
+		if err := tx.Exec("DELETE FROM course_units WHERE course_id = ?", id).Error; err != nil {
+			return errors.NewInternal("删除课程单元失败", err)
+		}
+		if err := tx.Exec(`
+			DELETE FROM content_permissions
+			WHERE content_type = 5 AND content_id IN (
+				SELECT id FROM course_attachments WHERE course_id = ?
+			)
+		`, id).Error; err != nil {
+			return errors.NewInternal("删除课程附件权限失败", err)
+		}
+		if err := tx.Exec("DELETE FROM course_attachments WHERE course_id = ?", id).Error; err != nil {
+			return errors.NewInternal("删除课程附件关联失败", err)
+		}
+		if err := tx.Exec("DELETE FROM content_permissions WHERE content_type = 2 AND content_id = ?", id).Error; err != nil {
+			return errors.NewInternal("删除课程权限失败", err)
+		}
+		if err := tx.Exec("DELETE FROM course_attributes WHERE course_id = ?", id).Error; err != nil {
+			return errors.NewInternal("删除课程属性失败", err)
+		}
+		if err := tx.Exec("DELETE FROM likes WHERE content_type = 2 AND content_id = ?", id).Error; err != nil {
+			return errors.NewInternal("删除课程点赞记录失败", err)
+		}
+		if err := tx.Exec("DELETE FROM collections WHERE content_type = 2 AND content_id = ?", id).Error; err != nil {
+			return errors.NewInternal("删除课程收藏记录失败", err)
+		}
+		if err := tx.Exec("DELETE FROM comments WHERE content_type = 2 AND content_id = ?", id).Error; err != nil {
+			return errors.NewInternal("删除课程评论失败", err)
+		}
+		uniq := make(map[uint64]struct{}, len(fileIDs))
+		for _, fileID := range fileIDs {
+			if fileID == 0 {
+				continue
+			}
+			if _, ok := uniq[fileID]; ok {
+				continue
+			}
+			uniq[fileID] = struct{}{}
+			if err := tx.Delete(&entity.File{}, fileID).Error; err != nil {
+				return errors.NewInternal("删除文件记录失败", err)
+			}
+		}
+		if err := tx.Delete(&entity.Course{}, id).Error; err != nil {
+			return errors.NewInternal("删除课程失败", err)
+		}
+		return nil
+	})
+}

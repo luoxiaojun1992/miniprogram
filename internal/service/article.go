@@ -3,6 +3,7 @@ package service
 import (
 	"context"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/sirupsen/logrus"
@@ -22,6 +23,8 @@ type articleService struct {
 	articleRepo       repository.ArticleRepository
 	attachmentRepo    repository.ArticleAttachmentRepository
 	contentPermRepo   repository.ContentPermissionRepository
+	fileRepo          repository.FileRepository
+	fileObjectRemover fileObjectRemover
 	roleRepo          repository.RoleRepository
 	sensitiveWordRepo repository.SensitiveWordRepository
 	log               *logrus.Logger
@@ -37,6 +40,8 @@ func NewArticleService(
 	var swRepo repository.SensitiveWordRepository
 	var attachmentRepo repository.ArticleAttachmentRepository
 	var roleRepo repository.RoleRepository
+	var fileRepo repository.FileRepository
+	var remover fileObjectRemover
 	for _, dep := range deps {
 		switch v := dep.(type) {
 		case repository.SensitiveWordRepository:
@@ -45,12 +50,18 @@ func NewArticleService(
 			attachmentRepo = v
 		case repository.RoleRepository:
 			roleRepo = v
+		case repository.FileRepository:
+			fileRepo = v
+		case fileObjectRemover:
+			remover = v
 		}
 	}
 	return &articleService{
 		articleRepo:       articleRepo,
 		attachmentRepo:    attachmentRepo,
 		contentPermRepo:   normalizeContentPermRepo(contentPermRepo),
+		fileRepo:          fileRepo,
+		fileObjectRemover: remover,
 		roleRepo:          roleRepo,
 		sensitiveWordRepo: swRepo,
 		log:               log,
@@ -109,16 +120,13 @@ func (s *articleService) Create(ctx context.Context, req *dto.CreateArticleReque
 		Title:       maskText(req.Title, words),
 		Summary:     maskText(req.Summary, words),
 		Content:     maskText(req.Content, words),
-		ContentType: req.ContentType,
+		ContentType: 1,
 		CoverImage:  req.CoverImage,
 		CoverFileID: toOptionalUint64(req.CoverFileID),
 		AuthorID:    authorID,
 		ModuleID:    req.ModuleID,
 		Status:      req.Status,
 		PublishTime: req.PublishTime,
-	}
-	if article.ContentType == 0 {
-		article.ContentType = 1
 	}
 	if article.Status == 1 && article.PublishTime == nil {
 		now := time.Now()
@@ -153,7 +161,7 @@ func (s *articleService) Update(ctx context.Context, id uint64, req *dto.UpdateA
 	article.Title = maskText(req.Title, words)
 	article.Summary = maskText(req.Summary, words)
 	article.Content = maskText(req.Content, words)
-	article.ContentType = req.ContentType
+	article.ContentType = 1
 	article.CoverImage = req.CoverImage
 	article.CoverFileID = toOptionalUint64(req.CoverFileID)
 	article.ModuleID = req.ModuleID
@@ -182,14 +190,15 @@ func (s *articleService) Delete(ctx context.Context, id uint64) error {
 	if article == nil {
 		return errors.NewNotFound("文章不存在", nil)
 	}
-	hasAssociations, err := s.articleRepo.HasAssociations(ctx, id)
+	ids, keys, err := s.collectDeleteFileIDsAndKeys(ctx, article.CoverFileID, id)
 	if err != nil {
 		return err
 	}
-	if hasAssociations {
-		return errors.NewBadRequest("文章存在关联互动数据，禁止删除", nil)
+	if err := s.articleRepo.DeleteCascade(ctx, id, ids); err != nil {
+		return err
 	}
-	return s.articleRepo.Delete(ctx, id)
+	s.cleanupCOSObjects(ctx, keys)
+	return nil
 }
 
 func (s *articleService) Publish(ctx context.Context, id uint64, req *dto.PublishArticleRequest) error {
@@ -296,4 +305,74 @@ func (s *articleService) bindArticleAttachmentIDs(ctx context.Context, article *
 
 func (s *articleService) canAccessContent(ctx context.Context, contentType int8, contentID uint64, userID *uint64, ownerID *uint64) (bool, error) {
 	return canAccessContentByRole(ctx, s.contentPermRepo, s.roleRepo, contentType, contentID, userID, ownerID)
+}
+
+type fileObjectRemover interface {
+	DeleteObject(ctx context.Context, key string) error
+}
+
+func (s *articleService) collectDeleteFileIDsAndKeys(ctx context.Context, coverFileID *uint64, articleID uint64) ([]uint64, []string, error) {
+	ids := make([]uint64, 0, 8)
+	if coverFileID != nil && *coverFileID > 0 {
+		ids = append(ids, *coverFileID)
+	}
+	if s.attachmentRepo != nil {
+		attachmentIDs, err := s.attachmentRepo.ListFileIDs(ctx, articleID)
+		if err != nil {
+			return nil, nil, err
+		}
+		ids = append(ids, attachmentIDs...)
+	}
+	return s.resolveFileDeletionTargets(ctx, ids)
+}
+
+func (s *articleService) resolveFileDeletionTargets(ctx context.Context, ids []uint64) ([]uint64, []string, error) {
+	uniq := make(map[uint64]struct{}, len(ids))
+	resolvedIDs := make([]uint64, 0, len(ids))
+	keys := make([]string, 0, len(ids))
+	for _, id := range ids {
+		if id == 0 {
+			continue
+		}
+		if _, ok := uniq[id]; ok {
+			continue
+		}
+		uniq[id] = struct{}{}
+		resolvedIDs = append(resolvedIDs, id)
+		if s.fileRepo == nil {
+			continue
+		}
+		file, err := s.fileRepo.GetByID(ctx, id)
+		if err != nil {
+			return nil, nil, err
+		}
+		if file == nil {
+			continue
+		}
+		key := strings.TrimSpace(file.Key)
+		if key != "" {
+			keys = append(keys, key)
+		}
+	}
+	return resolvedIDs, keys, nil
+}
+
+func (s *articleService) cleanupCOSObjects(ctx context.Context, keys []string) {
+	if s.fileObjectRemover == nil || len(keys) == 0 {
+		return
+	}
+	uniq := make(map[string]struct{}, len(keys))
+	for _, key := range keys {
+		k := strings.TrimSpace(key)
+		if k == "" {
+			continue
+		}
+		if _, ok := uniq[k]; ok {
+			continue
+		}
+		uniq[k] = struct{}{}
+		if err := s.fileObjectRemover.DeleteObject(ctx, k); err != nil {
+			s.log.WithError(err).Warn("删除COS文件失败")
+		}
+	}
 }

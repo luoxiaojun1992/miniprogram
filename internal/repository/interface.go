@@ -81,6 +81,7 @@ type BannerRepository interface {
 	Create(ctx context.Context, banner *entity.Banner) error
 	Update(ctx context.Context, banner *entity.Banner) error
 	Delete(ctx context.Context, id uint64) error
+	DeleteWithFile(ctx context.Context, id uint64, fileID *uint64) error
 }
 
 // ArticleRepository defines the interface for article data access.
@@ -99,6 +100,7 @@ type ArticleRepository interface {
 	DecrCommentCount(ctx context.Context, id uint64) error
 	IncrShareCount(ctx context.Context, id uint64) error
 	HasAssociations(ctx context.Context, id uint64) (bool, error)
+	DeleteCascade(ctx context.Context, id uint64, fileIDs []uint64) error
 }
 
 // CourseRepository defines the interface for course data access.
@@ -118,6 +120,7 @@ type CourseRepository interface {
 	IncrShareCount(ctx context.Context, id uint64) error
 	IncrStudyCount(ctx context.Context, id uint64) error
 	HasAssociations(ctx context.Context, id uint64) (bool, error)
+	DeleteCascade(ctx context.Context, id uint64, fileIDs []uint64) error
 }
 
 // CourseUnitRepository defines the interface for course unit data access.
@@ -128,12 +131,14 @@ type CourseUnitRepository interface {
 	Update(ctx context.Context, unit *entity.CourseUnit) error
 	Delete(ctx context.Context, id uint64) error
 	HasStudyRecords(ctx context.Context, id uint64) (bool, error)
+	DeleteCascade(ctx context.Context, id uint64, fileIDs []uint64) error
 }
 
 // FileRepository defines the interface for file metadata access.
 type FileRepository interface {
 	GetByID(ctx context.Context, id uint64) (*entity.File, error)
 	Create(ctx context.Context, file *entity.File) error
+	DeleteByIDs(ctx context.Context, ids []uint64) error
 }
 
 // ArticleAttachmentRepository defines article attachment relation access.

@@ -84,6 +84,52 @@ func (s *courseAttachmentRepoStub) GetByFileID(_ context.Context, _ uint64) (*en
 	return nil, nil
 }
 
+type courseUnitAttachmentRepoStub struct {
+	listFn    func(ctx context.Context, unitID uint64) ([]uint64, error)
+	replaceFn func(ctx context.Context, unitID uint64, fileIDs []uint64) error
+}
+
+func (s *courseUnitAttachmentRepoStub) ListFileIDs(ctx context.Context, unitID uint64) ([]uint64, error) {
+	if s.listFn != nil {
+		return s.listFn(ctx, unitID)
+	}
+	return nil, nil
+}
+
+func (s *courseUnitAttachmentRepoStub) Replace(ctx context.Context, unitID uint64, fileIDs []uint64) error {
+	if s.replaceFn != nil {
+		return s.replaceFn(ctx, unitID, fileIDs)
+	}
+	return nil
+}
+
+func (s *courseUnitAttachmentRepoStub) ListByUnitID(ctx context.Context, unitID uint64) ([]*entity.CourseUnitAttachment, error) {
+	ids, err := s.ListFileIDs(ctx, unitID)
+	if err != nil {
+		return nil, err
+	}
+	rows := make([]*entity.CourseUnitAttachment, 0, len(ids))
+	for i, id := range ids {
+		rows = append(rows, &entity.CourseUnitAttachment{ID: uint64(i + 1), UnitID: unitID, FileID: id})
+	}
+	return rows, nil
+}
+
+func (s *courseUnitAttachmentRepoStub) GetByFileID(_ context.Context, _ uint64) (*entity.CourseUnitAttachment, error) {
+	return nil, nil
+}
+
+type cosRemoverStub struct {
+	deleteFn func(ctx context.Context, key string) error
+}
+
+func (s *cosRemoverStub) DeleteObject(ctx context.Context, key string) error {
+	if s.deleteFn != nil {
+		return s.deleteFn(ctx, key)
+	}
+	return nil
+}
+
 // ==================== ModuleService ====================
 
 func newModuleService(modRepo *testutil.MockModuleRepository, pageRepo *testutil.MockModulePageRepository) ModuleService {
@@ -217,8 +263,10 @@ func TestModuleService_CreatePage(t *testing.T) {
 }
 
 func TestModuleService_CreatePage_WithContentType(t *testing.T) {
+	var saved *entity.ModulePage
 	pageRepo := &testutil.MockModulePageRepository{
 		CreateFn: func(_ context.Context, p *entity.ModulePage) error {
+			saved = p
 			p.ID = 2
 			return nil
 		},
@@ -229,6 +277,8 @@ func TestModuleService_CreatePage_WithContentType(t *testing.T) {
 	})
 	require.NoError(t, err)
 	assert.Equal(t, uint(2), id)
+	require.NotNil(t, saved)
+	assert.Equal(t, int8(1), saved.ContentType)
 }
 
 func TestModuleService_UpdatePage_Found(t *testing.T) {
@@ -425,8 +475,10 @@ func TestArticleService_AdminGetByID_NotFound(t *testing.T) {
 }
 
 func TestArticleService_Create_WithPermissions(t *testing.T) {
+	var saved *entity.Article
 	repo := &testutil.MockArticleRepository{
 		CreateFn: func(_ context.Context, a *entity.Article) error {
+			saved = a
 			a.ID = 1
 			return nil
 		},
@@ -442,6 +494,8 @@ func TestArticleService_Create_WithPermissions(t *testing.T) {
 	}, 1)
 	require.NoError(t, err)
 	assert.Equal(t, uint64(1), id)
+	require.NotNil(t, saved)
+	assert.Equal(t, int8(1), saved.ContentType)
 }
 
 func TestArticleService_Create_NoPermissions(t *testing.T) {
@@ -497,11 +551,13 @@ func TestArticleService_Create_MaskSensitiveWords(t *testing.T) {
 
 func TestArticleService_Update_Success(t *testing.T) {
 	article := &entity.Article{ID: 1}
+	var updated *entity.Article
 	repo := &testutil.MockArticleRepository{
 		GetByIDFn: func(_ context.Context, id uint64) (*entity.Article, error) {
 			return article, nil
 		},
 		UpdateFn: func(_ context.Context, a *entity.Article) error {
+			updated = a
 			return nil
 		},
 	}
@@ -513,6 +569,8 @@ func TestArticleService_Update_Success(t *testing.T) {
 	svc := newArticleService(repo, permRepo)
 	err := svc.Update(context.Background(), 1, &dto.UpdateArticleRequest{Title: "New"})
 	require.NoError(t, err)
+	require.NotNil(t, updated)
+	assert.Equal(t, int8(1), updated.ContentType)
 }
 
 func TestArticleService_Update_NotFound(t *testing.T) {
@@ -542,7 +600,7 @@ func TestArticleService_Delete_Success(t *testing.T) {
 		GetByIDFn: func(_ context.Context, id uint64) (*entity.Article, error) {
 			return &entity.Article{ID: 1}, nil
 		},
-		DeleteFn: func(_ context.Context, id uint64) error {
+		DeleteCascadeFn: func(_ context.Context, id uint64, fileIDs []uint64) error {
 			return nil
 		},
 	}
@@ -564,12 +622,14 @@ func TestArticleService_Delete_NotFound(t *testing.T) {
 
 func TestArticleService_Delete_WithAssociations(t *testing.T) {
 	repo := &testutil.MockArticleRepository{
-		GetByIDFn:         func(_ context.Context, id uint64) (*entity.Article, error) { return &entity.Article{ID: id}, nil },
-		HasAssociationsFn: func(_ context.Context, id uint64) (bool, error) { return true, nil },
+		GetByIDFn: func(_ context.Context, id uint64) (*entity.Article, error) { return &entity.Article{ID: id}, nil },
+		DeleteCascadeFn: func(_ context.Context, id uint64, fileIDs []uint64) error {
+			return nil
+		},
 	}
 	svc := newArticleService(repo, nil)
 	err := svc.Delete(context.Background(), 1)
-	require.Error(t, err)
+	require.NoError(t, err)
 }
 
 func TestArticleService_Publish_Success(t *testing.T) {
@@ -620,6 +680,9 @@ func newCourseService(
 	unitRepo *testutil.MockCourseUnitRepository,
 	permRepo *testutil.MockContentPermissionRepository,
 ) CourseService {
+	if unitRepo == nil {
+		unitRepo = &testutil.MockCourseUnitRepository{}
+	}
 	return NewCourseService(courseRepo, unitRepo, permRepo, logrus.New())
 }
 
@@ -813,7 +876,7 @@ func TestCourseService_Delete_Success(t *testing.T) {
 		GetByIDFn: func(_ context.Context, id uint64) (*entity.Course, error) {
 			return &entity.Course{ID: 1}, nil
 		},
-		DeleteFn: func(_ context.Context, id uint64) error {
+		DeleteCascadeFn: func(_ context.Context, id uint64, fileIDs []uint64) error {
 			return nil
 		},
 	}
@@ -835,12 +898,14 @@ func TestCourseService_Delete_NotFound(t *testing.T) {
 
 func TestCourseService_Delete_WithAssociations(t *testing.T) {
 	repo := &testutil.MockCourseRepository{
-		GetByIDFn:         func(_ context.Context, id uint64) (*entity.Course, error) { return &entity.Course{ID: id}, nil },
-		HasAssociationsFn: func(_ context.Context, id uint64) (bool, error) { return true, nil },
+		GetByIDFn: func(_ context.Context, id uint64) (*entity.Course, error) { return &entity.Course{ID: id}, nil },
+		DeleteCascadeFn: func(_ context.Context, id uint64, fileIDs []uint64) error {
+			return nil
+		},
 	}
 	svc := newCourseService(repo, nil, nil)
 	err := svc.Delete(context.Background(), 1)
-	require.Error(t, err)
+	require.NoError(t, err)
 }
 
 func TestCourseService_Publish_Success(t *testing.T) {
@@ -962,7 +1027,7 @@ func TestCourseService_DeleteUnit_Success(t *testing.T) {
 		GetByIDFn: func(_ context.Context, id uint64) (*entity.CourseUnit, error) {
 			return unit, nil
 		},
-		DeleteFn: func(_ context.Context, id uint64) error {
+		DeleteCascadeFn: func(_ context.Context, id uint64, fileIDs []uint64) error {
 			return nil
 		},
 	}
@@ -987,11 +1052,87 @@ func TestCourseService_DeleteUnit_HasStudyRecords(t *testing.T) {
 		GetByIDFn: func(_ context.Context, id uint64) (*entity.CourseUnit, error) {
 			return &entity.CourseUnit{ID: id, CourseID: 1}, nil
 		},
-		HasStudyRecordsFn: func(_ context.Context, id uint64) (bool, error) { return true, nil },
+		DeleteCascadeFn: func(_ context.Context, id uint64, fileIDs []uint64) error {
+			return nil
+		},
 	}
 	svc := newCourseService(nil, unitRepo, nil)
 	err := svc.DeleteUnit(context.Background(), 1, 1)
-	require.Error(t, err)
+	require.NoError(t, err)
+}
+
+func TestArticleService_Delete_CascadeWithCOS(t *testing.T) {
+	deletedKeys := make([]string, 0, 2)
+	repo := &testutil.MockArticleRepository{
+		GetByIDFn: func(_ context.Context, id uint64) (*entity.Article, error) {
+			cover := uint64(10)
+			return &entity.Article{ID: id, CoverFileID: &cover}, nil
+		},
+		DeleteCascadeFn: func(_ context.Context, id uint64, fileIDs []uint64) error {
+			assert.ElementsMatch(t, []uint64{10, 11}, fileIDs)
+			return nil
+		},
+	}
+	attachRepo := &articleAttachmentRepoStub{
+		listFn: func(_ context.Context, articleID uint64) ([]uint64, error) {
+			return []uint64{11, 11}, nil
+		},
+	}
+	fileRepo := &testutil.MockFileRepository{
+		GetByIDFn: func(_ context.Context, id uint64) (*entity.File, error) {
+			if id == 10 {
+				return &entity.File{ID: 10, Key: "k/cover"}, nil
+			}
+			return &entity.File{ID: 11, Key: "k/attach"}, nil
+		},
+	}
+	remover := &cosRemoverStub{
+		deleteFn: func(_ context.Context, key string) error {
+			deletedKeys = append(deletedKeys, key)
+			return nil
+		},
+	}
+	svc := NewArticleService(repo, nil, logrus.New(), attachRepo, fileRepo, remover)
+	err := svc.Delete(context.Background(), 1)
+	require.NoError(t, err)
+	assert.ElementsMatch(t, []string{"k/cover", "k/attach"}, deletedKeys)
+}
+
+func TestCourseService_DeleteUnit_CascadeWithCOS(t *testing.T) {
+	deletedKeys := make([]string, 0, 2)
+	unitRepo := &testutil.MockCourseUnitRepository{
+		GetByIDFn: func(_ context.Context, id uint64) (*entity.CourseUnit, error) {
+			video := uint64(31)
+			return &entity.CourseUnit{ID: id, CourseID: 1, VideoFileID: &video}, nil
+		},
+		DeleteCascadeFn: func(_ context.Context, id uint64, fileIDs []uint64) error {
+			assert.ElementsMatch(t, []uint64{31, 32}, fileIDs)
+			return nil
+		},
+	}
+	unitAttachRepo := &courseUnitAttachmentRepoStub{
+		listFn: func(_ context.Context, unitID uint64) ([]uint64, error) {
+			return []uint64{32, 32}, nil
+		},
+	}
+	fileRepo := &testutil.MockFileRepository{
+		GetByIDFn: func(_ context.Context, id uint64) (*entity.File, error) {
+			if id == 31 {
+				return &entity.File{ID: 31, Key: "k/video"}, nil
+			}
+			return &entity.File{ID: 32, Key: "k/unit-attach"}, nil
+		},
+	}
+	remover := &cosRemoverStub{
+		deleteFn: func(_ context.Context, key string) error {
+			deletedKeys = append(deletedKeys, key)
+			return nil
+		},
+	}
+	svc := NewCourseService(nil, unitRepo, nil, logrus.New(), unitAttachRepo, fileRepo, remover)
+	err := svc.DeleteUnit(context.Background(), 1, 9)
+	require.NoError(t, err)
+	assert.ElementsMatch(t, []string{"k/video", "k/unit-attach"}, deletedKeys)
 }
 
 func TestArticleService_Pin_Success(t *testing.T) {
