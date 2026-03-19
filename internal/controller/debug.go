@@ -87,6 +87,10 @@ func (c *DebugController) GenerateTestToken(ctx *gin.Context) {
 		}
 		userType = user.UserType
 	}
+	if !isValidDebugUserType(userType) {
+		ctx.Error(apperrors.NewBadRequest("用户类型不合法，仅支持1/2/3", nil))
+		return
+	}
 
 	expiry := c.jwtExpiry
 	if req.ExpirySeconds > 0 {
@@ -106,6 +110,10 @@ func (c *DebugController) GenerateTestToken(ctx *gin.Context) {
 		UserID:      req.UserID,
 		UserType:    userType,
 	})
+}
+
+func isValidDebugUserType(userType int8) bool {
+	return userType == 1 || userType == 2 || userType == 3
 }
 
 func (c *DebugController) generateToken(userID uint64, userType int8, expirySeconds int) (string, error) {
