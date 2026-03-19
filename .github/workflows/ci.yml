@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - main
+      - "copilot/**"
   pull_request:
 
 jobs:
