@@ -83,9 +83,6 @@ func (s *followService) Add(ctx context.Context, followerID, followedID uint64) 
 }
 
 func (s *followService) Remove(ctx context.Context, followerID, followedID uint64) error {
-	if followerID == followedID {
-		return errors.NewBadRequest("不能取关自己", nil)
-	}
 	if err := s.followRepo.Delete(ctx, followerID, followedID); err != nil {
 		return err
 	}
@@ -139,4 +136,3 @@ func (s *followService) adjustUserFollowerCount(ctx context.Context, userID uint
 		ValueBigint: &next,
 	})
 }
-

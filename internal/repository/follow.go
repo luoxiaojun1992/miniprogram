@@ -45,4 +45,3 @@ func (r *followRepository) Delete(ctx context.Context, followerID, followedID ui
 	}
 	return nil
 }
-

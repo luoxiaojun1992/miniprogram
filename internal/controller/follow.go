@@ -61,4 +61,3 @@ func (c *FollowController) Remove(ctx *gin.Context) {
 	}
 	response.Success(ctx, gin.H{"user_id": targetID, "is_followed": false})
 }
-
