@@ -34,8 +34,8 @@ func InitRouter(p *Provider) *gin.Engine {
 	})
 
 	v1 := r.Group("/v1")
-	optionalJWT := middleware.OptionalJWTAuthMiddleware(p.Config.JWT.Secret)
-	requiredJWT := middleware.JWTAuthMiddleware(p.Config.JWT.Secret)
+	optionalJWT := middleware.OptionalJWTAuthMiddleware(p.Config.JWT.Secret, p.UserRepo, p.UserAttributeRepo)
+	requiredJWT := middleware.JWTAuthMiddleware(p.Config.JWT.Secret, p.UserRepo, p.UserAttributeRepo)
 
 	// ==================== Auth ====================
 	auth := v1.Group("/auth")

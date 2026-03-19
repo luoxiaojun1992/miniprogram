@@ -82,6 +82,21 @@ require.NoError(t, json.Unmarshal(w.Body.Bytes(), &resp))
 assert.EqualValues(t, 1, resp.Data["user_type"])
 }
 
+func TestDebugCtrl_GenerateTestToken_UserTypeOverride_BackendTypes(t *testing.T) {
+ctrl := NewDebugController(nil, "test-secret", 3600, logrus.New())
+r := newDebugRouter(ctrl)
+for _, userType := range []int{2, 3} {
+w := postDebug(r, map[string]interface{}{
+"user_id":            5,
+"user_type_override": userType,
+})
+assert.Equal(t, 200, w.Code)
+var resp apiResponse
+require.NoError(t, json.Unmarshal(w.Body.Bytes(), &resp))
+assert.EqualValues(t, userType, resp.Data["user_type"])
+}
+}
+
 func TestDebugCtrl_GenerateTestToken_CustomExpiry(t *testing.T) {
 ctrl := NewDebugController(nil, "test-secret", 3600, logrus.New())
 r := newDebugRouter(ctrl)
@@ -151,6 +166,16 @@ ctrl := newDebugCtrl(repo)
 r := newDebugRouter(ctrl)
 w := postDebug(r, map[string]interface{}{"user_id": 1})
 assert.Equal(t, 500, w.Code)
+}
+
+func TestDebugCtrl_GenerateTestToken_InvalidUserTypeOverride(t *testing.T) {
+ctrl := NewDebugController(nil, "test-secret", 3600, logrus.New())
+r := newDebugRouter(ctrl)
+w := postDebug(r, map[string]interface{}{
+"user_id":            5,
+"user_type_override": 4,
+})
+assert.Equal(t, 400, w.Code)
 }
 
 // ── Token sign failure ────────────────────────────────────────────────────────

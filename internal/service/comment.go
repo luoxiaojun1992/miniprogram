@@ -8,6 +8,7 @@ import (
 	"github.com/luoxiaojun1992/miniprogram/internal/model/dto"
 	"github.com/luoxiaojun1992/miniprogram/internal/model/entity"
 	"github.com/luoxiaojun1992/miniprogram/internal/pkg/errors"
+	"github.com/luoxiaojun1992/miniprogram/internal/pkg/userstate"
 	"github.com/luoxiaojun1992/miniprogram/internal/repository"
 )
 
@@ -17,6 +18,7 @@ type commentService struct {
 	courseRepo        repository.CourseRepository
 	notifRepo         repository.NotificationRepository
 	sensitiveWordRepo repository.SensitiveWordRepository
+	uaRepo            repository.UserAttributeRepository
 	log               *logrus.Logger
 }
 
@@ -27,18 +29,16 @@ func NewCommentService(
 	courseRepo repository.CourseRepository,
 	notifRepo repository.NotificationRepository,
 	log *logrus.Logger,
-	sensitiveWordRepo ...repository.SensitiveWordRepository,
+	sensitiveWordRepo repository.SensitiveWordRepository,
+	userAttributeRepo repository.UserAttributeRepository,
 ) CommentService {
-	var swRepo repository.SensitiveWordRepository
-	if len(sensitiveWordRepo) > 0 {
-		swRepo = sensitiveWordRepo[0]
-	}
 	return &commentService{
 		commentRepo:       commentRepo,
 		articleRepo:       articleRepo,
 		courseRepo:        courseRepo,
 		notifRepo:         notifRepo,
-		sensitiveWordRepo: swRepo,
+		sensitiveWordRepo: sensitiveWordRepo,
+		uaRepo:            userAttributeRepo,
 		log:               log,
 	}
 }
@@ -48,6 +48,15 @@ func (s *commentService) List(ctx context.Context, contentType int8, contentID u
 }
 
 func (s *commentService) Create(ctx context.Context, userID uint64, contentType int8, contentID uint64, req *dto.CreateCommentRequest) (*entity.Comment, error) {
+	if s.uaRepo != nil {
+		attrs, err := s.uaRepo.ListByUserID(ctx, userID)
+		if err != nil {
+			return nil, err
+		}
+		if userstate.IsMuted(attrs) {
+			return nil, errors.NewForbidden("账号已被禁言，无法发表评论", nil)
+		}
+	}
 	if hasHTMLTag(req.Content) {
 		return nil, errors.NewValidation("评论内容不允许包含HTML标签", nil)
 	}

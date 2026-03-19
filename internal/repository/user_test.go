@@ -95,7 +95,7 @@ func TestUserRepository_Create_Success(t *testing.T) {
 	mock.ExpectExec("INSERT").WillReturnResult(sqlmock.NewResult(1, 1))
 	mock.ExpectCommit()
 
-	u := &entity.User{Nickname: "new user", UserType: 1, Status: 1}
+	u := &entity.User{Nickname: "new user", UserType: 1}
 	err := repo.Create(context.Background(), u)
 	require.NoError(t, err)
 }
@@ -174,7 +174,7 @@ func TestUserRepository_List_Success(t *testing.T) {
 			AddRow(2, "o2", "N2", 1, 1, now, now, nil),
 	)
 
-	users, total, err := repo.List(context.Background(), 1, 10, "", nil, nil)
+	users, total, err := repo.List(context.Background(), 1, 10, "", nil)
 	require.NoError(t, err)
 	assert.Equal(t, int64(2), total)
 	assert.Len(t, users, 2)
@@ -185,8 +185,6 @@ func TestUserRepository_List_WithFilters(t *testing.T) {
 	repo := NewUserRepository(db)
 
 	userType := int8(1)
-	status := int8(1)
-
 	mock.ExpectQuery("SELECT count").WillReturnRows(sqlmock.NewRows([]string{"count"}).AddRow(1))
 	now := time.Now()
 	mock.ExpectQuery("SELECT").WillReturnRows(
@@ -194,7 +192,7 @@ func TestUserRepository_List_WithFilters(t *testing.T) {
 			AddRow(1, "o1", "Keyword", 1, 1, now, now, nil),
 	)
 
-	users, total, err := repo.List(context.Background(), 1, 10, "Keyword", &userType, &status)
+	users, total, err := repo.List(context.Background(), 1, 10, "Keyword", &userType)
 	require.NoError(t, err)
 	assert.Equal(t, int64(1), total)
 	assert.Len(t, users, 1)
@@ -206,7 +204,7 @@ func TestUserRepository_List_CountError(t *testing.T) {
 
 	mock.ExpectQuery("SELECT count").WillReturnError(fmt.Errorf("count error"))
 
-	_, _, err := repo.List(context.Background(), 1, 10, "", nil, nil)
+	_, _, err := repo.List(context.Background(), 1, 10, "", nil)
 	assert.Error(t, err)
 }
 
@@ -217,7 +215,7 @@ func TestUserRepository_List_FindError(t *testing.T) {
 	mock.ExpectQuery("SELECT count").WillReturnRows(sqlmock.NewRows([]string{"count"}).AddRow(1))
 	mock.ExpectQuery("SELECT").WillReturnError(fmt.Errorf("find error"))
 
-	_, _, err := repo.List(context.Background(), 1, 10, "", nil, nil)
+	_, _, err := repo.List(context.Background(), 1, 10, "", nil)
 	assert.Error(t, err)
 }
 

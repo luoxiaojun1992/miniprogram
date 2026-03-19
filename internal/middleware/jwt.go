@@ -1,13 +1,17 @@
 package middleware
 
 import (
+	"context"
 	"net/http"
 	"strings"
 
 	"github.com/gin-gonic/gin"
 	"github.com/golang-jwt/jwt/v5"
 
+	"github.com/luoxiaojun1992/miniprogram/internal/model/entity"
 	"github.com/luoxiaojun1992/miniprogram/internal/pkg/errors"
+	"github.com/luoxiaojun1992/miniprogram/internal/pkg/userstate"
+	"github.com/luoxiaojun1992/miniprogram/internal/repository"
 )
 
 // JWTClaims represents the JWT claims.
@@ -18,7 +22,11 @@ type JWTClaims struct {
 }
 
 // JWTAuthMiddleware validates the JWT token from the Authorization header.
-func JWTAuthMiddleware(secret string) gin.HandlerFunc {
+func JWTAuthMiddleware(
+	secret string,
+	userRepo repository.UserRepository,
+	uaRepo repository.UserAttributeRepository,
+) gin.HandlerFunc {
 	return func(ctx *gin.Context) {
 		authHeader := ctx.GetHeader("Authorization")
 		if authHeader == "" {
@@ -47,6 +55,13 @@ func JWTAuthMiddleware(secret string) gin.HandlerFunc {
 			ctx.Abort()
 			return
 		}
+		if userRepo != nil {
+			if err = ensureNotFrozen(ctx.Request.Context(), userRepo, uaRepo, claims.UserID); err != nil {
+				ctx.Error(err)
+				ctx.Abort()
+				return
+			}
+		}
 
 		ctx.Set("user_id", claims.UserID)
 		ctx.Set("user_type", claims.UserType)
@@ -55,7 +70,11 @@ func JWTAuthMiddleware(secret string) gin.HandlerFunc {
 }
 
 // OptionalJWTAuthMiddleware validates the JWT token if present, but does not abort if missing.
-func OptionalJWTAuthMiddleware(secret string) gin.HandlerFunc {
+func OptionalJWTAuthMiddleware(
+	secret string,
+	userRepo repository.UserRepository,
+	uaRepo repository.UserAttributeRepository,
+) gin.HandlerFunc {
 	return func(ctx *gin.Context) {
 		authHeader := ctx.GetHeader("Authorization")
 		if authHeader == "" {
@@ -78,11 +97,43 @@ func OptionalJWTAuthMiddleware(secret string) gin.HandlerFunc {
 			return []byte(secret), nil
 		})
 		if err == nil && token.Valid {
+			if userRepo != nil {
+				if stateErr := ensureNotFrozen(ctx.Request.Context(), userRepo, uaRepo, claims.UserID); stateErr != nil {
+					ctx.Next()
+					return
+				}
+			}
 			ctx.Set("user_id", claims.UserID)
 			ctx.Set("user_type", claims.UserType)
 		}
 		ctx.Next()
 	}
+}
+
+func ensureNotFrozen(
+	ctx context.Context,
+	userRepo repository.UserRepository,
+	uaRepo repository.UserAttributeRepository,
+	userID uint64,
+) error {
+	user, err := userRepo.GetByID(ctx, userID)
+	if err != nil {
+		return err
+	}
+	if user == nil {
+		return errors.NewUnauthorized("用户不存在", nil)
+	}
+	var attrs []*entity.UserAttribute
+	if uaRepo != nil {
+		attrs, err = uaRepo.ListByUserID(ctx, userID)
+		if err != nil {
+			return err
+		}
+	}
+	if userstate.IsFrozen(attrs) {
+		return errors.NewUnauthorized("账号已被冻结", nil)
+	}
+	return nil
 }
 
 // PermissionMiddleware checks if the current user has the required permission code.
@@ -129,11 +180,11 @@ func GetCurrentUserType(ctx *gin.Context) (int8, bool) {
 	return t, ok
 }
 
-// RequireAdmin returns 403 if the current user is not an admin (user_type >= 2).
+// RequireAdmin returns 403 if the current user is not a backend admin (user_type 2 or 3).
 func RequireAdmin() gin.HandlerFunc {
 	return func(ctx *gin.Context) {
 		userType, ok := GetCurrentUserType(ctx)
-		if !ok || userType < 2 {
+		if !ok || (userType != 2 && userType != 3) {
 			ctx.JSON(http.StatusForbidden, gin.H{
 				"code":    403001,
 				"message": "需要管理员权限",

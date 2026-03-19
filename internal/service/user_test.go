@@ -3,7 +3,6 @@ package service
 import (
 	"context"
 	"testing"
-	"time"
 
 	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
@@ -244,12 +243,12 @@ func TestUserService_GetPermissions_PermError(t *testing.T) {
 func TestUserService_List(t *testing.T) {
 	users := []*entity.User{{ID: 1}, {ID: 2}}
 	userRepo := &testutil.MockUserRepository{
-		ListFn: func(_ context.Context, page, pageSize int, keyword string, userType, status *int8) ([]*entity.User, int64, error) {
+		ListFn: func(_ context.Context, page, pageSize int, keyword string, userType *int8) ([]*entity.User, int64, error) {
 			return users, 2, nil
 		},
 	}
 	svc := newUserService(userRepo, nil, nil, nil, nil)
-	got, total, err := svc.List(context.Background(), 1, 10, "", nil, nil)
+	got, total, err := svc.List(context.Background(), 1, 10, "", nil)
 	require.NoError(t, err)
 	assert.Equal(t, int64(2), total)
 	assert.Len(t, got, 2)
@@ -391,7 +390,7 @@ func TestUserService_UpdateUser_Success(t *testing.T) {
 		},
 	}
 	svc := newUserService(userRepo, nil, nil, nil, nil)
-	err := svc.UpdateUser(context.Background(), 1, &dto.UpdateUserRequest{Nickname: "NewName", Status: 1}, 99)
+	err := svc.UpdateUser(context.Background(), 1, &dto.UpdateUserRequest{Nickname: "NewName"}, 99)
 	require.NoError(t, err)
 }
 
@@ -601,19 +600,6 @@ func TestUserService_UpdateUser_ChangeUserType(t *testing.T) {
 	err := svc.UpdateUser(context.Background(), 1, &dto.UpdateUserRequest{UserType: 2}, 99)
 	require.NoError(t, err)
 	assert.Equal(t, int8(2), user.UserType)
-}
-
-func TestUserService_UpdateUser_SetFreezeEndTime(t *testing.T) {
-	now := time.Now()
-	user := &entity.User{ID: 1}
-	userRepo := &testutil.MockUserRepository{
-		GetByIDFn: func(_ context.Context, id uint64) (*entity.User, error) { return user, nil },
-		UpdateFn:  func(_ context.Context, u *entity.User) error { return nil },
-	}
-	svc := newUserService(userRepo, nil, nil, nil, nil)
-	err := svc.UpdateUser(context.Background(), 1, &dto.UpdateUserRequest{FreezeEndTime: &now}, 99)
-	require.NoError(t, err)
-	assert.Equal(t, &now, user.FreezeEndTime)
 }
 
 func TestUserService_DeleteUser_DeleteError(t *testing.T) {

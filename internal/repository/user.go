@@ -63,16 +63,13 @@ func (r *userRepository) Delete(ctx context.Context, id uint64) error {
 	return nil
 }
 
-func (r *userRepository) List(ctx context.Context, page, pageSize int, keyword string, userType, status *int8) ([]*entity.User, int64, error) {
+func (r *userRepository) List(ctx context.Context, page, pageSize int, keyword string, userType *int8) ([]*entity.User, int64, error) {
 	db := r.db.WithContext(ctx).Model(&entity.User{})
 	if keyword != "" {
 		db = db.Where("nickname LIKE ?", "%"+keyword+"%")
 	}
 	if userType != nil {
 		db = db.Where("user_type = ?", *userType)
-	}
-	if status != nil {
-		db = db.Where("status = ?", *status)
 	}
 	var total int64
 	if err := db.Count(&total).Error; err != nil {

@@ -95,18 +95,13 @@ func (c *UserController) AdminListUsers(ctx *gin.Context) {
 		ctx.Error(apperrors.NewBadRequest("参数绑定失败", err))
 		return
 	}
-	var userType, status *int8
+	var userType *int8
 	if ut := ctx.Query("user_type"); ut != "" {
 		v, _ := strconv.ParseInt(ut, 10, 8)
 		t := int8(v)
 		userType = &t
 	}
-	if st := ctx.Query("status"); st != "" {
-		v, _ := strconv.ParseInt(st, 10, 8)
-		s := int8(v)
-		status = &s
-	}
-	users, total, err := c.svc.List(ctx, q.GetPage(), q.GetPageSize(), q.Keyword, userType, status)
+	users, total, err := c.svc.List(ctx, q.GetPage(), q.GetPageSize(), q.Keyword, userType)
 	if err != nil {
 		ctx.Error(err)
 		return
