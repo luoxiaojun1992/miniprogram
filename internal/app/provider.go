@@ -43,6 +43,7 @@ type Provider struct {
 	StudyRecordRepo       repository.StudyRecordRepository
 	CollectionRepo        repository.CollectionRepository
 	LikeRepo              repository.LikeRepository
+	FollowRepo            repository.FollowRepository
 	CommentRepo           repository.CommentRepository
 	NotificationRepo      repository.NotificationRepository
 	WechatConfigRepo      repository.WechatConfigRepository
@@ -64,6 +65,7 @@ type Provider struct {
 	StudyRecordSvc  service.StudyRecordService
 	CollectionSvc   service.CollectionService
 	LikeSvc         service.LikeService
+	FollowSvc       service.FollowService
 	CommentSvc      service.CommentService
 	NotificationSvc service.NotificationService
 	WechatConfigSvc service.WechatConfigService
@@ -84,6 +86,7 @@ type Provider struct {
 	StudyRecordCtrl  *controller.StudyRecordController
 	CollectionCtrl   *controller.CollectionController
 	LikeCtrl         *controller.LikeController
+	FollowCtrl       *controller.FollowController
 	CommentCtrl      *controller.CommentController
 	NotificationCtrl *controller.NotificationController
 	SystemCtrl       *controller.SystemController
@@ -180,6 +183,7 @@ func (p *Provider) initRepositories() {
 	p.StudyRecordRepo = repository.NewStudyRecordRepository(p.DB)
 	p.CollectionRepo = repository.NewCollectionRepository(p.DB)
 	p.LikeRepo = repository.NewLikeRepository(p.DB)
+	p.FollowRepo = repository.NewFollowRepository(p.DB)
 	p.CommentRepo = repository.NewCommentRepository(p.DB)
 	p.NotificationRepo = repository.NewNotificationRepository(p.DB)
 	p.WechatConfigRepo = repository.NewWechatConfigRepository(p.DB)
@@ -232,6 +236,9 @@ func (p *Provider) initServices() {
 	p.LikeSvc = service.NewLikeService(
 		p.LikeRepo, p.ArticleRepo, p.CourseRepo, p.NotificationRepo, p.Log, p.AttributeRepo, p.UserAttributeRepo,
 	)
+	p.FollowSvc = service.NewFollowService(
+		p.FollowRepo, p.UserRepo, p.NotificationRepo, p.Log, p.AttributeRepo, p.UserAttributeRepo,
+	)
 	p.CommentSvc = service.NewCommentService(p.CommentRepo, p.ArticleRepo, p.CourseRepo, p.NotificationRepo, p.Log, p.SensitiveWordRepo)
 	p.NotificationSvc = service.NewNotificationService(p.NotificationRepo, p.Log)
 	p.WechatConfigSvc = service.NewWechatConfigService(p.WechatConfigRepo, p.Log)
@@ -256,6 +263,7 @@ func (p *Provider) initControllers() {
 	p.StudyRecordCtrl = controller.NewStudyRecordController(p.StudyRecordSvc, p.Log)
 	p.CollectionCtrl = controller.NewCollectionController(p.CollectionSvc, p.Log)
 	p.LikeCtrl = controller.NewLikeController(p.LikeSvc, p.Log)
+	p.FollowCtrl = controller.NewFollowController(p.FollowSvc, p.Log)
 	p.CommentCtrl = controller.NewCommentController(p.CommentSvc, p.Log)
 	p.NotificationCtrl = controller.NewNotificationController(p.NotificationSvc, p.Log)
 	p.SystemCtrl = controller.NewSystemController(p.WechatConfigSvc, p.AuditLogSvc, p.LogConfigSvc, p.Log)

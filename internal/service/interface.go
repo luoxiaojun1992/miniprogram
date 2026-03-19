@@ -115,6 +115,12 @@ type LikeService interface {
 	Remove(ctx context.Context, userID uint64, contentType int8, contentID uint64) error
 }
 
+// FollowService handles follow operations.
+type FollowService interface {
+	Add(ctx context.Context, followerID, followedID uint64) error
+	Remove(ctx context.Context, followerID, followedID uint64) error
+}
+
 // CommentService handles comment operations.
 type CommentService interface {
 	List(ctx context.Context, contentType int8, contentID uint64, page, pageSize int) ([]*entity.Comment, int64, error)

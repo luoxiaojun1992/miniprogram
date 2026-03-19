@@ -774,6 +774,32 @@ func (m *MockLikeRepository) Delete(ctx context.Context, userID uint64, contentT
 	return nil
 }
 
+// MockFollowRepository is a test double for repository.FollowRepository.
+type MockFollowRepository struct {
+	GetFn    func(ctx context.Context, followerID, followedID uint64) (*entity.Follow, error)
+	CreateFn func(ctx context.Context, follow *entity.Follow) error
+	DeleteFn func(ctx context.Context, followerID, followedID uint64) error
+}
+
+func (m *MockFollowRepository) Get(ctx context.Context, followerID, followedID uint64) (*entity.Follow, error) {
+	if m.GetFn != nil {
+		return m.GetFn(ctx, followerID, followedID)
+	}
+	return nil, nil
+}
+func (m *MockFollowRepository) Create(ctx context.Context, follow *entity.Follow) error {
+	if m.CreateFn != nil {
+		return m.CreateFn(ctx, follow)
+	}
+	return nil
+}
+func (m *MockFollowRepository) Delete(ctx context.Context, followerID, followedID uint64) error {
+	if m.DeleteFn != nil {
+		return m.DeleteFn(ctx, followerID, followedID)
+	}
+	return nil
+}
+
 // MockCommentRepository is a test double for repository.CommentRepository.
 type MockCommentRepository struct {
 	GetByIDFn      func(ctx context.Context, id uint64) (*entity.Comment, error)
@@ -1410,6 +1436,25 @@ func (m *MockLikeService) Add(ctx context.Context, userID uint64, contentType in
 func (m *MockLikeService) Remove(ctx context.Context, userID uint64, contentType int8, contentID uint64) error {
 	if m.RemoveFn != nil {
 		return m.RemoveFn(ctx, userID, contentType, contentID)
+	}
+	return nil
+}
+
+// MockFollowService is a test double for service.FollowService.
+type MockFollowService struct {
+	AddFn    func(ctx context.Context, followerID, followedID uint64) error
+	RemoveFn func(ctx context.Context, followerID, followedID uint64) error
+}
+
+func (m *MockFollowService) Add(ctx context.Context, followerID, followedID uint64) error {
+	if m.AddFn != nil {
+		return m.AddFn(ctx, followerID, followedID)
+	}
+	return nil
+}
+func (m *MockFollowService) Remove(ctx context.Context, followerID, followedID uint64) error {
+	if m.RemoveFn != nil {
+		return m.RemoveFn(ctx, followerID, followedID)
 	}
 	return nil
 }

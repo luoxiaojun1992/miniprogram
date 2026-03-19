@@ -266,6 +266,50 @@ func TestLikeCtrl_Remove_SvcErr(t *testing.T) {
 	assert.Equal(t, 404, doRequest(r, "DELETE", "/likes/1/10", "").Code)
 }
 
+// ── FollowController ──────────────────────────────────────────────────────────
+
+func TestFollowCtrl_Add_OK(t *testing.T) {
+	svc := &testutil.MockFollowService{
+		AddFn: func(_ context.Context, followerID, followedID uint64) error { return nil },
+	}
+	r := newTestRouterWithAuth(1, 1)
+	r.POST("/follows/:user_id", NewFollowController(svc, logrus.New()).Add)
+	assert.Equal(t, 201, doRequest(r, "POST", "/follows/10", "").Code)
+}
+
+func TestFollowCtrl_Add_Unauthorized(t *testing.T) {
+	r := newTestRouter()
+	r.POST("/follows/:user_id", NewFollowController(&testutil.MockFollowService{}, logrus.New()).Add)
+	assert.Equal(t, 401, doRequest(r, "POST", "/follows/10", "").Code)
+}
+
+func TestFollowCtrl_Add_BadUserID(t *testing.T) {
+	r := newTestRouterWithAuth(1, 1)
+	r.POST("/follows/:user_id", NewFollowController(&testutil.MockFollowService{}, logrus.New()).Add)
+	assert.Equal(t, 400, doRequest(r, "POST", "/follows/abc", "").Code)
+}
+
+func TestFollowCtrl_Remove_OK(t *testing.T) {
+	svc := &testutil.MockFollowService{
+		RemoveFn: func(_ context.Context, followerID, followedID uint64) error { return nil },
+	}
+	r := newTestRouterWithAuth(1, 1)
+	r.DELETE("/follows/:user_id", NewFollowController(svc, logrus.New()).Remove)
+	assert.Equal(t, 200, doRequest(r, "DELETE", "/follows/10", "").Code)
+}
+
+func TestFollowCtrl_Remove_Unauthorized(t *testing.T) {
+	r := newTestRouter()
+	r.DELETE("/follows/:user_id", NewFollowController(&testutil.MockFollowService{}, logrus.New()).Remove)
+	assert.Equal(t, 401, doRequest(r, "DELETE", "/follows/10", "").Code)
+}
+
+func TestFollowCtrl_Remove_BadUserID(t *testing.T) {
+	r := newTestRouterWithAuth(1, 1)
+	r.DELETE("/follows/:user_id", NewFollowController(&testutil.MockFollowService{}, logrus.New()).Remove)
+	assert.Equal(t, 400, doRequest(r, "DELETE", "/follows/abc", "").Code)
+}
+
 // ── CommentController ─────────────────────────────────────────────────────────
 
 func TestCommentCtrl_List_OK(t *testing.T) {

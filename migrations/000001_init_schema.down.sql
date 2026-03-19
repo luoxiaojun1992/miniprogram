@@ -3,6 +3,7 @@ DROP TABLE IF EXISTS `audit_logs`;
 DROP TABLE IF EXISTS `notifications`;
 DROP TABLE IF EXISTS `comments`;
 DROP TABLE IF EXISTS `likes`;
+DROP TABLE IF EXISTS `follows`;
 DROP TABLE IF EXISTS `collections`;
 DROP TABLE IF EXISTS `user_study_records`;
 DROP TABLE IF EXISTS `content_permissions`;

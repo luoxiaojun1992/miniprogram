@@ -15,6 +15,7 @@ import (
 
 var collectionColumns = []string{"id", "user_id", "content_type", "content_id", "created_at"}
 var likeColumns = []string{"id", "user_id", "content_type", "content_id", "created_at"}
+var followColumns = []string{"id", "follower_id", "followed_id", "created_at"}
 var commentColumns = []string{"id", "user_id", "content_type", "content_id", "parent_id", "content", "status", "created_at"}
 var studyRecordColumns = []string{"id", "user_id", "course_id", "unit_id", "progress", "status", "created_at", "updated_at"}
 
@@ -416,6 +417,57 @@ func TestLikeRepository_Delete_Error(t *testing.T) {
 
 	err := repo.Delete(context.Background(), 1, 1, 100)
 	assert.Error(t, err)
+}
+
+// ==================== FollowRepository ====================
+
+func TestFollowRepository_Get_Found(t *testing.T) {
+	db, mock := newTestDB(t)
+	repo := NewFollowRepository(db)
+
+	now := time.Now()
+	mock.ExpectQuery("SELECT").WillReturnRows(
+		sqlmock.NewRows(followColumns).AddRow(1, 10, 11, now),
+	)
+
+	f, err := repo.Get(context.Background(), 10, 11)
+	require.NoError(t, err)
+	assert.NotNil(t, f)
+}
+
+func TestFollowRepository_Get_NotFound(t *testing.T) {
+	db, mock := newTestDB(t)
+	repo := NewFollowRepository(db)
+
+	mock.ExpectQuery("SELECT").WillReturnRows(sqlmock.NewRows(followColumns))
+
+	f, err := repo.Get(context.Background(), 10, 11)
+	require.NoError(t, err)
+	assert.Nil(t, f)
+}
+
+func TestFollowRepository_Create_Success(t *testing.T) {
+	db, mock := newTestDB(t)
+	repo := NewFollowRepository(db)
+
+	mock.ExpectBegin()
+	mock.ExpectExec("INSERT").WillReturnResult(sqlmock.NewResult(1, 1))
+	mock.ExpectCommit()
+
+	err := repo.Create(context.Background(), &entity.Follow{FollowerID: 1, FollowedID: 2})
+	require.NoError(t, err)
+}
+
+func TestFollowRepository_Delete_Success(t *testing.T) {
+	db, mock := newTestDB(t)
+	repo := NewFollowRepository(db)
+
+	mock.ExpectBegin()
+	mock.ExpectExec("DELETE").WillReturnResult(sqlmock.NewResult(1, 1))
+	mock.ExpectCommit()
+
+	err := repo.Delete(context.Background(), 1, 2)
+	require.NoError(t, err)
 }
 
 // ==================== CommentRepository ====================

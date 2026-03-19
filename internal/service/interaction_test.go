@@ -309,6 +309,120 @@ func TestLikeService_Remove_DecrCourseLikeCount(t *testing.T) {
 	require.NoError(t, svc.Remove(context.Background(), 1, 2, 7))
 }
 
+// ==================== FollowService ====================
+
+func TestFollowService_Add_Success(t *testing.T) {
+	repo := &testutil.MockFollowRepository{
+		GetFn: func(_ context.Context, followerID, followedID uint64) (*entity.Follow, error) {
+			return nil, nil
+		},
+		CreateFn: func(_ context.Context, f *entity.Follow) error { return nil },
+	}
+	userRepo := &testutil.MockUserRepository{
+		GetByIDFn: func(_ context.Context, id uint64) (*entity.User, error) {
+			return &entity.User{ID: id}, nil
+		},
+	}
+	svc := NewFollowService(repo, userRepo, nil, logrus.New(), nil, nil)
+	require.NoError(t, svc.Add(context.Background(), 1, 2))
+}
+
+func TestFollowService_Add_SelfFollow(t *testing.T) {
+	svc := NewFollowService(&testutil.MockFollowRepository{}, nil, nil, logrus.New(), nil, nil)
+	err := svc.Add(context.Background(), 1, 1)
+	require.Error(t, err)
+	appErr := err.(*apperrors.AppError)
+	assert.Equal(t, 400001, appErr.Code)
+}
+
+func TestFollowService_Add_AlreadyExists(t *testing.T) {
+	repo := &testutil.MockFollowRepository{
+		GetFn: func(_ context.Context, followerID, followedID uint64) (*entity.Follow, error) {
+			return &entity.Follow{ID: 1}, nil
+		},
+	}
+	userRepo := &testutil.MockUserRepository{
+		GetByIDFn: func(_ context.Context, id uint64) (*entity.User, error) {
+			return &entity.User{ID: id}, nil
+		},
+	}
+	svc := NewFollowService(repo, userRepo, nil, logrus.New(), nil, nil)
+	err := svc.Add(context.Background(), 1, 2)
+	require.Error(t, err)
+	appErr := err.(*apperrors.AppError)
+	assert.Equal(t, 409001, appErr.Code)
+}
+
+func TestFollowService_Add_SendsNotificationAndIncrFollowerCount(t *testing.T) {
+	repo := &testutil.MockFollowRepository{
+		GetFn: func(_ context.Context, followerID, followedID uint64) (*entity.Follow, error) {
+			return nil, nil
+		},
+		CreateFn: func(_ context.Context, f *entity.Follow) error { return nil },
+	}
+	userRepo := &testutil.MockUserRepository{
+		GetByIDFn: func(_ context.Context, id uint64) (*entity.User, error) {
+			return &entity.User{ID: id}, nil
+		},
+	}
+	notifRepo := &testutil.MockNotificationRepository{
+		CreateFn: func(_ context.Context, n *entity.Notification) error {
+			require.NotNil(t, n.UserID)
+			assert.Equal(t, uint64(2), *n.UserID)
+			assert.Equal(t, int8(5), n.Type)
+			return nil
+		},
+	}
+	var upsertUA *entity.UserAttribute
+	attrRepo := &testutil.MockAttributeRepository{
+		GetByNameFn: func(_ context.Context, name string) (*entity.Attribute, error) {
+			require.Equal(t, "follower_count", name)
+			return &entity.Attribute{ID: 9, Name: "follower_count", Type: entity.AttributeTypeBigInt}, nil
+		},
+	}
+	uaRepo := &testutil.MockUserAttributeRepository{
+		ListByUserIDFn: func(_ context.Context, userID uint64) ([]*entity.UserAttribute, error) {
+			require.Equal(t, uint64(2), userID)
+			v := int64(3)
+			return []*entity.UserAttribute{{UserID: userID, AttributeID: 9, ValueBigint: &v}}, nil
+		},
+		UpsertFn: func(_ context.Context, ua *entity.UserAttribute) error {
+			upsertUA = ua
+			return nil
+		},
+	}
+	svc := NewFollowService(repo, userRepo, notifRepo, logrus.New(), attrRepo, uaRepo)
+	require.NoError(t, svc.Add(context.Background(), 1, 2))
+	require.NotNil(t, upsertUA)
+	require.NotNil(t, upsertUA.ValueBigint)
+	assert.Equal(t, int64(4), *upsertUA.ValueBigint)
+}
+
+func TestFollowService_Remove_DecrFollowerCount(t *testing.T) {
+	repo := &testutil.MockFollowRepository{
+		DeleteFn: func(_ context.Context, followerID, followedID uint64) error { return nil },
+	}
+	attrRepo := &testutil.MockAttributeRepository{
+		GetByNameFn: func(_ context.Context, name string) (*entity.Attribute, error) {
+			require.Equal(t, "follower_count", name)
+			return &entity.Attribute{ID: 9, Name: "follower_count", Type: entity.AttributeTypeBigInt}, nil
+		},
+	}
+	uaRepo := &testutil.MockUserAttributeRepository{
+		ListByUserIDFn: func(_ context.Context, userID uint64) ([]*entity.UserAttribute, error) {
+			v := int64(1)
+			return []*entity.UserAttribute{{UserID: userID, AttributeID: 9, ValueBigint: &v}}, nil
+		},
+		UpsertFn: func(_ context.Context, ua *entity.UserAttribute) error {
+			require.NotNil(t, ua.ValueBigint)
+			assert.Equal(t, int64(0), *ua.ValueBigint)
+			return nil
+		},
+	}
+	svc := NewFollowService(repo, nil, nil, logrus.New(), attrRepo, uaRepo)
+	require.NoError(t, svc.Remove(context.Background(), 1, 2))
+}
+
 // ==================== NotificationService ====================
 
 func TestNotificationService_List_Success(t *testing.T) {

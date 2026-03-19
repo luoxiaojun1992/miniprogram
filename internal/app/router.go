@@ -99,6 +99,10 @@ func InitRouter(p *Provider) *gin.Engine {
 		authRequired.POST("/likes/:content_type/:content_id", p.LikeCtrl.Add)
 		authRequired.DELETE("/likes/:content_type/:content_id", p.LikeCtrl.Remove)
 
+		// Follows
+		authRequired.POST("/follows/:user_id", p.FollowCtrl.Add)
+		authRequired.DELETE("/follows/:user_id", p.FollowCtrl.Remove)
+
 		// Comments
 		authRequired.POST("/comments/:content_type/:content_id", p.CommentCtrl.Create)
 

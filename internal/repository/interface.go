@@ -193,6 +193,13 @@ type LikeRepository interface {
 	Delete(ctx context.Context, userID uint64, contentType int8, contentID uint64) error
 }
 
+// FollowRepository defines the interface for follow data access.
+type FollowRepository interface {
+	Get(ctx context.Context, followerID, followedID uint64) (*entity.Follow, error)
+	Create(ctx context.Context, follow *entity.Follow) error
+	Delete(ctx context.Context, followerID, followedID uint64) error
+}
+
 // CommentRepository defines the interface for comment data access.
 type CommentRepository interface {
 	GetByID(ctx context.Context, id uint64) (*entity.Comment, error)

@@ -167,6 +167,7 @@ INSERT INTO `attributes` (`name`, `type`) VALUES
     ('avatar_file_id', 2),
     ('view_count', 2),
     ('like_count', 2),
+    ('follower_count', 2),
     ('collect_count', 2),
     ('comment_count', 2),
     ('share_count', 2),
@@ -431,6 +432,18 @@ CREATE TABLE IF NOT EXISTS `likes` (
     UNIQUE KEY `uk_user_content` (`user_id`, `content_type`, `content_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='点赞表';
 
+-- 关注表
+CREATE TABLE IF NOT EXISTS `follows` (
+    `id` BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    `follower_id` BIGINT UNSIGNED NOT NULL COMMENT '关注者ID',
+    `followed_id` BIGINT UNSIGNED NOT NULL COMMENT '被关注者ID',
+    `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (`follower_id`) REFERENCES `users`(`id`) ON DELETE CASCADE,
+    FOREIGN KEY (`followed_id`) REFERENCES `users`(`id`) ON DELETE CASCADE,
+    UNIQUE KEY `uk_follower_followed` (`follower_id`, `followed_id`),
+    INDEX `idx_followed` (`followed_id`, `created_at`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='关注表';
+
 -- 评论表
 CREATE TABLE IF NOT EXISTS `comments` (
     `id` BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
@@ -454,7 +467,7 @@ CREATE TABLE IF NOT EXISTS `comments` (
 CREATE TABLE IF NOT EXISTS `notifications` (
     `id` BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
     `user_id` BIGINT UNSIGNED COMMENT 'null为全站广播',
-    `type` TINYINT DEFAULT 1 COMMENT '1系统通知 2评论回复 3学习提醒 4点赞通知',
+    `type` TINYINT DEFAULT 1 COMMENT '1系统通知 2评论回复 3学习提醒 4点赞通知 5关注通知',
     `title` VARCHAR(128),
     `content` TEXT,
     `is_read` TINYINT DEFAULT 0,
