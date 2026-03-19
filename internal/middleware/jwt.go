@@ -180,11 +180,11 @@ func GetCurrentUserType(ctx *gin.Context) (int8, bool) {
 	return t, ok
 }
 
-// RequireAdmin returns 403 if the current user is not an admin (user_type >= 2).
+// RequireAdmin returns 403 if the current user is not a backend admin (user_type 2 or 3).
 func RequireAdmin() gin.HandlerFunc {
 	return func(ctx *gin.Context) {
 		userType, ok := GetCurrentUserType(ctx)
-		if !ok || userType < 2 {
+		if !ok || (userType != 2 && userType != 3) {
 			ctx.JSON(http.StatusForbidden, gin.H{
 				"code":    403001,
 				"message": "需要管理员权限",

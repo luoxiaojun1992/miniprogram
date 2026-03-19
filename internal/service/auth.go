@@ -100,6 +100,9 @@ func (s *authService) AdminLogin(ctx context.Context, req *dto.AdminLoginRequest
 	if user == nil {
 		return nil, errors.NewUnauthorized("用户不存在", nil)
 	}
+	if user.UserType < 2 {
+		return nil, errors.NewUnauthorized("需要管理员权限", nil)
+	}
 
 	_ = s.adminUserRepo.UpdateLastLogin(ctx, admin.ID)
 

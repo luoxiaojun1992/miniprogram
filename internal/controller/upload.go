@@ -1052,7 +1052,7 @@ func normalizeObjectKey(key string) string {
 
 func isAdminUser(ctx *gin.Context) bool {
 	userType, ok := middleware.GetCurrentUserType(ctx)
-	return ok && userType >= 2
+	return ok && (userType == 2 || userType == 3)
 }
 
 func escapeObjectKey(key string) string {

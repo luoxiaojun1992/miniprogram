@@ -209,7 +209,7 @@ func TestAuthService_AdminLogin_GetEmailFails(t *testing.T) {
 	require.Error(t, err)
 }
 
-func TestAuthService_AdminLogin_UserExists(t *testing.T) {
+func TestAuthService_AdminLogin_Success_WithAdminUserType(t *testing.T) {
 	hash, _ := bcrypt.GenerateFromPassword([]byte("pw"), bcrypt.DefaultCost)
 	admin := &entity.AdminUser{ID: 1, UserID: 10, Email: "a@b.com", PasswordHash: string(hash)}
 	existing := &entity.User{ID: 10, UserType: 2}
@@ -231,6 +231,33 @@ func TestAuthService_AdminLogin_UserExists(t *testing.T) {
 		Email: "a@b.com", Password: "pw",
 	})
 	require.NoError(t, err)
+}
+
+func TestAuthService_AdminLogin_RejectsFrontUserType(t *testing.T) {
+	hash, _ := bcrypt.GenerateFromPassword([]byte("pw"), bcrypt.DefaultCost)
+	admin := &entity.AdminUser{ID: 1, UserID: 10, Email: "a@b.com", PasswordHash: string(hash)}
+	frontUser := &entity.User{ID: 10, UserType: 1}
+
+	adminRepo := &testutil.MockAdminUserRepository{
+		GetByEmailFn: func(_ context.Context, email string) (*entity.AdminUser, error) {
+			return admin, nil
+		},
+	}
+	userRepo := &testutil.MockUserRepository{
+		GetByIDFn: func(_ context.Context, id uint64) (*entity.User, error) {
+			return frontUser, nil
+		},
+	}
+	wechatClient := &testutil.MockWechatClient{}
+
+	svc := newAuthService(userRepo, adminRepo, wechatClient)
+	_, err := svc.AdminLogin(context.Background(), &dto.AdminLoginRequest{
+		Email: "a@b.com", Password: "pw",
+	})
+	require.Error(t, err)
+	appErr, ok := err.(*apperrors.AppError)
+	require.True(t, ok)
+	assert.Equal(t, 401001, appErr.Code)
 }
 
 func TestAuthService_AdminLogin_UserNil(t *testing.T) {
