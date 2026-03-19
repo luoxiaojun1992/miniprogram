@@ -19,7 +19,7 @@ type UserService interface {
 	GetProfile(ctx context.Context, userID uint64) (*entity.User, error)
 	UpdateProfile(ctx context.Context, userID uint64, req *dto.UserProfileUpdateRequest) error
 	GetPermissions(ctx context.Context, userID uint64) (roles, permissions []string, err error)
-	List(ctx context.Context, page, pageSize int, keyword string, userType, status *int8) ([]*entity.User, int64, error)
+	List(ctx context.Context, page, pageSize int, keyword string, userType *int8) ([]*entity.User, int64, error)
 	GetByID(ctx context.Context, id uint64) (*entity.User, error)
 	CreateAdminUser(ctx context.Context, req *dto.CreateAdminUserRequest) (uint64, error)
 	UpdateUser(ctx context.Context, id uint64, req *dto.UpdateUserRequest, operatorID uint64) error

@@ -203,8 +203,8 @@ func (s *userService) GetPermissions(ctx context.Context, userID uint64) ([]stri
 	return roleNames, permCodes, nil
 }
 
-func (s *userService) List(ctx context.Context, page, pageSize int, keyword string, userType, status *int8) ([]*entity.User, int64, error) {
-	return s.userRepo.List(ctx, page, pageSize, keyword, userType, status)
+func (s *userService) List(ctx context.Context, page, pageSize int, keyword string, userType *int8) ([]*entity.User, int64, error) {
+	return s.userRepo.List(ctx, page, pageSize, keyword, userType)
 }
 
 func (s *userService) GetByID(ctx context.Context, id uint64) (*entity.User, error) {

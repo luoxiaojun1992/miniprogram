@@ -243,12 +243,12 @@ func TestUserService_GetPermissions_PermError(t *testing.T) {
 func TestUserService_List(t *testing.T) {
 	users := []*entity.User{{ID: 1}, {ID: 2}}
 	userRepo := &testutil.MockUserRepository{
-		ListFn: func(_ context.Context, page, pageSize int, keyword string, userType, status *int8) ([]*entity.User, int64, error) {
+		ListFn: func(_ context.Context, page, pageSize int, keyword string, userType *int8) ([]*entity.User, int64, error) {
 			return users, 2, nil
 		},
 	}
 	svc := newUserService(userRepo, nil, nil, nil, nil)
-	got, total, err := svc.List(context.Background(), 1, 10, "", nil, nil)
+	got, total, err := svc.List(context.Background(), 1, 10, "", nil)
 	require.NoError(t, err)
 	assert.Equal(t, int64(2), total)
 	assert.Len(t, got, 2)

@@ -17,7 +17,7 @@ type MockUserRepository struct {
 	CreateFn          func(ctx context.Context, user *entity.User) error
 	UpdateFn          func(ctx context.Context, user *entity.User) error
 	DeleteFn          func(ctx context.Context, id uint64) error
-	ListFn            func(ctx context.Context, page, pageSize int, keyword string, userType, status *int8) ([]*entity.User, int64, error)
+	ListFn            func(ctx context.Context, page, pageSize int, keyword string, userType *int8) ([]*entity.User, int64, error)
 	GetWithTagsFn     func(ctx context.Context, id uint64) (*entity.User, error)
 	HasAssociationsFn func(ctx context.Context, id uint64) (bool, error)
 }
@@ -52,9 +52,9 @@ func (m *MockUserRepository) Delete(ctx context.Context, id uint64) error {
 	}
 	return nil
 }
-func (m *MockUserRepository) List(ctx context.Context, page, pageSize int, keyword string, userType, status *int8) ([]*entity.User, int64, error) {
+func (m *MockUserRepository) List(ctx context.Context, page, pageSize int, keyword string, userType *int8) ([]*entity.User, int64, error) {
 	if m.ListFn != nil {
-		return m.ListFn(ctx, page, pageSize, keyword, userType, status)
+		return m.ListFn(ctx, page, pageSize, keyword, userType)
 	}
 	return nil, 0, nil
 }
@@ -1011,7 +1011,7 @@ type MockUserService struct {
 	GetProfileFn      func(ctx context.Context, userID uint64) (*entity.User, error)
 	UpdateProfileFn   func(ctx context.Context, userID uint64, req *dto.UserProfileUpdateRequest) error
 	GetPermissionsFn  func(ctx context.Context, userID uint64) ([]string, []string, error)
-	ListFn            func(ctx context.Context, page, pageSize int, keyword string, userType, status *int8) ([]*entity.User, int64, error)
+	ListFn            func(ctx context.Context, page, pageSize int, keyword string, userType *int8) ([]*entity.User, int64, error)
 	GetByIDFn         func(ctx context.Context, id uint64) (*entity.User, error)
 	CreateAdminUserFn func(ctx context.Context, req *dto.CreateAdminUserRequest) (uint64, error)
 	UpdateUserFn      func(ctx context.Context, id uint64, req *dto.UpdateUserRequest, operatorID uint64) error
@@ -1036,9 +1036,9 @@ func (m *MockUserService) UpdateProfile(ctx context.Context, userID uint64, req 
 func (m *MockUserService) GetPermissions(ctx context.Context, userID uint64) ([]string, []string, error) {
 	return m.GetPermissionsFn(ctx, userID)
 }
-func (m *MockUserService) List(ctx context.Context, page, pageSize int, keyword string, userType, status *int8) ([]*entity.User, int64, error) {
+func (m *MockUserService) List(ctx context.Context, page, pageSize int, keyword string, userType *int8) ([]*entity.User, int64, error) {
 	if m.ListFn != nil {
-		return m.ListFn(ctx, page, pageSize, keyword, userType, status)
+		return m.ListFn(ctx, page, pageSize, keyword, userType)
 	}
 	return nil, 0, nil
 }

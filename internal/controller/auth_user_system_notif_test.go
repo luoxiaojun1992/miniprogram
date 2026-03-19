@@ -247,7 +247,7 @@ func TestUserCtrl_GetPermissions_SvcErr(t *testing.T) {
 
 func TestUserCtrl_AdminListUsers_OK(t *testing.T) {
 	svc := &testutil.MockUserService{
-		ListFn: func(_ context.Context, page, ps int, kw string, ut, st *int8) ([]*entity.User, int64, error) {
+		ListFn: func(_ context.Context, page, ps int, kw string, ut *int8) ([]*entity.User, int64, error) {
 			return []*entity.User{{ID: 1}}, 1, nil
 		},
 	}
@@ -258,7 +258,7 @@ func TestUserCtrl_AdminListUsers_OK(t *testing.T) {
 
 func TestUserCtrl_AdminListUsers_SvcErr(t *testing.T) {
 	svc := &testutil.MockUserService{
-		ListFn: func(_ context.Context, page, ps int, kw string, ut, st *int8) ([]*entity.User, int64, error) {
+		ListFn: func(_ context.Context, page, ps int, kw string, ut *int8) ([]*entity.User, int64, error) {
 			return nil, 0, apperrors.NewInternal("db", nil)
 		},
 	}

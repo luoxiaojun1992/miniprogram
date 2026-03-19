@@ -13,7 +13,7 @@ type UserRepository interface {
 	Create(ctx context.Context, user *entity.User) error
 	Update(ctx context.Context, user *entity.User) error
 	Delete(ctx context.Context, id uint64) error
-	List(ctx context.Context, page, pageSize int, keyword string, userType, status *int8) ([]*entity.User, int64, error)
+	List(ctx context.Context, page, pageSize int, keyword string, userType *int8) ([]*entity.User, int64, error)
 	GetWithTags(ctx context.Context, id uint64) (*entity.User, error)
 	HasAssociations(ctx context.Context, id uint64) (bool, error)
 }

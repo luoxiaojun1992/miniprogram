@@ -101,7 +101,7 @@ func (c *UserController) AdminListUsers(ctx *gin.Context) {
 		t := int8(v)
 		userType = &t
 	}
-	users, total, err := c.svc.List(ctx, q.GetPage(), q.GetPageSize(), q.Keyword, userType, nil)
+	users, total, err := c.svc.List(ctx, q.GetPage(), q.GetPageSize(), q.Keyword, userType)
 	if err != nil {
 		ctx.Error(err)
 		return

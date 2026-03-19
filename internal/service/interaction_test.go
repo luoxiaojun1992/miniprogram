@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"testing"
+	"time"
 
 	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
@@ -905,6 +906,47 @@ func TestCommentService_Create_MutedByAttributeBigInt(t *testing.T) {
 		ListByUserIDFn: func(_ context.Context, userID uint64) ([]*entity.UserAttribute, error) {
 			return []*entity.UserAttribute{
 				{Attribute: &entity.Attribute{Name: "is_muted"}, ValueBigint: &v},
+			}, nil
+		},
+	}
+	svc := NewCommentService(repo, nil, nil, nil, logrus.New(), nil, uaRepo)
+	_, err := svc.Create(context.Background(), 1, 1, 10, &dto.CreateCommentRequest{Content: "hello"})
+	require.Error(t, err)
+	appErr, ok := err.(*apperrors.AppError)
+	require.True(t, ok)
+	assert.Equal(t, 403001, appErr.Code)
+}
+
+func TestCommentService_Create_MutedExpired_Allowed(t *testing.T) {
+	repo := &testutil.MockCommentRepository{
+		CreateFn: func(_ context.Context, c *entity.Comment) error { return nil },
+	}
+	flag := int64(1)
+	expired := time.Now().Add(-time.Hour).Unix()
+	uaRepo := &testutil.MockUserAttributeRepository{
+		ListByUserIDFn: func(_ context.Context, userID uint64) ([]*entity.UserAttribute, error) {
+			return []*entity.UserAttribute{
+				{Attribute: &entity.Attribute{Name: "is_muted"}, ValueBigint: &flag},
+				{Attribute: &entity.Attribute{Name: "muted_until"}, ValueBigint: &expired},
+			}, nil
+		},
+	}
+	svc := NewCommentService(repo, nil, nil, nil, logrus.New(), nil, uaRepo)
+	_, err := svc.Create(context.Background(), 1, 1, 10, &dto.CreateCommentRequest{Content: "hello"})
+	require.NoError(t, err)
+}
+
+func TestCommentService_Create_MutedUntilFuture_Forbidden(t *testing.T) {
+	repo := &testutil.MockCommentRepository{
+		CreateFn: func(_ context.Context, c *entity.Comment) error { return nil },
+	}
+	flag := int64(1)
+	future := time.Now().Add(time.Hour).Unix()
+	uaRepo := &testutil.MockUserAttributeRepository{
+		ListByUserIDFn: func(_ context.Context, userID uint64) ([]*entity.UserAttribute, error) {
+			return []*entity.UserAttribute{
+				{Attribute: &entity.Attribute{Name: "is_muted"}, ValueBigint: &flag},
+				{Attribute: &entity.Attribute{Name: "muted_until"}, ValueBigint: &future},
 			}, nil
 		},
 	}
