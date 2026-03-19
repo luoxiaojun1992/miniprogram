@@ -2,6 +2,7 @@ package cosutil
 
 import (
 	"context"
+	stderrors "errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -130,6 +131,29 @@ func (c *Client) ObjectContentType(ctx context.Context, key string) (string, err
 		contentType = strings.TrimSpace(contentType[:idx])
 	}
 	return contentType, nil
+}
+
+func (c *Client) DeleteObject(ctx context.Context, key string) error {
+	key = normalizeObjectKey(key)
+	if key == "" {
+		return nil
+	}
+	_, err := c.client.Object.Delete(ctx, key)
+	if err == nil {
+		return nil
+	}
+	if isCOSObjectNotFound(err) {
+		return nil
+	}
+	return err
+}
+
+func isCOSObjectNotFound(err error) bool {
+	var cosErr *cos.ErrorResponse
+	if stderrors.As(err, &cosErr) && cosErr.Response != nil && cosErr.Response.StatusCode == http.StatusNotFound {
+		return true
+	}
+	return false
 }
 
 func normalizeObjectKey(key string) string {

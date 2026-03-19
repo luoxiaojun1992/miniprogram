@@ -45,6 +45,16 @@ func (r *inMemoryFileRepo) Create(_ context.Context, file *entity.File) error {
 	return nil
 }
 
+func (r *inMemoryFileRepo) DeleteByIDs(_ context.Context, ids []uint64) error {
+	if r.store == nil {
+		return nil
+	}
+	for _, id := range ids {
+		delete(r.store, id)
+	}
+	return nil
+}
+
 func TestUploadFileService_GenerateProtectedBusinessPresign_OnlyMedia(t *testing.T) {
 	cosClient, err := cosutil.NewClient("http://cos:9000", "http://cos:9000", "miniapp-test", "", "")
 	assert.NoError(t, err)

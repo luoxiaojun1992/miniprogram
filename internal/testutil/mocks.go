@@ -290,11 +290,12 @@ type MockModulePageRepository struct {
 
 // MockBannerRepository is a test double for repository.BannerRepository.
 type MockBannerRepository struct {
-	GetByIDFn func(ctx context.Context, id uint64) (*entity.Banner, error)
-	ListFn    func(ctx context.Context, status *int8) ([]*entity.Banner, error)
-	CreateFn  func(ctx context.Context, banner *entity.Banner) error
-	UpdateFn  func(ctx context.Context, banner *entity.Banner) error
-	DeleteFn  func(ctx context.Context, id uint64) error
+	GetByIDFn        func(ctx context.Context, id uint64) (*entity.Banner, error)
+	ListFn           func(ctx context.Context, status *int8) ([]*entity.Banner, error)
+	CreateFn         func(ctx context.Context, banner *entity.Banner) error
+	UpdateFn         func(ctx context.Context, banner *entity.Banner) error
+	DeleteFn         func(ctx context.Context, id uint64) error
+	DeleteWithFileFn func(ctx context.Context, id uint64, fileID *uint64) error
 }
 
 func (m *MockBannerRepository) GetByID(ctx context.Context, id uint64) (*entity.Banner, error) {
@@ -326,6 +327,12 @@ func (m *MockBannerRepository) Delete(ctx context.Context, id uint64) error {
 		return m.DeleteFn(ctx, id)
 	}
 	return nil
+}
+func (m *MockBannerRepository) DeleteWithFile(ctx context.Context, id uint64, fileID *uint64) error {
+	if m.DeleteWithFileFn != nil {
+		return m.DeleteWithFileFn(ctx, id, fileID)
+	}
+	return m.Delete(ctx, id)
 }
 
 func (m *MockModulePageRepository) GetByID(ctx context.Context, id uint) (*entity.ModulePage, error) {
@@ -375,6 +382,7 @@ type MockArticleRepository struct {
 	DecrCommentCountFn func(ctx context.Context, id uint64) error
 	IncrShareCountFn   func(ctx context.Context, id uint64) error
 	HasAssociationsFn  func(ctx context.Context, id uint64) (bool, error)
+	DeleteCascadeFn    func(ctx context.Context, id uint64, fileIDs []uint64) error
 }
 
 func (m *MockArticleRepository) GetByID(ctx context.Context, id uint64) (*entity.Article, error) {
@@ -461,6 +469,12 @@ func (m *MockArticleRepository) HasAssociations(ctx context.Context, id uint64) 
 	}
 	return false, nil
 }
+func (m *MockArticleRepository) DeleteCascade(ctx context.Context, id uint64, fileIDs []uint64) error {
+	if m.DeleteCascadeFn != nil {
+		return m.DeleteCascadeFn(ctx, id, fileIDs)
+	}
+	return m.Delete(ctx, id)
+}
 
 // MockCourseRepository is a test double for repository.CourseRepository.
 type MockCourseRepository struct {
@@ -479,6 +493,7 @@ type MockCourseRepository struct {
 	IncrShareCountFn   func(ctx context.Context, id uint64) error
 	IncrStudyCountFn   func(ctx context.Context, id uint64) error
 	HasAssociationsFn  func(ctx context.Context, id uint64) (bool, error)
+	DeleteCascadeFn    func(ctx context.Context, id uint64, fileIDs []uint64) error
 }
 
 func (m *MockCourseRepository) GetByID(ctx context.Context, id uint64) (*entity.Course, error) {
@@ -571,6 +586,12 @@ func (m *MockCourseRepository) HasAssociations(ctx context.Context, id uint64) (
 	}
 	return false, nil
 }
+func (m *MockCourseRepository) DeleteCascade(ctx context.Context, id uint64, fileIDs []uint64) error {
+	if m.DeleteCascadeFn != nil {
+		return m.DeleteCascadeFn(ctx, id, fileIDs)
+	}
+	return m.Delete(ctx, id)
+}
 
 // MockCourseUnitRepository is a test double for repository.CourseUnitRepository.
 type MockCourseUnitRepository struct {
@@ -580,12 +601,14 @@ type MockCourseUnitRepository struct {
 	UpdateFn          func(ctx context.Context, unit *entity.CourseUnit) error
 	DeleteFn          func(ctx context.Context, id uint64) error
 	HasStudyRecordsFn func(ctx context.Context, id uint64) (bool, error)
+	DeleteCascadeFn   func(ctx context.Context, id uint64, fileIDs []uint64) error
 }
 
 // MockFileRepository is a test double for repository.FileRepository.
 type MockFileRepository struct {
-	GetByIDFn func(ctx context.Context, id uint64) (*entity.File, error)
-	CreateFn  func(ctx context.Context, file *entity.File) error
+	GetByIDFn     func(ctx context.Context, id uint64) (*entity.File, error)
+	CreateFn      func(ctx context.Context, file *entity.File) error
+	DeleteByIDsFn func(ctx context.Context, ids []uint64) error
 }
 
 func (m *MockFileRepository) GetByID(ctx context.Context, id uint64) (*entity.File, error) {
@@ -597,6 +620,12 @@ func (m *MockFileRepository) GetByID(ctx context.Context, id uint64) (*entity.Fi
 func (m *MockFileRepository) Create(ctx context.Context, file *entity.File) error {
 	if m.CreateFn != nil {
 		return m.CreateFn(ctx, file)
+	}
+	return nil
+}
+func (m *MockFileRepository) DeleteByIDs(ctx context.Context, ids []uint64) error {
+	if m.DeleteByIDsFn != nil {
+		return m.DeleteByIDsFn(ctx, ids)
 	}
 	return nil
 }
@@ -636,6 +665,12 @@ func (m *MockCourseUnitRepository) HasStudyRecords(ctx context.Context, id uint6
 		return m.HasStudyRecordsFn(ctx, id)
 	}
 	return false, nil
+}
+func (m *MockCourseUnitRepository) DeleteCascade(ctx context.Context, id uint64, fileIDs []uint64) error {
+	if m.DeleteCascadeFn != nil {
+		return m.DeleteCascadeFn(ctx, id, fileIDs)
+	}
+	return m.Delete(ctx, id)
 }
 
 // MockContentPermissionRepository is a test double for repository.ContentPermissionRepository.

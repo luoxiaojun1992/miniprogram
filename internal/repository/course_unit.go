@@ -66,3 +66,42 @@ func (r *courseUnitRepository) HasStudyRecords(ctx context.Context, id uint64) (
 	}
 	return count > 0, nil
 }
+
+func (r *courseUnitRepository) DeleteCascade(ctx context.Context, id uint64, fileIDs []uint64) error {
+	return r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		if err := tx.Exec(`
+			DELETE FROM content_permissions
+			WHERE content_type = 7 AND content_id IN (
+				SELECT id FROM course_unit_attachments WHERE unit_id = ?
+			)
+		`, id).Error; err != nil {
+			return errors.NewInternal("删除课程单元附件权限失败", err)
+		}
+		if err := tx.Exec("DELETE FROM course_unit_attachments WHERE unit_id = ?", id).Error; err != nil {
+			return errors.NewInternal("删除课程单元附件关联失败", err)
+		}
+		if err := tx.Exec("DELETE FROM user_study_records WHERE unit_id = ?", id).Error; err != nil {
+			return errors.NewInternal("删除课程单元学习记录失败", err)
+		}
+		if err := tx.Exec("DELETE FROM content_permissions WHERE content_type = 6 AND content_id = ?", id).Error; err != nil {
+			return errors.NewInternal("删除课程单元权限失败", err)
+		}
+		uniq := make(map[uint64]struct{}, len(fileIDs))
+		for _, fileID := range fileIDs {
+			if fileID == 0 {
+				continue
+			}
+			if _, ok := uniq[fileID]; ok {
+				continue
+			}
+			uniq[fileID] = struct{}{}
+			if err := tx.Delete(&entity.File{}, fileID).Error; err != nil {
+				return errors.NewInternal("删除文件记录失败", err)
+			}
+		}
+		if err := tx.Delete(&entity.CourseUnit{}, id).Error; err != nil {
+			return errors.NewInternal("删除课程单元失败", err)
+		}
+		return nil
+	})
+}

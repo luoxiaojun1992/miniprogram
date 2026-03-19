@@ -36,3 +36,28 @@ func (r *fileRepository) Create(ctx context.Context, file *entity.File) error {
 	}
 	return nil
 }
+
+func (r *fileRepository) DeleteByIDs(ctx context.Context, ids []uint64) error {
+	if len(ids) == 0 {
+		return nil
+	}
+	uniq := make(map[uint64]struct{}, len(ids))
+	normalized := make([]uint64, 0, len(ids))
+	for _, id := range ids {
+		if id == 0 {
+			continue
+		}
+		if _, ok := uniq[id]; ok {
+			continue
+		}
+		uniq[id] = struct{}{}
+		normalized = append(normalized, id)
+	}
+	if len(normalized) == 0 {
+		return nil
+	}
+	if err := r.db.WithContext(ctx).Where("id IN ?", normalized).Delete(&entity.File{}).Error; err != nil {
+		return errors.NewInternal("删除文件记录失败", err)
+	}
+	return nil
+}

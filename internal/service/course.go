@@ -3,6 +3,7 @@ package service
 import (
 	"context"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/sirupsen/logrus"
@@ -18,6 +19,8 @@ type courseService struct {
 	courseUnitRepo    repository.CourseUnitRepository
 	unitAttachRepo    repository.CourseUnitAttachmentRepository
 	attachmentRepo    repository.CourseAttachmentRepository
+	fileRepo          repository.FileRepository
+	fileObjectRemover fileObjectRemover
 	contentPermRepo   repository.ContentPermissionRepository
 	roleRepo          repository.RoleRepository
 	sensitiveWordRepo repository.SensitiveWordRepository
@@ -36,6 +39,8 @@ func NewCourseService(
 	var attachmentRepo repository.CourseAttachmentRepository
 	var unitAttachRepo repository.CourseUnitAttachmentRepository
 	var roleRepo repository.RoleRepository
+	var fileRepo repository.FileRepository
+	var remover fileObjectRemover
 	for _, dep := range deps {
 		switch v := dep.(type) {
 		case repository.SensitiveWordRepository:
@@ -46,6 +51,10 @@ func NewCourseService(
 			unitAttachRepo = v
 		case repository.RoleRepository:
 			roleRepo = v
+		case repository.FileRepository:
+			fileRepo = v
+		case fileObjectRemover:
+			remover = v
 		}
 	}
 	return &courseService{
@@ -53,6 +62,8 @@ func NewCourseService(
 		courseUnitRepo:    courseUnitRepo,
 		unitAttachRepo:    unitAttachRepo,
 		attachmentRepo:    attachmentRepo,
+		fileRepo:          fileRepo,
+		fileObjectRemover: remover,
 		contentPermRepo:   normalizeContentPermRepo(contentPermRepo),
 		roleRepo:          roleRepo,
 		sensitiveWordRepo: swRepo,
@@ -180,14 +191,15 @@ func (s *courseService) Delete(ctx context.Context, id uint64) error {
 	if course == nil {
 		return errors.NewNotFound("课程不存在", nil)
 	}
-	hasAssociations, err := s.courseRepo.HasAssociations(ctx, id)
+	ids, keys, err := s.collectCourseDeleteFileIDsAndKeys(ctx, course.CoverFileID, id)
 	if err != nil {
 		return err
 	}
-	if hasAssociations {
-		return errors.NewBadRequest("课程存在关联数据，禁止删除", nil)
+	if err := s.courseRepo.DeleteCascade(ctx, id, ids); err != nil {
+		return err
 	}
-	return s.courseRepo.Delete(ctx, id)
+	s.cleanupCOSObjects(ctx, keys)
+	return nil
 }
 
 func (s *courseService) Publish(ctx context.Context, id uint64, req *dto.PublishCourseRequest) error {
@@ -363,14 +375,15 @@ func (s *courseService) DeleteUnit(ctx context.Context, courseID, unitID uint64)
 	if unit == nil || unit.CourseID != courseID {
 		return errors.NewNotFound("课程单元不存在", nil)
 	}
-	hasStudyRecords, err := s.courseUnitRepo.HasStudyRecords(ctx, unitID)
+	ids, keys, err := s.collectUnitDeleteFileIDsAndKeys(ctx, unit.VideoFileID, unitID)
 	if err != nil {
 		return err
 	}
-	if hasStudyRecords {
-		return errors.NewBadRequest("课程单元存在学习记录，禁止删除", nil)
+	if err := s.courseUnitRepo.DeleteCascade(ctx, unitID, ids); err != nil {
+		return err
 	}
-	return s.courseUnitRepo.Delete(ctx, unitID)
+	s.cleanupCOSObjects(ctx, keys)
+	return nil
 }
 
 func (s *courseService) bindCourseAttachmentPermissions(ctx context.Context, courseID uint64, reqs []dto.AttachmentPermissionRequest) {
@@ -404,5 +417,108 @@ func (s *courseService) bindUnitAttachmentPermissions(ctx context.Context, unitI
 	}
 	for _, row := range rows {
 		_ = s.contentPermRepo.SetContentPermissions(ctx, 7, row.ID, roleMap[row.FileID])
+	}
+}
+
+func (s *courseService) collectCourseDeleteFileIDsAndKeys(ctx context.Context, coverFileID *uint64, courseID uint64) ([]uint64, []string, error) {
+	ids := make([]uint64, 0, 16)
+	if coverFileID != nil && *coverFileID > 0 {
+		ids = append(ids, *coverFileID)
+	}
+	if s.attachmentRepo != nil {
+		attachmentIDs, err := s.attachmentRepo.ListFileIDs(ctx, courseID)
+		if err != nil {
+			return nil, nil, err
+		}
+		ids = append(ids, attachmentIDs...)
+	}
+	if s.courseUnitRepo != nil {
+		units, err := s.courseUnitRepo.ListByCourseID(ctx, courseID)
+		if err != nil {
+			return nil, nil, err
+		}
+		for _, unit := range units {
+			if unit == nil {
+				continue
+			}
+			if unit.VideoFileID != nil && *unit.VideoFileID > 0 {
+				ids = append(ids, *unit.VideoFileID)
+			}
+			if s.unitAttachRepo == nil {
+				continue
+			}
+			unitAttachmentIDs, attachErr := s.unitAttachRepo.ListFileIDs(ctx, unit.ID)
+			if attachErr != nil {
+				return nil, nil, attachErr
+			}
+			ids = append(ids, unitAttachmentIDs...)
+		}
+	}
+	return s.resolveFileDeletionTargets(ctx, ids)
+}
+
+func (s *courseService) collectUnitDeleteFileIDsAndKeys(ctx context.Context, videoFileID *uint64, unitID uint64) ([]uint64, []string, error) {
+	ids := make([]uint64, 0, 8)
+	if videoFileID != nil && *videoFileID > 0 {
+		ids = append(ids, *videoFileID)
+	}
+	if s.unitAttachRepo != nil {
+		attachmentIDs, err := s.unitAttachRepo.ListFileIDs(ctx, unitID)
+		if err != nil {
+			return nil, nil, err
+		}
+		ids = append(ids, attachmentIDs...)
+	}
+	return s.resolveFileDeletionTargets(ctx, ids)
+}
+
+func (s *courseService) resolveFileDeletionTargets(ctx context.Context, ids []uint64) ([]uint64, []string, error) {
+	uniq := make(map[uint64]struct{}, len(ids))
+	resolvedIDs := make([]uint64, 0, len(ids))
+	keys := make([]string, 0, len(ids))
+	for _, id := range ids {
+		if id == 0 {
+			continue
+		}
+		if _, ok := uniq[id]; ok {
+			continue
+		}
+		uniq[id] = struct{}{}
+		resolvedIDs = append(resolvedIDs, id)
+		if s.fileRepo == nil {
+			continue
+		}
+		file, err := s.fileRepo.GetByID(ctx, id)
+		if err != nil {
+			return nil, nil, err
+		}
+		if file == nil {
+			continue
+		}
+		key := strings.TrimSpace(file.Key)
+		if key != "" {
+			keys = append(keys, key)
+		}
+	}
+	return resolvedIDs, keys, nil
+}
+
+func (s *courseService) cleanupCOSObjects(ctx context.Context, keys []string) {
+	if s.fileObjectRemover == nil || len(keys) == 0 {
+		return
+	}
+	uniq := make(map[string]struct{}, len(keys))
+	for _, key := range keys {
+		k := strings.TrimSpace(key)
+		if k == "" {
+			continue
+		}
+		if _, ok := uniq[k]; ok {
+			continue
+		}
+		uniq[k] = struct{}{}
+		if err := s.fileObjectRemover.DeleteObject(ctx, k); err != nil {
+			s.log.WithError(err).Warn("删除COS文件失败")
+		}
 	}
 }

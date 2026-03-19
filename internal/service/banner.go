@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"strings"
 
 	"github.com/sirupsen/logrus"
 
@@ -14,18 +15,26 @@ import (
 type bannerService struct {
 	bannerRepo repository.BannerRepository
 	fileRepo   repository.FileRepository
+	cos        fileObjectRemover
 	log        *logrus.Logger
 }
 
 // NewBannerService creates a new BannerService.
-func NewBannerService(bannerRepo repository.BannerRepository, log *logrus.Logger, fileRepo ...repository.FileRepository) BannerService {
+func NewBannerService(bannerRepo repository.BannerRepository, log *logrus.Logger, deps ...interface{}) BannerService {
 	var fRepo repository.FileRepository
-	if len(fileRepo) > 0 {
-		fRepo = fileRepo[0]
+	var remover fileObjectRemover
+	for _, dep := range deps {
+		switch v := dep.(type) {
+		case repository.FileRepository:
+			fRepo = v
+		case fileObjectRemover:
+			remover = v
+		}
 	}
 	return &bannerService{
 		bannerRepo: bannerRepo,
 		fileRepo:   fRepo,
+		cos:        remover,
 		log:        log,
 	}
 }
@@ -89,7 +98,25 @@ func (s *bannerService) Delete(ctx context.Context, id uint64) error {
 	if banner == nil {
 		return errors.NewNotFound("轮播图不存在", nil)
 	}
-	return s.bannerRepo.Delete(ctx, id)
+	key := ""
+	if s.fileRepo != nil && banner.ImageFileID != nil && *banner.ImageFileID > 0 {
+		file, fileErr := s.fileRepo.GetByID(ctx, *banner.ImageFileID)
+		if fileErr != nil {
+			return fileErr
+		}
+		if file != nil {
+			key = strings.TrimSpace(file.Key)
+		}
+	}
+	if err := s.bannerRepo.DeleteWithFile(ctx, id, banner.ImageFileID); err != nil {
+		return err
+	}
+	if s.cos != nil && key != "" {
+		if err := s.cos.DeleteObject(ctx, key); err != nil {
+			s.log.WithError(err).Warn("删除COS文件失败")
+		}
+	}
+	return nil
 }
 
 func (s *bannerService) validateBannerMediaFile(ctx context.Context, fileID uint64) error {

@@ -88,12 +88,9 @@ func (s *moduleService) CreatePage(ctx context.Context, moduleID uint, req *dto.
 		ModuleID:    moduleID,
 		Title:       req.Title,
 		Content:     req.Content,
-		ContentType: req.ContentType,
+		ContentType: 1,
 		SortOrder:   req.SortOrder,
 		Status:      1,
-	}
-	if p.ContentType == 0 {
-		p.ContentType = 1
 	}
 	if err := s.modulePageRepo.Create(ctx, p); err != nil {
 		return 0, err
@@ -111,7 +108,7 @@ func (s *moduleService) UpdatePage(ctx context.Context, moduleID, pageID uint, r
 	}
 	p.Title = req.Title
 	p.Content = req.Content
-	p.ContentType = req.ContentType
+	p.ContentType = 1
 	p.SortOrder = req.SortOrder
 	return s.modulePageRepo.Update(ctx, p)
 }

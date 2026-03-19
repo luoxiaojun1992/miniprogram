@@ -62,3 +62,17 @@ func (r *bannerRepository) Delete(ctx context.Context, id uint64) error {
 	}
 	return nil
 }
+
+func (r *bannerRepository) DeleteWithFile(ctx context.Context, id uint64, fileID *uint64) error {
+	return r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		if fileID != nil && *fileID > 0 {
+			if err := tx.Delete(&entity.File{}, *fileID).Error; err != nil {
+				return errors.NewInternal("删除文件记录失败", err)
+			}
+		}
+		if err := tx.Delete(&entity.Banner{}, id).Error; err != nil {
+			return errors.NewInternal("删除轮播图失败", err)
+		}
+		return nil
+	})
+}
