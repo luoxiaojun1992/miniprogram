@@ -195,6 +195,5 @@ func (s *likeService) adjustUserLikedCount(ctx context.Context, userID uint64, d
 		UserID:      userID,
 		AttributeID: attr.ID,
 		ValueBigint: &next,
-		ValueString: "",
 	})
 }
