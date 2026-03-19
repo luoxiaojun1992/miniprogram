@@ -243,7 +243,6 @@ func (s *articleService) Copy(ctx context.Context, id uint64, authorID uint64) (
 		Summary:     article.Summary,
 		Content:     article.Content,
 		ContentType: article.ContentType,
-		CoverImage:  article.CoverImage,
 		AuthorID:    authorID,
 		ModuleID:    article.ModuleID,
 		Status:      0,
@@ -254,12 +253,6 @@ func (s *articleService) Copy(ctx context.Context, id uint64, authorID uint64) (
 	}
 	if err = s.articleRepo.Create(ctx, dup); err != nil {
 		return 0, err
-	}
-	if s.attachmentRepo != nil {
-		attachmentIDs, listErr := s.attachmentRepo.ListFileIDs(ctx, id)
-		if listErr == nil {
-			_ = s.attachmentRepo.Replace(ctx, dup.ID, attachmentIDs)
-		}
 	}
 	roles, permErr := s.contentPermRepo.GetByContent(ctx, 1, id)
 	if permErr == nil && len(roles) > 0 {

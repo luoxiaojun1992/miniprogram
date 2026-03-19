@@ -1230,25 +1230,37 @@ func TestArticleService_BindAttachmentIDs(t *testing.T) {
 }
 
 func TestArticleService_Copy_WithAttachmentAndPermissions(t *testing.T) {
+	var created *entity.Article
 	repo := &testutil.MockArticleRepository{
 		GetByIDFn: func(_ context.Context, id uint64) (*entity.Article, error) {
-			return &entity.Article{ID: id, Title: "A", ModuleID: 1, ContentType: 1}, nil
+			coverFileID := uint64(88)
+			return &entity.Article{
+				ID:           id,
+				Title:        "A",
+				ModuleID:     1,
+				ContentType:  1,
+				CoverImage:   "https://example.com/cover.jpg",
+				CoverFileID:  &coverFileID,
+				ViewCount:    10,
+				LikeCount:    11,
+				CollectCount: 12,
+				CommentCount: 13,
+				ShareCount:   14,
+			}, nil
 		},
 		CreateFn: func(_ context.Context, a *entity.Article) error {
+			created = a
 			a.ID = 101
 			return nil
 		},
 	}
-	attachmentReplaced := false
 	attachmentRepo := &articleAttachmentRepoStub{
-		listFn: func(_ context.Context, articleID uint64) ([]uint64, error) {
-			assert.Equal(t, uint64(1), articleID)
-			return []uint64{1, 2}, nil
+		listFn: func(_ context.Context, _ uint64) ([]uint64, error) {
+			t.Fatal("copy should not query attachments")
+			return nil, nil
 		},
-		replaceFn: func(_ context.Context, articleID uint64, fileIDs []uint64) error {
-			attachmentReplaced = true
-			assert.Equal(t, uint64(101), articleID)
-			assert.Equal(t, []uint64{1, 2}, fileIDs)
+		replaceFn: func(_ context.Context, _ uint64, _ []uint64) error {
+			t.Fatal("copy should not replace attachments")
 			return nil
 		},
 	}
@@ -1272,8 +1284,15 @@ func TestArticleService_Copy_WithAttachmentAndPermissions(t *testing.T) {
 	newID, err := svc.Copy(context.Background(), 1, 2)
 	require.NoError(t, err)
 	assert.Equal(t, uint64(101), newID)
-	assert.True(t, attachmentReplaced)
 	assert.True(t, permSet)
+	require.NotNil(t, created)
+	assert.Empty(t, created.CoverImage)
+	assert.Nil(t, created.CoverFileID)
+	assert.Equal(t, uint(0), created.ViewCount)
+	assert.Equal(t, uint(0), created.LikeCount)
+	assert.Equal(t, uint(0), created.CollectCount)
+	assert.Equal(t, uint(0), created.CommentCount)
+	assert.Equal(t, uint(0), created.ShareCount)
 }
 
 func TestArticleService_Copy_IgnoreAttachmentAndPermErrors(t *testing.T) {
@@ -1399,34 +1418,49 @@ func TestCourseService_BindAttachmentIDs(t *testing.T) {
 }
 
 func TestCourseService_Copy_WithAttachmentAndPermissions(t *testing.T) {
+	var createdCourse *entity.Course
+	var createdUnit *entity.CourseUnit
 	repo := &testutil.MockCourseRepository{
 		GetByIDFn: func(_ context.Context, id uint64) (*entity.Course, error) {
-			return &entity.Course{ID: id, Title: "C", ModuleID: 1}, nil
+			coverFileID := uint64(66)
+			return &entity.Course{
+				ID:           id,
+				Title:        "C",
+				ModuleID:     1,
+				CoverImage:   "https://example.com/course-cover.jpg",
+				CoverFileID:  &coverFileID,
+				ViewCount:    20,
+				LikeCount:    21,
+				CollectCount: 22,
+				CommentCount: 23,
+				ShareCount:   24,
+				StudyCount:   25,
+			}, nil
 		},
 		CreateFn: func(_ context.Context, c *entity.Course) error {
+			createdCourse = c
 			c.ID = 202
 			return nil
 		},
 	}
 	unitRepo := &testutil.MockCourseUnitRepository{
 		ListByCourseIDFn: func(_ context.Context, courseID uint64) ([]*entity.CourseUnit, error) {
-			return []*entity.CourseUnit{{ID: 1, CourseID: courseID, Title: "U"}}, nil
+			videoFileID := uint64(99)
+			return []*entity.CourseUnit{{ID: 1, CourseID: courseID, Title: "U", VideoFileID: &videoFileID}}, nil
 		},
 		CreateFn: func(_ context.Context, unit *entity.CourseUnit) error {
+			createdUnit = unit
 			assert.Equal(t, uint64(202), unit.CourseID)
 			return nil
 		},
 	}
-	attachmentReplaced := false
 	attachmentRepo := &courseAttachmentRepoStub{
-		listFn: func(_ context.Context, courseID uint64) ([]uint64, error) {
-			assert.Equal(t, uint64(1), courseID)
-			return []uint64{6, 7}, nil
+		listFn: func(_ context.Context, _ uint64) ([]uint64, error) {
+			t.Fatal("copy should not query course attachments")
+			return nil, nil
 		},
-		replaceFn: func(_ context.Context, courseID uint64, fileIDs []uint64) error {
-			attachmentReplaced = true
-			assert.Equal(t, uint64(202), courseID)
-			assert.Equal(t, []uint64{6, 7}, fileIDs)
+		replaceFn: func(_ context.Context, _ uint64, _ []uint64) error {
+			t.Fatal("copy should not replace course attachments")
 			return nil
 		},
 	}
@@ -1450,8 +1484,18 @@ func TestCourseService_Copy_WithAttachmentAndPermissions(t *testing.T) {
 	newID, err := svc.Copy(context.Background(), 1, 9)
 	require.NoError(t, err)
 	assert.Equal(t, uint64(202), newID)
-	assert.True(t, attachmentReplaced)
 	assert.True(t, permSet)
+	require.NotNil(t, createdCourse)
+	assert.Empty(t, createdCourse.CoverImage)
+	assert.Nil(t, createdCourse.CoverFileID)
+	assert.Equal(t, uint(0), createdCourse.ViewCount)
+	assert.Equal(t, uint(0), createdCourse.LikeCount)
+	assert.Equal(t, uint(0), createdCourse.CollectCount)
+	assert.Equal(t, uint(0), createdCourse.CommentCount)
+	assert.Equal(t, uint(0), createdCourse.ShareCount)
+	assert.Equal(t, uint(0), createdCourse.StudyCount)
+	require.NotNil(t, createdUnit)
+	assert.Nil(t, createdUnit.VideoFileID)
 }
 
 func TestCourseService_Copy_IgnoreUnitAttachmentPermErrors(t *testing.T) {

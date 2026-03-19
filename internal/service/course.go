@@ -241,7 +241,6 @@ func (s *courseService) Copy(ctx context.Context, id uint64, authorID uint64) (u
 	dup := &entity.Course{
 		Title:       fmt.Sprintf("%s-副本", course.Title),
 		Description: course.Description,
-		CoverImage:  course.CoverImage,
 		Duration:    course.Duration,
 		AuthorID:    authorID,
 		ModuleID:    course.ModuleID,
@@ -259,17 +258,10 @@ func (s *courseService) Copy(ctx context.Context, id uint64, authorID uint64) (u
 			_ = s.courseUnitRepo.Create(ctx, &entity.CourseUnit{
 				CourseID:    dup.ID,
 				Title:       unit.Title,
-				VideoFileID: unit.VideoFileID,
 				Duration:    unit.Duration,
 				SortOrder:   unit.SortOrder,
 				Status:      unit.Status,
 			})
-		}
-	}
-	if s.attachmentRepo != nil {
-		attachmentIDs, listErr := s.attachmentRepo.ListFileIDs(ctx, id)
-		if listErr == nil {
-			_ = s.attachmentRepo.Replace(ctx, dup.ID, attachmentIDs)
 		}
 	}
 	roles, permErr := s.contentPermRepo.GetByContent(ctx, 2, id)
