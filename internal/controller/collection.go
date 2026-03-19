@@ -45,7 +45,7 @@ func (c *CollectionController) List(ctx *gin.Context) {
 			return
 		}
 		t := int8(v)
-		if t != 1 && t != 2 {
+		if !isInteractionContentType(t) {
 			ctx.Error(apperrors.NewBadRequest("无效的内容类型", nil))
 			return
 		}
@@ -71,7 +71,7 @@ func (c *CollectionController) Add(ctx *gin.Context) {
 		ctx.Error(apperrors.NewBadRequest("无效的内容类型", err))
 		return
 	}
-	if int8(ct) != 1 && int8(ct) != 2 {
+	if !isInteractionContentType(int8(ct)) {
 		ctx.Error(apperrors.NewBadRequest("无效的内容类型", nil))
 		return
 	}
@@ -99,7 +99,7 @@ func (c *CollectionController) Remove(ctx *gin.Context) {
 		ctx.Error(apperrors.NewBadRequest("无效的内容类型", err))
 		return
 	}
-	if int8(ct) != 1 && int8(ct) != 2 {
+	if !isInteractionContentType(int8(ct)) {
 		ctx.Error(apperrors.NewBadRequest("无效的内容类型", nil))
 		return
 	}

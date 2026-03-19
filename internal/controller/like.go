@@ -36,7 +36,7 @@ func (c *LikeController) Add(ctx *gin.Context) {
 		ctx.Error(apperrors.NewBadRequest("无效的内容类型", err))
 		return
 	}
-	if int8(ct) != 1 && int8(ct) != 2 {
+	if !isInteractionContentType(int8(ct)) {
 		ctx.Error(apperrors.NewBadRequest("无效的内容类型", nil))
 		return
 	}
@@ -64,7 +64,7 @@ func (c *LikeController) Remove(ctx *gin.Context) {
 		ctx.Error(apperrors.NewBadRequest("无效的内容类型", err))
 		return
 	}
-	if int8(ct) != 1 && int8(ct) != 2 {
+	if !isInteractionContentType(int8(ct)) {
 		ctx.Error(apperrors.NewBadRequest("无效的内容类型", nil))
 		return
 	}
