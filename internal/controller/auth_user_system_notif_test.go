@@ -253,7 +253,7 @@ func TestUserCtrl_AdminListUsers_OK(t *testing.T) {
 	}
 	r := newTestRouterWithAuth(1, 2)
 	r.GET("/admin/users", NewUserController(svc, logrus.New()).AdminListUsers)
-	assert.Equal(t, 200, doRequest(r, "GET", "/admin/users?user_type=2&status=1", "").Code)
+	assert.Equal(t, 200, doRequest(r, "GET", "/admin/users?user_type=2", "").Code)
 }
 
 func TestUserCtrl_AdminListUsers_SvcErr(t *testing.T) {
@@ -338,7 +338,7 @@ func TestUserCtrl_AdminUpdateUser_OK(t *testing.T) {
 	}
 	r := newTestRouterWithAuth(99, 2)
 	r.PUT("/admin/users/:id", NewUserController(svc, logrus.New()).AdminUpdateUser)
-	assert.Equal(t, 200, doRequest(r, "PUT", "/admin/users/1", `{"nickname":"N","status":1}`).Code)
+	assert.Equal(t, 200, doRequest(r, "PUT", "/admin/users/1", `{"nickname":"N"}`).Code)
 }
 
 func TestUserCtrl_AdminUpdateUser_BadID(t *testing.T) {

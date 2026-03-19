@@ -2,40 +2,20 @@ package userstate
 
 import (
 	"strings"
-	"time"
 
 	"github.com/luoxiaojun1992/miniprogram/internal/model/entity"
 )
 
 var frozenAttributeNames = map[string]struct{}{
-	"freeze":    {},
-	"frozen":    {},
-	"is_freeze": {},
 	"is_frozen": {},
 }
 
 var mutedAttributeNames = map[string]struct{}{
-	"mute":         {},
-	"muted":        {},
-	"is_mute":      {},
-	"is_muted":     {},
-	"comment_mute": {},
-	"comment_muted": {},
-	"is_comment_mute": {},
-	"is_comment_muted": {},
+	"is_muted": {},
 }
 
 // IsFrozen checks whether a user should be treated as frozen.
-func IsFrozen(user *entity.User, attrs []*entity.UserAttribute, now time.Time) bool {
-	if user == nil {
-		return false
-	}
-	if user.Status != 1 {
-		return true
-	}
-	if user.FreezeEndTime != nil && now.Before(*user.FreezeEndTime) {
-		return true
-	}
+func IsFrozen(attrs []*entity.UserAttribute) bool {
 	return hasTruthyAttribute(attrs, frozenAttributeNames)
 }
 
@@ -54,13 +34,12 @@ func hasTruthyAttribute(attrs []*entity.UserAttribute, names map[string]struct{}
 			continue
 		}
 		if attr.ValueBigint != nil {
-			if *attr.ValueBigint != 0 {
+			if *attr.ValueBigint == 1 {
 				return true
 			}
 			continue
 		}
-		switch strings.ToLower(strings.TrimSpace(attr.ValueString)) {
-		case "1", "true", "yes", "y", "on":
+		if strings.TrimSpace(attr.ValueString) == "1" {
 			return true
 		}
 	}

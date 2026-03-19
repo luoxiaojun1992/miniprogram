@@ -52,7 +52,7 @@ func TestAuthService_WechatLogin_NewUser(t *testing.T) {
 }
 
 func TestAuthService_WechatLogin_ExistingUser(t *testing.T) {
-	existing := &entity.User{ID: 5, OpenID: "open_id_123", UserType: 1, Status: 1}
+	existing := &entity.User{ID: 5, OpenID: "open_id_123", UserType: 1}
 	userRepo := &testutil.MockUserRepository{
 		GetByOpenIDFn: func(_ context.Context, openID string) (*entity.User, error) {
 			return existing, nil
@@ -130,7 +130,7 @@ func TestAuthService_WechatLogin_CreateFails(t *testing.T) {
 func TestAuthService_AdminLogin_Success(t *testing.T) {
 	hash, _ := bcrypt.GenerateFromPassword([]byte("password123"), bcrypt.DefaultCost)
 	admin := &entity.AdminUser{ID: 1, UserID: 10, Email: "admin@test.com", PasswordHash: string(hash)}
-	user := &entity.User{ID: 10, UserType: 2, Status: 1}
+	user := &entity.User{ID: 10, UserType: 2}
 
 	adminRepo := &testutil.MockAdminUserRepository{
 		GetByEmailFn: func(_ context.Context, email string) (*entity.AdminUser, error) {
@@ -209,10 +209,10 @@ func TestAuthService_AdminLogin_GetEmailFails(t *testing.T) {
 	require.Error(t, err)
 }
 
-func TestAuthService_AdminLogin_UserFrozen(t *testing.T) {
+func TestAuthService_AdminLogin_UserExists(t *testing.T) {
 	hash, _ := bcrypt.GenerateFromPassword([]byte("pw"), bcrypt.DefaultCost)
 	admin := &entity.AdminUser{ID: 1, UserID: 10, Email: "a@b.com", PasswordHash: string(hash)}
-	frozen := &entity.User{ID: 10, Status: 0}
+	existing := &entity.User{ID: 10, UserType: 2}
 
 	adminRepo := &testutil.MockAdminUserRepository{
 		GetByEmailFn: func(_ context.Context, email string) (*entity.AdminUser, error) {
@@ -221,7 +221,7 @@ func TestAuthService_AdminLogin_UserFrozen(t *testing.T) {
 	}
 	userRepo := &testutil.MockUserRepository{
 		GetByIDFn: func(_ context.Context, id uint64) (*entity.User, error) {
-			return frozen, nil
+			return existing, nil
 		},
 	}
 	wechatClient := &testutil.MockWechatClient{}
@@ -230,10 +230,7 @@ func TestAuthService_AdminLogin_UserFrozen(t *testing.T) {
 	_, err := svc.AdminLogin(context.Background(), &dto.AdminLoginRequest{
 		Email: "a@b.com", Password: "pw",
 	})
-	require.Error(t, err)
-	appErr, ok := err.(*apperrors.AppError)
-	require.True(t, ok)
-	assert.Equal(t, 401001, appErr.Code)
+	require.NoError(t, err)
 }
 
 func TestAuthService_AdminLogin_UserNil(t *testing.T) {
@@ -285,7 +282,7 @@ func TestAuthService_AdminLogin_GetUserFails(t *testing.T) {
 // ==================== RefreshToken ====================
 
 func TestAuthService_RefreshToken_Success(t *testing.T) {
-	user := &entity.User{ID: 1, UserType: 1, Status: 1}
+	user := &entity.User{ID: 1, UserType: 1}
 	userRepo := &testutil.MockUserRepository{
 		GetByIDFn: func(_ context.Context, id uint64) (*entity.User, error) {
 			return user, nil
@@ -343,7 +340,7 @@ func failingAuthService(userRepo *testutil.MockUserRepository, adminRepo *testut
 }
 
 func TestAuthService_WechatLogin_TokenGenFail(t *testing.T) {
-	existingUser := &entity.User{ID: 1, UserType: 1, Status: 1}
+	existingUser := &entity.User{ID: 1, UserType: 1}
 	userRepo := &testutil.MockUserRepository{
 		GetByOpenIDFn: func(_ context.Context, openID string) (*entity.User, error) {
 			return existingUser, nil
@@ -358,7 +355,7 @@ func TestAuthService_WechatLogin_TokenGenFail(t *testing.T) {
 
 func TestAuthService_AdminLogin_TokenGenFail(t *testing.T) {
 	existingAdmin := &entity.AdminUser{UserID: 1, PasswordHash: "$2a$10$c/4KfcW0n4bIfX16oVMCsun9le80aZtEaQ/0/VjoAuX7h2ScpOYaa"} // hash of "pass1234"
-	existingUser := &entity.User{ID: 1, UserType: 2, Status: 1}
+	existingUser := &entity.User{ID: 1, UserType: 2}
 	adminRepo := &testutil.MockAdminUserRepository{
 		GetByEmailFn: func(_ context.Context, email string) (*entity.AdminUser, error) { return existingAdmin, nil },
 	}

@@ -235,7 +235,6 @@ func (s *userService) CreateAdminUser(ctx context.Context, req *dto.CreateAdminU
 	user := &entity.User{
 		Nickname: req.Nickname,
 		UserType: req.UserType,
-		Status:   1,
 	}
 	if err = s.userRepo.Create(ctx, user); err != nil {
 		return 0, err
@@ -269,12 +268,6 @@ func (s *userService) UpdateUser(ctx context.Context, id uint64, req *dto.Update
 	}
 	if req.UserType != 0 {
 		user.UserType = req.UserType
-	}
-	if req.Status != 0 {
-		user.Status = req.Status
-	}
-	if req.FreezeEndTime != nil {
-		user.FreezeEndTime = req.FreezeEndTime
 	}
 	return s.userRepo.Update(ctx, user)
 }

@@ -66,7 +66,7 @@ func TestJWTAuthMiddleware_BlocksFrozenAttribute(t *testing.T) {
 
 	userRepo := &testutil.MockUserRepository{
 		GetByIDFn: func(_ context.Context, id uint64) (*entity.User, error) {
-			return &entity.User{ID: id, Status: 1}, nil
+			return &entity.User{ID: id}, nil
 		},
 	}
 	v := int64(1)
@@ -99,7 +99,7 @@ func TestJWTAuthMiddleware_AllowsNormalUser(t *testing.T) {
 
 	userRepo := &testutil.MockUserRepository{
 		GetByIDFn: func(_ context.Context, id uint64) (*entity.User, error) {
-			return &entity.User{ID: id, Status: 1}, nil
+			return &entity.User{ID: id}, nil
 		},
 	}
 	uaRepo := &testutil.MockUserAttributeRepository{

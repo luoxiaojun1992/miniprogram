@@ -61,7 +61,6 @@ func (s *authService) WechatLogin(ctx context.Context, req *dto.WechatLoginReque
 			OpenID:   openID,
 			Nickname: "微信用户",
 			UserType: 1,
-			Status:   1,
 		}
 		if err = s.userRepo.Create(ctx, user); err != nil {
 			return nil, err
@@ -98,8 +97,8 @@ func (s *authService) AdminLogin(ctx context.Context, req *dto.AdminLoginRequest
 	if err != nil {
 		return nil, err
 	}
-	if user == nil || user.Status != 1 {
-		return nil, errors.NewUnauthorized("账号已被冻结", nil)
+	if user == nil {
+		return nil, errors.NewUnauthorized("用户不存在", nil)
 	}
 
 	_ = s.adminUserRepo.UpdateLastLogin(ctx, admin.ID)

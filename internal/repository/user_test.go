@@ -95,7 +95,7 @@ func TestUserRepository_Create_Success(t *testing.T) {
 	mock.ExpectExec("INSERT").WillReturnResult(sqlmock.NewResult(1, 1))
 	mock.ExpectCommit()
 
-	u := &entity.User{Nickname: "new user", UserType: 1, Status: 1}
+	u := &entity.User{Nickname: "new user", UserType: 1}
 	err := repo.Create(context.Background(), u)
 	require.NoError(t, err)
 }

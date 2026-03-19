@@ -88,10 +88,8 @@ func (r CreateAdminUserRequest) Validate() error {
 
 // UpdateUserRequest is the request body for updating a user.
 type UpdateUserRequest struct {
-	Nickname      string     `json:"nickname"`
-	UserType      int8       `json:"user_type"`
-	Status        int8       `json:"status"`
-	FreezeEndTime *time.Time `json:"freeze_end_time"`
+	Nickname string `json:"nickname"`
+	UserType int8   `json:"user_type"`
 }
 
 // Validate validates UpdateUserRequest.

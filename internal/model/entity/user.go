@@ -15,8 +15,6 @@ type User struct {
 	AvatarURL     string         `gorm:"size:255;comment:头像URL" json:"avatar_url"`
 	AvatarFileID  *uint64        `gorm:"-" json:"avatar_file_id,omitempty"`
 	UserType      int8           `gorm:"default:1;comment:1前台用户 2普通管理员 3系统管理员" json:"user_type"`
-	Status        int8           `gorm:"default:1;comment:0冻结 1正常" json:"status"`
-	FreezeEndTime *time.Time     `gorm:"comment:冻结结束时间" json:"freeze_end_time,omitempty"`
 	CreatedAt     time.Time      `gorm:"comment:创建时间" json:"created_at"`
 	UpdatedAt     time.Time      `gorm:"comment:更新时间" json:"updated_at"`
 	DeletedAt     gorm.DeletedAt `gorm:"index;comment:删除时间" json:"-"`

@@ -884,7 +884,7 @@ func TestCommentService_Create_MutedByAttributeString(t *testing.T) {
 	uaRepo := &testutil.MockUserAttributeRepository{
 		ListByUserIDFn: func(_ context.Context, userID uint64) ([]*entity.UserAttribute, error) {
 			return []*entity.UserAttribute{
-				{Attribute: &entity.Attribute{Name: "comment_muted"}, ValueString: "true"},
+				{Attribute: &entity.Attribute{Name: "is_muted"}, ValueString: "1"},
 			}, nil
 		},
 	}

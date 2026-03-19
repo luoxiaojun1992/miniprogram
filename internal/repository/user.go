@@ -71,9 +71,6 @@ func (r *userRepository) List(ctx context.Context, page, pageSize int, keyword s
 	if userType != nil {
 		db = db.Where("user_type = ?", *userType)
 	}
-	if status != nil {
-		db = db.Where("status = ?", *status)
-	}
 	var total int64
 	if err := db.Count(&total).Error; err != nil {
 		return nil, 0, errors.NewInternal("查询用户列表失败", err)
