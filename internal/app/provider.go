@@ -229,7 +229,9 @@ func (p *Provider) initServices() {
 	)
 	p.StudyRecordSvc = service.NewStudyRecordService(p.StudyRecordRepo, p.CourseUnitRepo, p.CourseRepo, p.Log)
 	p.CollectionSvc = service.NewCollectionService(p.CollectionRepo, p.ArticleRepo, p.CourseRepo, p.Log)
-	p.LikeSvc = service.NewLikeService(p.LikeRepo, p.ArticleRepo, p.CourseRepo, p.NotificationRepo, p.Log)
+	p.LikeSvc = service.NewLikeService(
+		p.LikeRepo, p.ArticleRepo, p.CourseRepo, p.NotificationRepo, p.Log, p.AttributeRepo, p.UserAttributeRepo,
+	)
 	p.CommentSvc = service.NewCommentService(p.CommentRepo, p.ArticleRepo, p.CourseRepo, p.NotificationRepo, p.Log, p.SensitiveWordRepo)
 	p.NotificationSvc = service.NewNotificationService(p.NotificationRepo, p.Log)
 	p.WechatConfigSvc = service.NewWechatConfigService(p.WechatConfigRepo, p.Log)

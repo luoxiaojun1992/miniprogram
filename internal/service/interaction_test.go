@@ -247,8 +247,31 @@ func TestLikeService_Add_SendsNotificationAndIncrArticleLikeCount(t *testing.T) 
 			return nil
 		},
 	}
-	svc := NewLikeService(likeRepo, articleRepo, nil, notifRepo, logrus.New())
+	var upsertUA *entity.UserAttribute
+	attrRepo := &testutil.MockAttributeRepository{
+		GetByNameFn: func(_ context.Context, name string) (*entity.Attribute, error) {
+			require.Equal(t, "like_count", name)
+			return &entity.Attribute{ID: 8, Name: "like_count", Type: entity.AttributeTypeBigInt}, nil
+		},
+	}
+	uaRepo := &testutil.MockUserAttributeRepository{
+		ListByUserIDFn: func(_ context.Context, userID uint64) ([]*entity.UserAttribute, error) {
+			require.Equal(t, uint64(2), userID)
+			v := int64(5)
+			return []*entity.UserAttribute{{UserID: userID, AttributeID: 8, ValueBigint: &v}}, nil
+		},
+		UpsertFn: func(_ context.Context, ua *entity.UserAttribute) error {
+			upsertUA = ua
+			return nil
+		},
+	}
+	svc := NewLikeService(likeRepo, articleRepo, nil, notifRepo, logrus.New(), attrRepo, uaRepo)
 	require.NoError(t, svc.Add(context.Background(), 1, 1, 9))
+	require.NotNil(t, upsertUA)
+	require.NotNil(t, upsertUA.ValueBigint)
+	assert.Equal(t, uint64(2), upsertUA.UserID)
+	assert.Equal(t, uint(8), upsertUA.AttributeID)
+	assert.Equal(t, int64(6), *upsertUA.ValueBigint)
 }
 
 func TestLikeService_Remove_DecrCourseLikeCount(t *testing.T) {
@@ -260,8 +283,29 @@ func TestLikeService_Remove_DecrCourseLikeCount(t *testing.T) {
 			assert.Equal(t, uint64(7), id)
 			return nil
 		},
+		GetByIDFn: func(_ context.Context, id uint64) (*entity.Course, error) {
+			return &entity.Course{ID: id, AuthorID: 9}, nil
+		},
 	}
-	svc := NewLikeService(likeRepo, nil, courseRepo, nil, logrus.New())
+	attrRepo := &testutil.MockAttributeRepository{
+		GetByNameFn: func(_ context.Context, name string) (*entity.Attribute, error) {
+			require.Equal(t, "like_count", name)
+			return &entity.Attribute{ID: 8, Name: "like_count", Type: entity.AttributeTypeBigInt}, nil
+		},
+	}
+	uaRepo := &testutil.MockUserAttributeRepository{
+		ListByUserIDFn: func(_ context.Context, userID uint64) ([]*entity.UserAttribute, error) {
+			require.Equal(t, uint64(9), userID)
+			v := int64(1)
+			return []*entity.UserAttribute{{UserID: userID, AttributeID: 8, ValueBigint: &v}}, nil
+		},
+		UpsertFn: func(_ context.Context, ua *entity.UserAttribute) error {
+			require.NotNil(t, ua.ValueBigint)
+			assert.Equal(t, int64(0), *ua.ValueBigint)
+			return nil
+		},
+	}
+	svc := NewLikeService(likeRepo, nil, courseRepo, nil, logrus.New(), attrRepo, uaRepo)
 	require.NoError(t, svc.Remove(context.Background(), 1, 2, 7))
 }
 
