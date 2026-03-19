@@ -2,11 +2,6 @@
 
 All notable changes to this project will be documented in this file.
 
-## [Unreleased] - 2026-03-19
-
-### Added
-- **CHANGELOG 文档** - 新增项目变更日志文档
-
 ## [Unreleased] - 2026-03-18
 
 ### Added
