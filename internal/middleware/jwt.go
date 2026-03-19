@@ -1,13 +1,18 @@
 package middleware
 
 import (
+	"context"
 	"net/http"
 	"strings"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/golang-jwt/jwt/v5"
 
+	"github.com/luoxiaojun1992/miniprogram/internal/model/entity"
 	"github.com/luoxiaojun1992/miniprogram/internal/pkg/errors"
+	"github.com/luoxiaojun1992/miniprogram/internal/pkg/userstate"
+	"github.com/luoxiaojun1992/miniprogram/internal/repository"
 )
 
 // JWTClaims represents the JWT claims.
@@ -18,7 +23,8 @@ type JWTClaims struct {
 }
 
 // JWTAuthMiddleware validates the JWT token from the Authorization header.
-func JWTAuthMiddleware(secret string) gin.HandlerFunc {
+func JWTAuthMiddleware(secret string, deps ...interface{}) gin.HandlerFunc {
+	userRepo, uaRepo := parseUserStateDeps(deps...)
 	return func(ctx *gin.Context) {
 		authHeader := ctx.GetHeader("Authorization")
 		if authHeader == "" {
@@ -47,6 +53,13 @@ func JWTAuthMiddleware(secret string) gin.HandlerFunc {
 			ctx.Abort()
 			return
 		}
+		if userRepo != nil {
+			if err = ensureNotFrozen(ctx.Request.Context(), userRepo, uaRepo, claims.UserID); err != nil {
+				ctx.Error(err)
+				ctx.Abort()
+				return
+			}
+		}
 
 		ctx.Set("user_id", claims.UserID)
 		ctx.Set("user_type", claims.UserType)
@@ -55,7 +68,8 @@ func JWTAuthMiddleware(secret string) gin.HandlerFunc {
 }
 
 // OptionalJWTAuthMiddleware validates the JWT token if present, but does not abort if missing.
-func OptionalJWTAuthMiddleware(secret string) gin.HandlerFunc {
+func OptionalJWTAuthMiddleware(secret string, deps ...interface{}) gin.HandlerFunc {
+	userRepo, uaRepo := parseUserStateDeps(deps...)
 	return func(ctx *gin.Context) {
 		authHeader := ctx.GetHeader("Authorization")
 		if authHeader == "" {
@@ -78,11 +92,54 @@ func OptionalJWTAuthMiddleware(secret string) gin.HandlerFunc {
 			return []byte(secret), nil
 		})
 		if err == nil && token.Valid {
+			if userRepo != nil {
+				if stateErr := ensureNotFrozen(ctx.Request.Context(), userRepo, uaRepo, claims.UserID); stateErr != nil {
+					ctx.Next()
+					return
+				}
+			}
 			ctx.Set("user_id", claims.UserID)
 			ctx.Set("user_type", claims.UserType)
 		}
 		ctx.Next()
 	}
+}
+
+func parseUserStateDeps(deps ...interface{}) (repository.UserRepository, repository.UserAttributeRepository) {
+	var userRepo repository.UserRepository
+	var uaRepo repository.UserAttributeRepository
+	for _, dep := range deps {
+		switch v := dep.(type) {
+		case repository.UserRepository:
+			userRepo = v
+		case repository.UserAttributeRepository:
+			uaRepo = v
+		}
+	}
+	return userRepo, uaRepo
+}
+
+func ensureNotFrozen(
+	ctx context.Context,
+	userRepo repository.UserRepository,
+	uaRepo repository.UserAttributeRepository,
+	userID uint64,
+) error {
+	user, err := userRepo.GetByID(ctx, userID)
+	if err != nil {
+		return err
+	}
+	var attrs []*entity.UserAttribute
+	if uaRepo != nil {
+		attrs, err = uaRepo.ListByUserID(ctx, userID)
+		if err != nil {
+			return err
+		}
+	}
+	if userstate.IsFrozen(user, attrs, time.Now()) {
+		return errors.NewUnauthorized("账号已被冻结", nil)
+	}
+	return nil
 }
 
 // PermissionMiddleware checks if the current user has the required permission code.

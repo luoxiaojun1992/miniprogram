@@ -239,7 +239,9 @@ func (p *Provider) initServices() {
 	p.FollowSvc = service.NewFollowService(
 		p.FollowRepo, p.UserRepo, p.NotificationRepo, p.Log, p.AttributeRepo, p.UserAttributeRepo,
 	)
-	p.CommentSvc = service.NewCommentService(p.CommentRepo, p.ArticleRepo, p.CourseRepo, p.NotificationRepo, p.Log, p.SensitiveWordRepo)
+	p.CommentSvc = service.NewCommentService(
+		p.CommentRepo, p.ArticleRepo, p.CourseRepo, p.NotificationRepo, p.Log, p.SensitiveWordRepo, p.UserAttributeRepo,
+	)
 	p.NotificationSvc = service.NewNotificationService(p.NotificationRepo, p.Log)
 	p.WechatConfigSvc = service.NewWechatConfigService(p.WechatConfigRepo, p.Log)
 	p.AuditLogSvc = service.NewAuditLogService(p.AuditLogRepo, p.Log)

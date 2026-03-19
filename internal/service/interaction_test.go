@@ -877,6 +877,45 @@ func TestCommentService_Create_MaskSensitiveWords(t *testing.T) {
 	assert.Equal(t, "****", c.Content)
 }
 
+func TestCommentService_Create_MutedByAttributeString(t *testing.T) {
+	repo := &testutil.MockCommentRepository{
+		CreateFn: func(_ context.Context, c *entity.Comment) error { return nil },
+	}
+	uaRepo := &testutil.MockUserAttributeRepository{
+		ListByUserIDFn: func(_ context.Context, userID uint64) ([]*entity.UserAttribute, error) {
+			return []*entity.UserAttribute{
+				{Attribute: &entity.Attribute{Name: "comment_muted"}, ValueString: "true"},
+			}, nil
+		},
+	}
+	svc := NewCommentService(repo, nil, nil, nil, logrus.New(), uaRepo)
+	_, err := svc.Create(context.Background(), 1, 1, 10, &dto.CreateCommentRequest{Content: "hello"})
+	require.Error(t, err)
+	appErr, ok := err.(*apperrors.AppError)
+	require.True(t, ok)
+	assert.Equal(t, 403001, appErr.Code)
+}
+
+func TestCommentService_Create_MutedByAttributeBigInt(t *testing.T) {
+	repo := &testutil.MockCommentRepository{
+		CreateFn: func(_ context.Context, c *entity.Comment) error { return nil },
+	}
+	v := int64(1)
+	uaRepo := &testutil.MockUserAttributeRepository{
+		ListByUserIDFn: func(_ context.Context, userID uint64) ([]*entity.UserAttribute, error) {
+			return []*entity.UserAttribute{
+				{Attribute: &entity.Attribute{Name: "is_muted"}, ValueBigint: &v},
+			}, nil
+		},
+	}
+	svc := NewCommentService(repo, nil, nil, nil, logrus.New(), uaRepo)
+	_, err := svc.Create(context.Background(), 1, 1, 10, &dto.CreateCommentRequest{Content: "hello"})
+	require.Error(t, err)
+	appErr, ok := err.(*apperrors.AppError)
+	require.True(t, ok)
+	assert.Equal(t, 403001, appErr.Code)
+}
+
 func TestCommentService_AdminList_OK(t *testing.T) {
 	repo := &testutil.MockCommentRepository{
 		ListAdminFn: func(_ context.Context, p, ps int, st *int8) ([]*entity.Comment, int64, error) {
