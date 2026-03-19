@@ -18,6 +18,7 @@ type commentService struct {
 	courseRepo        repository.CourseRepository
 	notifRepo         repository.NotificationRepository
 	sensitiveWordRepo repository.SensitiveWordRepository
+	attrRepo          repository.AttributeRepository
 	uaRepo            repository.UserAttributeRepository
 	log               *logrus.Logger
 }
@@ -31,13 +32,21 @@ func NewCommentService(
 	log *logrus.Logger,
 	sensitiveWordRepo repository.SensitiveWordRepository,
 	userAttributeRepo repository.UserAttributeRepository,
+	deps ...interface{},
 ) CommentService {
+	var attrRepo repository.AttributeRepository
+	for _, dep := range deps {
+		if v, ok := dep.(repository.AttributeRepository); ok {
+			attrRepo = v
+		}
+	}
 	return &commentService{
 		commentRepo:       commentRepo,
 		articleRepo:       articleRepo,
 		courseRepo:        courseRepo,
 		notifRepo:         notifRepo,
 		sensitiveWordRepo: sensitiveWordRepo,
+		attrRepo:          attrRepo,
 		uaRepo:            userAttributeRepo,
 		log:               log,
 	}
@@ -85,6 +94,9 @@ func (s *commentService) Create(ctx context.Context, userID uint64, contentType 
 				s.log.WithError(err).Warn("更新课程评论数失败")
 			}
 		}
+	}
+	if err := s.incrUserCommentCount(ctx, userID); err != nil {
+		s.log.WithError(err).Warn("更新用户评论数失败")
 	}
 	if s.notifRepo != nil {
 		var targetUserID uint64
@@ -177,5 +189,53 @@ func (s *commentService) Delete(ctx context.Context, id uint64) error {
 			}
 		}
 	}
+	if err := s.decrUserCommentCount(ctx, c.UserID); err != nil {
+		s.log.WithError(err).Warn("更新用户评论数失败")
+	}
 	return nil
+}
+
+func (s *commentService) incrUserCommentCount(ctx context.Context, userID uint64) error {
+	return s.adjustUserCommentCount(ctx, userID, 1)
+}
+
+func (s *commentService) decrUserCommentCount(ctx context.Context, userID uint64) error {
+	return s.adjustUserCommentCount(ctx, userID, -1)
+}
+
+func (s *commentService) adjustUserCommentCount(ctx context.Context, userID uint64, delta int64) error {
+	if s.attrRepo == nil || s.uaRepo == nil {
+		return nil
+	}
+	attr, err := s.attrRepo.GetByName(ctx, "comment_count")
+	if err != nil {
+		return err
+	}
+	if attr == nil {
+		attr = &entity.Attribute{Name: "comment_count", Type: entity.AttributeTypeBigInt}
+		if err = s.attrRepo.Create(ctx, attr); err != nil {
+			return err
+		}
+	}
+	var current int64
+	uas, err := s.uaRepo.ListByUserID(ctx, userID)
+	if err != nil {
+		return err
+	}
+	for _, ua := range uas {
+		if ua == nil || ua.AttributeID != attr.ID || ua.ValueBigint == nil {
+			continue
+		}
+		current = *ua.ValueBigint
+		break
+	}
+	next := current + delta
+	if next < 0 {
+		next = 0
+	}
+	return s.uaRepo.Upsert(ctx, &entity.UserAttribute{
+		UserID:      userID,
+		AttributeID: attr.ID,
+		ValueBigint: &next,
+	})
 }

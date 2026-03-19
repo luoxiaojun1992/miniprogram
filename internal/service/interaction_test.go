@@ -830,9 +830,32 @@ func TestCommentService_Create_IncrCountAndNotify(t *testing.T) {
 			return nil
 		},
 	}
-	svc := NewCommentService(repo, articleRepo, nil, notifRepo, logrus.New(), nil, nil)
+	var upsertUA *entity.UserAttribute
+	attrRepo := &testutil.MockAttributeRepository{
+		GetByNameFn: func(_ context.Context, name string) (*entity.Attribute, error) {
+			require.Equal(t, "comment_count", name)
+			return &entity.Attribute{ID: 10, Name: "comment_count", Type: entity.AttributeTypeBigInt}, nil
+		},
+	}
+	uaRepo := &testutil.MockUserAttributeRepository{
+		ListByUserIDFn: func(_ context.Context, userID uint64) ([]*entity.UserAttribute, error) {
+			require.Equal(t, uint64(1), userID)
+			v := int64(2)
+			return []*entity.UserAttribute{{UserID: userID, AttributeID: 10, ValueBigint: &v}}, nil
+		},
+		UpsertFn: func(_ context.Context, ua *entity.UserAttribute) error {
+			upsertUA = ua
+			return nil
+		},
+	}
+	svc := NewCommentService(repo, articleRepo, nil, notifRepo, logrus.New(), nil, uaRepo, attrRepo)
 	_, err := svc.Create(context.Background(), 1, 1, 10, &dto.CreateCommentRequest{Content: "hello"})
 	require.NoError(t, err)
+	require.NotNil(t, upsertUA)
+	require.NotNil(t, upsertUA.ValueBigint)
+	assert.Equal(t, uint64(1), upsertUA.UserID)
+	assert.Equal(t, uint(10), upsertUA.AttributeID)
+	assert.Equal(t, int64(3), *upsertUA.ValueBigint)
 }
 
 func TestCommentService_Create_ReplyNotifyParent(t *testing.T) {
@@ -1047,7 +1070,7 @@ func TestCommentService_Delete_HasReplies(t *testing.T) {
 func TestCommentService_Delete_DecrCourseCommentCount(t *testing.T) {
 	repo := &testutil.MockCommentRepository{
 		GetByIDFn: func(_ context.Context, id uint64) (*entity.Comment, error) {
-			return &entity.Comment{ID: id, ContentType: 2, ContentID: 5}, nil
+			return &entity.Comment{ID: id, UserID: 3, ContentType: 2, ContentID: 5}, nil
 		},
 		HasRepliesFn: func(_ context.Context, id uint64) (bool, error) { return false, nil },
 		DeleteFn:     func(_ context.Context, id uint64) error { return nil },
@@ -1058,7 +1081,25 @@ func TestCommentService_Delete_DecrCourseCommentCount(t *testing.T) {
 			return nil
 		},
 	}
-	svc := NewCommentService(repo, nil, courseRepo, nil, logrus.New(), nil, nil)
+	attrRepo := &testutil.MockAttributeRepository{
+		GetByNameFn: func(_ context.Context, name string) (*entity.Attribute, error) {
+			require.Equal(t, "comment_count", name)
+			return &entity.Attribute{ID: 10, Name: "comment_count", Type: entity.AttributeTypeBigInt}, nil
+		},
+	}
+	uaRepo := &testutil.MockUserAttributeRepository{
+		ListByUserIDFn: func(_ context.Context, userID uint64) ([]*entity.UserAttribute, error) {
+			require.Equal(t, uint64(3), userID)
+			v := int64(1)
+			return []*entity.UserAttribute{{UserID: userID, AttributeID: 10, ValueBigint: &v}}, nil
+		},
+		UpsertFn: func(_ context.Context, ua *entity.UserAttribute) error {
+			require.NotNil(t, ua.ValueBigint)
+			assert.Equal(t, int64(0), *ua.ValueBigint)
+			return nil
+		},
+	}
+	svc := NewCommentService(repo, nil, courseRepo, nil, logrus.New(), nil, uaRepo, attrRepo)
 	err := svc.Delete(context.Background(), 1)
 	require.NoError(t, err)
 }
