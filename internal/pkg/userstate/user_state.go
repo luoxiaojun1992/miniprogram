@@ -21,12 +21,14 @@ var mutedAttributeNames = map[string]struct{}{
 	"is_muted":     {},
 	"comment_mute": {},
 	"comment_muted": {},
+	"is_comment_mute": {},
+	"is_comment_muted": {},
 }
 
 // IsFrozen checks whether a user should be treated as frozen.
 func IsFrozen(user *entity.User, attrs []*entity.UserAttribute, now time.Time) bool {
 	if user == nil {
-		return true
+		return false
 	}
 	if user.Status != 1 {
 		return true
@@ -52,7 +54,10 @@ func hasTruthyAttribute(attrs []*entity.UserAttribute, names map[string]struct{}
 			continue
 		}
 		if attr.ValueBigint != nil {
-			return *attr.ValueBigint != 0
+			if *attr.ValueBigint != 0 {
+				return true
+			}
+			continue
 		}
 		switch strings.ToLower(strings.TrimSpace(attr.ValueString)) {
 		case "1", "true", "yes", "y", "on":

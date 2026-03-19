@@ -29,25 +29,16 @@ func NewCommentService(
 	courseRepo repository.CourseRepository,
 	notifRepo repository.NotificationRepository,
 	log *logrus.Logger,
-	deps ...interface{},
+	sensitiveWordRepo repository.SensitiveWordRepository,
+	userAttributeRepo repository.UserAttributeRepository,
 ) CommentService {
-	var swRepo repository.SensitiveWordRepository
-	var uaRepo repository.UserAttributeRepository
-	for _, dep := range deps {
-		switch v := dep.(type) {
-		case repository.SensitiveWordRepository:
-			swRepo = v
-		case repository.UserAttributeRepository:
-			uaRepo = v
-		}
-	}
 	return &commentService{
 		commentRepo:       commentRepo,
 		articleRepo:       articleRepo,
 		courseRepo:        courseRepo,
 		notifRepo:         notifRepo,
-		sensitiveWordRepo: swRepo,
-		uaRepo:            uaRepo,
+		sensitiveWordRepo: sensitiveWordRepo,
+		uaRepo:            userAttributeRepo,
 		log:               log,
 	}
 }

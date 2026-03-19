@@ -23,8 +23,11 @@ type JWTClaims struct {
 }
 
 // JWTAuthMiddleware validates the JWT token from the Authorization header.
-func JWTAuthMiddleware(secret string, deps ...interface{}) gin.HandlerFunc {
-	userRepo, uaRepo := parseUserStateDeps(deps...)
+func JWTAuthMiddleware(
+	secret string,
+	userRepo repository.UserRepository,
+	uaRepo repository.UserAttributeRepository,
+) gin.HandlerFunc {
 	return func(ctx *gin.Context) {
 		authHeader := ctx.GetHeader("Authorization")
 		if authHeader == "" {
@@ -68,8 +71,11 @@ func JWTAuthMiddleware(secret string, deps ...interface{}) gin.HandlerFunc {
 }
 
 // OptionalJWTAuthMiddleware validates the JWT token if present, but does not abort if missing.
-func OptionalJWTAuthMiddleware(secret string, deps ...interface{}) gin.HandlerFunc {
-	userRepo, uaRepo := parseUserStateDeps(deps...)
+func OptionalJWTAuthMiddleware(
+	secret string,
+	userRepo repository.UserRepository,
+	uaRepo repository.UserAttributeRepository,
+) gin.HandlerFunc {
 	return func(ctx *gin.Context) {
 		authHeader := ctx.GetHeader("Authorization")
 		if authHeader == "" {
@@ -105,20 +111,6 @@ func OptionalJWTAuthMiddleware(secret string, deps ...interface{}) gin.HandlerFu
 	}
 }
 
-func parseUserStateDeps(deps ...interface{}) (repository.UserRepository, repository.UserAttributeRepository) {
-	var userRepo repository.UserRepository
-	var uaRepo repository.UserAttributeRepository
-	for _, dep := range deps {
-		switch v := dep.(type) {
-		case repository.UserRepository:
-			userRepo = v
-		case repository.UserAttributeRepository:
-			uaRepo = v
-		}
-	}
-	return userRepo, uaRepo
-}
-
 func ensureNotFrozen(
 	ctx context.Context,
 	userRepo repository.UserRepository,
@@ -128,6 +120,9 @@ func ensureNotFrozen(
 	user, err := userRepo.GetByID(ctx, userID)
 	if err != nil {
 		return err
+	}
+	if user == nil {
+		return errors.NewUnauthorized("用户不存在", nil)
 	}
 	var attrs []*entity.UserAttribute
 	if uaRepo != nil {
