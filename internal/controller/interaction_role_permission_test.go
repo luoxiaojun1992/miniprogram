@@ -133,6 +133,12 @@ func TestCollectionCtrl_Add_BadContentType(t *testing.T) {
 	assert.Equal(t, 400, doRequest(r, "POST", "/collections/abc/10", "").Code)
 }
 
+func TestCollectionCtrl_Add_InvalidContentTypeValue(t *testing.T) {
+	r := newTestRouterWithAuth(1, 1)
+	r.POST("/collections/:content_type/:content_id", NewCollectionController(&testutil.MockCollectionService{}, logrus.New()).Add)
+	assert.Equal(t, 400, doRequest(r, "POST", "/collections/3/10", "").Code)
+}
+
 func TestCollectionCtrl_Add_BadContentID(t *testing.T) {
 	r := newTestRouterWithAuth(1, 1)
 	r.POST("/collections/:content_type/:content_id", NewCollectionController(&testutil.MockCollectionService{}, logrus.New()).Add)
@@ -169,6 +175,12 @@ func TestCollectionCtrl_Remove_BadContentType(t *testing.T) {
 	r := newTestRouterWithAuth(1, 1)
 	r.DELETE("/collections/:content_type/:content_id", NewCollectionController(&testutil.MockCollectionService{}, logrus.New()).Remove)
 	assert.Equal(t, 400, doRequest(r, "DELETE", "/collections/abc/10", "").Code)
+}
+
+func TestCollectionCtrl_Remove_InvalidContentTypeValue(t *testing.T) {
+	r := newTestRouterWithAuth(1, 1)
+	r.DELETE("/collections/:content_type/:content_id", NewCollectionController(&testutil.MockCollectionService{}, logrus.New()).Remove)
+	assert.Equal(t, 400, doRequest(r, "DELETE", "/collections/3/10", "").Code)
 }
 
 func TestCollectionCtrl_Remove_BadContentID(t *testing.T) {
@@ -211,6 +223,12 @@ func TestLikeCtrl_Add_BadContentType(t *testing.T) {
 	assert.Equal(t, 400, doRequest(r, "POST", "/likes/abc/10", "").Code)
 }
 
+func TestLikeCtrl_Add_InvalidContentTypeValue(t *testing.T) {
+	r := newTestRouterWithAuth(1, 1)
+	r.POST("/likes/:content_type/:content_id", NewLikeController(&testutil.MockLikeService{}, logrus.New()).Add)
+	assert.Equal(t, 400, doRequest(r, "POST", "/likes/3/10", "").Code)
+}
+
 func TestLikeCtrl_Add_BadContentID(t *testing.T) {
 	r := newTestRouterWithAuth(1, 1)
 	r.POST("/likes/:content_type/:content_id", NewLikeController(&testutil.MockLikeService{}, logrus.New()).Add)
@@ -247,6 +265,12 @@ func TestLikeCtrl_Remove_BadContentType(t *testing.T) {
 	r := newTestRouterWithAuth(1, 1)
 	r.DELETE("/likes/:content_type/:content_id", NewLikeController(&testutil.MockLikeService{}, logrus.New()).Remove)
 	assert.Equal(t, 400, doRequest(r, "DELETE", "/likes/abc/10", "").Code)
+}
+
+func TestLikeCtrl_Remove_InvalidContentTypeValue(t *testing.T) {
+	r := newTestRouterWithAuth(1, 1)
+	r.DELETE("/likes/:content_type/:content_id", NewLikeController(&testutil.MockLikeService{}, logrus.New()).Remove)
+	assert.Equal(t, 400, doRequest(r, "DELETE", "/likes/3/10", "").Code)
 }
 
 func TestLikeCtrl_Remove_BadContentID(t *testing.T) {
@@ -329,6 +353,12 @@ func TestCommentCtrl_List_BadContentType(t *testing.T) {
 	assert.Equal(t, 400, doRequest(r, "GET", "/comments/abc/10", "").Code)
 }
 
+func TestCommentCtrl_List_InvalidContentTypeValue(t *testing.T) {
+	r := newTestRouter()
+	r.GET("/comments/:content_type/:content_id", NewCommentController(&testutil.MockCommentService{}, logrus.New()).List)
+	assert.Equal(t, 400, doRequest(r, "GET", "/comments/3/10", "").Code)
+}
+
 func TestCommentCtrl_List_BadContentID(t *testing.T) {
 	r := newTestRouter()
 	r.GET("/comments/:content_type/:content_id", NewCommentController(&testutil.MockCommentService{}, logrus.New()).List)
@@ -367,6 +397,12 @@ func TestCommentCtrl_Create_BadContentType(t *testing.T) {
 	r := newTestRouterWithAuth(1, 1)
 	r.POST("/comments/:content_type/:content_id", NewCommentController(&testutil.MockCommentService{}, logrus.New()).Create)
 	assert.Equal(t, 400, doRequest(r, "POST", "/comments/abc/10", `{"content":"Hello"}`).Code)
+}
+
+func TestCommentCtrl_Create_InvalidContentTypeValue(t *testing.T) {
+	r := newTestRouterWithAuth(1, 1)
+	r.POST("/comments/:content_type/:content_id", NewCommentController(&testutil.MockCommentService{}, logrus.New()).Create)
+	assert.Equal(t, 400, doRequest(r, "POST", "/comments/3/10", `{"content":"Hello"}`).Code)
 }
 
 func TestCommentCtrl_Create_BadContentID(t *testing.T) {
@@ -658,6 +694,18 @@ func TestCollectionCtrl_List_BindQueryErr(t *testing.T) {
 r := newTestRouterWithAuth(1, 1)
 r.GET("/collections", NewCollectionController(&testutil.MockCollectionService{}, logrus.New()).List)
 assert.Equal(t, 400, doRequest(r, "GET", "/collections?page=abc", "").Code)
+}
+
+func TestCollectionCtrl_List_BadContentTypeQuery(t *testing.T) {
+	r := newTestRouterWithAuth(1, 1)
+	r.GET("/collections", NewCollectionController(&testutil.MockCollectionService{}, logrus.New()).List)
+	assert.Equal(t, 400, doRequest(r, "GET", "/collections?content_type=abc", "").Code)
+}
+
+func TestCollectionCtrl_List_InvalidContentTypeQueryValue(t *testing.T) {
+	r := newTestRouterWithAuth(1, 1)
+	r.GET("/collections", NewCollectionController(&testutil.MockCollectionService{}, logrus.New()).List)
+	assert.Equal(t, 400, doRequest(r, "GET", "/collections?content_type=3", "").Code)
 }
 
 func TestCollectionCtrl_List_NoContentType(t *testing.T) {
