@@ -356,6 +356,48 @@ func TestUploadCtrl_HelperFunctions(t *testing.T) {
 	assert.Error(t, validateImageMagic(newTestMultipartFile(t, []byte("not-image")), ".png"))
 }
 
+func TestUploadCtrl_SaveFile_InvalidKey(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	ctrl := NewUploadController("/tmp/uploads_test", "http://localhost:8080", logrus.New())
+	fileBody := []byte{0x89, 'P', 'N', 'G', '\r', '\n', 0x1A, '\n'}
+	var body bytes.Buffer
+	w := multipart.NewWriter(&body)
+	part, err := w.CreateFormFile("file", "a.png")
+	require.NoError(t, err)
+	_, err = part.Write(fileBody)
+	require.NoError(t, err)
+	require.NoError(t, w.Close())
+
+	req := httptest.NewRequest(http.MethodPost, "/upload", &body)
+	req.Header.Set("Content-Type", w.FormDataContentType())
+	require.NoError(t, req.ParseMultipartForm(1<<20))
+	file, header, err := req.FormFile("file")
+	require.NoError(t, err)
+	t.Cleanup(func() { _ = file.Close() })
+
+	_, err = ctrl.saveFile(context.Background(), file, header, "")
+	require.Error(t, err)
+}
+
+func TestSaveUploadedFile_RejectOversizedContent(t *testing.T) {
+	var body bytes.Buffer
+	w := multipart.NewWriter(&body)
+	part, err := w.CreateFormFile("file", "a.bin")
+	require.NoError(t, err)
+	_, err = part.Write([]byte("123456"))
+	require.NoError(t, err)
+	require.NoError(t, w.Close())
+
+	req := httptest.NewRequest(http.MethodPost, "/upload", &body)
+	req.Header.Set("Content-Type", w.FormDataContentType())
+	require.NoError(t, req.ParseMultipartForm(1<<20))
+	_, header, err := req.FormFile("file")
+	require.NoError(t, err)
+
+	err = saveUploadedFile(header, "/tmp/uploads_test/oversized.bin", 5)
+	require.Error(t, err)
+}
+
 func newTestMultipartFile(t *testing.T, b []byte) multipart.File {
 	t.Helper()
 	var body bytes.Buffer

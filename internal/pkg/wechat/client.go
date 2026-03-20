@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
 )
 
 // Client defines the wechat API client interface.
@@ -37,12 +38,18 @@ type code2SessionResponse struct {
 }
 
 func (c *client) Code2Session(ctx context.Context, code string) (string, error) {
-	url := fmt.Sprintf(
-		"https://api.weixin.qq.com/sns/jscode2session?appid=%s&secret=%s&js_code=%s&grant_type=authorization_code",
-		c.appID, c.appSecret, code,
-	)
+	apiURL, err := url.Parse("https://api.weixin.qq.com/sns/jscode2session")
+	if err != nil {
+		return "", fmt.Errorf("build request url failed: %w", err)
+	}
+	query := apiURL.Query()
+	query.Set("appid", c.appID)
+	query.Set("secret", c.appSecret)
+	query.Set("js_code", code)
+	query.Set("grant_type", "authorization_code")
+	apiURL.RawQuery = query.Encode()
 
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, apiURL.String(), nil)
 	if err != nil {
 		return "", fmt.Errorf("create request failed: %w", err)
 	}

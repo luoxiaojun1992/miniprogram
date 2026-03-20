@@ -901,29 +901,38 @@ func (c *UploadController) recordFileUpload(ctx *gin.Context, payload fileRecord
 }
 
 func (c *UploadController) saveFile(ctx context.Context, file io.Reader, header *multipart.FileHeader, key string) (string, error) {
+	normalizedKey := normalizeObjectKey(key)
+	if normalizedKey == "" {
+		return "", apperrors.NewBadRequest("文件key不合法", nil)
+	}
+
 	if c.cos != nil {
 		contentType := header.Header.Get("Content-Type")
 		if contentType == "" {
 			contentType = "application/octet-stream"
 		}
-		url, err := c.cos.upload(ctx, key, file, contentType)
+		url, err := c.cos.upload(ctx, normalizedKey, file, contentType)
 		if err != nil {
 			return "", apperrors.NewInternal("上传到对象存储失败", err)
 		}
 		return url, nil
 	}
 
-	savePath := filepath.Join(c.uploadDir, key)
+	savePath := filepath.Join(c.uploadDir, normalizedKey)
+	relPath, err := filepath.Rel(c.uploadDir, savePath)
+	if err != nil || relPath == ".." || strings.HasPrefix(relPath, ".."+string(os.PathSeparator)) {
+		return "", apperrors.NewBadRequest("文件key不合法", err)
+	}
 	if err := os.MkdirAll(filepath.Dir(savePath), 0o755); err != nil {
 		return "", apperrors.NewInternal("创建上传目录失败", err)
 	}
-	if err := saveUploadedFile(header, savePath); err != nil {
+	if err := saveUploadedFile(header, savePath, 500*1024*1024); err != nil {
 		return "", apperrors.NewInternal("保存文件失败", err)
 	}
-	return fmt.Sprintf("%s/%s", strings.TrimRight(c.baseURL, "/"), key), nil
+	return fmt.Sprintf("%s/%s", strings.TrimRight(c.baseURL, "/"), normalizedKey), nil
 }
 
-func saveUploadedFile(header *multipart.FileHeader, savePath string) error {
+func saveUploadedFile(header *multipart.FileHeader, savePath string, maxBytes int64) error {
 	src, err := header.Open()
 	if err != nil {
 		return err
@@ -936,8 +945,15 @@ func saveUploadedFile(header *multipart.FileHeader, savePath string) error {
 	}
 	defer dst.Close()
 
-	_, err = io.Copy(dst, src)
-	return err
+	limitReader := io.LimitReader(src, maxBytes+1)
+	written, err := io.Copy(dst, limitReader)
+	if err != nil {
+		return err
+	}
+	if written > maxBytes {
+		return fmt.Errorf("文件过大")
+	}
+	return nil
 }
 
 type cosUploader struct {
