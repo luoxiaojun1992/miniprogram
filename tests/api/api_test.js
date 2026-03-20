@@ -315,6 +315,7 @@ export default function (data) {
     const likeCountBefore = articleBefore.json('data.like_count') || 0;
     const commentCountBefore = articleBefore.json('data.comment_count') || 0;
 
+    // --- Study Records & Collections ---
     // Study records – list
     const studyListRes = http.get(`${BASE_URL}/v1/study-records`, userH);
     check(studyListRes, { 'GET /v1/study-records: 200': (r) => r.status === 200 });
@@ -345,6 +346,7 @@ export default function (data) {
     const colCourseDelRes = http.del(`${BASE_URL}/v1/collections/2/${courseId}`, null, userH);
     check(colCourseDelRes, { 'DELETE /v1/collections/2/:id: 2xx': (r) => ok(r) });
 
+    // --- Likes & Follows ---
     // Likes – add
     const likeAddRes = http.post(`${BASE_URL}/v1/likes/1/${articleId}`, null, userH);
     check(likeAddRes, { 'POST /v1/likes/1/:id: 2xx': (r) => ok(r) });
@@ -367,6 +369,13 @@ export default function (data) {
     const likeCourseDelRes = http.del(`${BASE_URL}/v1/likes/2/${courseId}`, null, userH);
     check(likeCourseDelRes, { 'DELETE /v1/likes/2/:id: 2xx': (r) => ok(r) });
 
+    // Follows – add/remove
+    const followAddRes = http.post(`${BASE_URL}/v1/follows/${newUserId}`, null, userH);
+    check(followAddRes, { 'POST /v1/follows/:user_id: 2xx': (r) => ok(r) });
+    const followDelRes = http.del(`${BASE_URL}/v1/follows/${newUserId}`, null, userH);
+    check(followDelRes, { 'DELETE /v1/follows/:user_id: 2xx': (r) => ok(r) });
+
+    // --- Comments, Notifications & Files ---
     // Comments – create (as regular user)
     const createCommentRes = http.post(
       `${BASE_URL}/v1/comments/1/${articleId}`,
@@ -536,7 +545,7 @@ export default function (data) {
       check(delTagRes, { 'DELETE /v1/admin/users/:id/tags: 2xx': (r) => ok(r) });
     }
 
-    // Endpoint create/delete coverage is already exercised in setup + teardown.
+    // Note: user CREATE is covered in setup, and user DELETE is covered in teardown cleanup.
   });
 
   // -------------------------------------------------------------------------
@@ -748,6 +757,20 @@ export default function (data) {
     );
     check(pinRes, { 'POST /v1/admin/courses/:id/pin: 2xx': (r) => ok(r) });
 
+    // Unpublish then re-publish
+    const unpubRes = http.post(
+      `${BASE_URL}/v1/admin/courses/${courseId}/publish`,
+      JSON.stringify({ status: 0 }),
+      adminH,
+    );
+    check(unpubRes, { 'POST /v1/admin/courses/:id/publish (unpublish): 2xx': (r) => ok(r) });
+    const pubRes = http.post(
+      `${BASE_URL}/v1/admin/courses/${courseId}/publish`,
+      JSON.stringify({ status: 1 }),
+      adminH,
+    );
+    check(pubRes, { 'POST /v1/admin/courses/:id/publish: 2xx': (r) => ok(r) });
+
     // Copy then cleanup
     const copyRes = http.post(`${BASE_URL}/v1/admin/courses/${courseId}/copy`, null, adminH);
     check(copyRes, { 'POST /v1/admin/courses/:id/copy: 201': (r) => r.status === 201 });
@@ -788,6 +811,10 @@ export default function (data) {
       adminH,
     );
     check(auditRes, { 'PUT /v1/admin/comments/:id/audit: 2xx': (r) => ok(r) });
+
+    // Delete
+    const deleteRes = http.del(`${BASE_URL}/v1/admin/comments/${commentId}`, null, adminH);
+    check(deleteRes, { 'DELETE /v1/admin/comments/:id: 2xx': (r) => ok(r) });
   });
 
   // -------------------------------------------------------------------------
