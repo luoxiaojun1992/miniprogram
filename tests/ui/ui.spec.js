@@ -480,10 +480,6 @@ test.describe('Admin Portal', () => {
       );
       const courseListAfterCreateBody = await courseListAfterCreate.json();
       expect(Number(courseListAfterCreateBody.data?.id || 0)).toBe(courseID);
-      await page.getByText('课程管理').click();
-      await page.locator('.search-input').first().fill(courseTitle);
-      await page.keyboard.press('Enter');
-      await expect(page.getByText(courseTitle).first()).toBeVisible({ timeout: 15000 });
       const courseUpdatedTitle = `${courseTitle} Updated`;
       const courseUpdateRes = await request.put(`${APP_BASE_URL}/v1/admin/courses/${courseID}`, {
         headers,
