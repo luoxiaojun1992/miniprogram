@@ -61,13 +61,11 @@ CREATE TABLE IF NOT EXISTS `users` (
     `nickname` VARCHAR(64) COMMENT '用户昵称',
     `avatar_url` VARCHAR(255) COMMENT '头像URL',
     `user_type` TINYINT DEFAULT 1 COMMENT '1前台用户 2普通管理员 3系统管理员',
-    `status` TINYINT DEFAULT 1 COMMENT '0冻结 1正常',
-    `freeze_end_time` DATETIME COMMENT '冻结结束时间',
     `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP,
     `updated_at` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     `deleted_at` DATETIME NULL COMMENT '软删除时间',
     INDEX `idx_open_id` (`open_id`),
-    INDEX `idx_type_status` (`user_type`, `status`),
+    INDEX `idx_user_type` (`user_type`),
     INDEX `idx_deleted_at` (`deleted_at`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='用户表';
 
