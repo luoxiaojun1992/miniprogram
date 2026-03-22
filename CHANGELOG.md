@@ -1,5 +1,13 @@
 # Changelog
 
+## [Unreleased] - 2026-03-21
+
+### Added
+- **Allure HTML 报告上传** - 在 UI 测试 CI 流程中自动上传生成的 Allure HTML 报告（含视频附件）
+
+### Changed
+- **UI 测试执行时机** - 将 Playwright UI 测试任务设置为依赖 API k6 性能测试任务完成后再执行
+
 ## [Unreleased] - 2026-03-20
 
 ### Added
