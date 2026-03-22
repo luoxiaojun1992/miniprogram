@@ -98,6 +98,30 @@ func TestArticleRepository_List_WithFilters(t *testing.T) {
 	_ = arts
 }
 
+func TestArticleRepository_List_WithoutModuleID_OnlyNullOrZeroModule(t *testing.T) {
+	db, mock := newTestDB(t)
+	repo := NewArticleRepository(db)
+
+	now := nowTime()
+	mock.ExpectQuery("SELECT count\\(\\*\\) FROM `articles` WHERE \\(module_id IS NULL OR module_id = 0\\)").
+		WillReturnRows(sqlmock.NewRows([]string{"count"}).AddRow(1))
+	mock.ExpectQuery("SELECT \\* FROM `articles` WHERE \\(module_id IS NULL OR module_id = 0\\) ORDER BY sort_order DESC, created_at DESC LIMIT \\?").
+		WithArgs(10).
+		WillReturnRows(
+			sqlmock.NewRows(articleColumns).
+				AddRow(1, "Title", "Sum", "Content", 1, "", 10, nil, 1, 0, 0, 0, 0, now, now),
+		)
+	mock.ExpectQuery("SELECT \\* FROM `users` WHERE `users`.`id` = \\? AND `users`.`deleted_at` IS NULL").
+		WithArgs(10).
+		WillReturnRows(sqlmock.NewRows(articleAuthorColumns).
+			AddRow(10, "oid", "Author", 2, 1, now, now, nil))
+
+	arts, total, err := repo.List(context.Background(), 1, 10, "", nil, nil, "")
+	require.NoError(t, err)
+	assert.Equal(t, int64(1), total)
+	assert.Len(t, arts, 1)
+}
+
 func TestArticleRepository_List_SortViewCount(t *testing.T) {
 	db, mock := newTestDB(t)
 	repo := NewArticleRepository(db)

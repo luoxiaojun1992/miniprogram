@@ -37,6 +37,8 @@ func (r *courseRepository) List(ctx context.Context, page, pageSize int, keyword
 	}
 	if moduleID != nil {
 		db = db.Where("module_id = ?", *moduleID)
+	} else {
+		db = db.Where("(module_id IS NULL OR module_id = 0)")
 	}
 	if status != nil {
 		db = db.Where("status = ?", *status)
