@@ -96,6 +96,10 @@ func (c *CourseController) List(ctx *gin.Context) {
 	}
 	filtered := make([]*entity.Course, 0, len(courses))
 	for _, item := range courses {
+		if moduleID == nil {
+			filtered = append(filtered, item)
+			continue
+		}
 		allowed, accessErr := c.accessChecker.canAccess(ctx, 3, uint64(item.ModuleID), uid, nil)
 		if accessErr != nil {
 			ctx.Error(accessErr)

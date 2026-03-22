@@ -2,6 +2,7 @@ package controller
 
 import (
 	"context"
+	"encoding/json"
 	"net/http"
 	"testing"
 
@@ -42,6 +43,56 @@ func TestCourseCtrl_List_SvcErr(t *testing.T) {
 	assert.Equal(t, 500, doRequest(r, "GET", "/courses", "").Code)
 }
 
+func TestCourseCtrl_List_NoModuleFilter_BypassesModulePermissionCheck(t *testing.T) {
+	svc := &testutil.MockCourseService{
+		ListFn: func(_ context.Context, p, ps int, kw string, mid *uint, isFree *bool, uid *uint64) ([]*entity.Course, int64, error) {
+			return []*entity.Course{{ID: 1, ModuleID: 88}}, 1, nil
+		},
+	}
+	contentPermRepo := &testutil.MockContentPermissionRepository{
+		GetByContentFn: func(_ context.Context, contentType int8, contentID uint64) ([]*entity.ContentPermission, error) {
+			return nil, apperrors.NewInternal("should not check module permission", nil)
+		},
+	}
+	r := newTestRouter()
+	r.GET("/courses", NewCourseController(svc, logrus.New(), contentPermRepo).List)
+	w := doRequest(r, "GET", "/courses", "")
+	assert.Equal(t, 200, w.Code)
+
+	var resp map[string]interface{}
+	assert.NoError(t, json.Unmarshal(w.Body.Bytes(), &resp))
+	data, ok := resp["data"].(map[string]interface{})
+	assert.True(t, ok)
+	list, ok := data["list"].([]interface{})
+	assert.True(t, ok)
+	assert.Len(t, list, 1)
+}
+
+func TestCourseCtrl_List_WithModuleFilter_StillChecksModulePermission(t *testing.T) {
+	svc := &testutil.MockCourseService{
+		ListFn: func(_ context.Context, p, ps int, kw string, mid *uint, isFree *bool, uid *uint64) ([]*entity.Course, int64, error) {
+			return []*entity.Course{{ID: 1, ModuleID: 88}}, 1, nil
+		},
+	}
+	contentPermRepo := &testutil.MockContentPermissionRepository{
+		GetByContentFn: func(_ context.Context, contentType int8, contentID uint64) ([]*entity.ContentPermission, error) {
+			return []*entity.ContentPermission{{ContentType: contentType, ContentID: contentID, RoleID: func() *uint { v := uint(2); return &v }()}}, nil
+		},
+	}
+	r := newTestRouter()
+	r.GET("/courses", NewCourseController(svc, logrus.New(), contentPermRepo).List)
+	w := doRequest(r, "GET", "/courses?module_id=88", "")
+	assert.Equal(t, 200, w.Code)
+
+	var resp map[string]interface{}
+	assert.NoError(t, json.Unmarshal(w.Body.Bytes(), &resp))
+	data, ok := resp["data"].(map[string]interface{})
+	assert.True(t, ok)
+	list, ok := data["list"].([]interface{})
+	assert.True(t, ok)
+	assert.Len(t, list, 0)
+}
+
 func TestCourseCtrl_GetByID_OK(t *testing.T) {
 	svc := &testutil.MockCourseService{
 		GetByIDFn: func(_ context.Context, id uint64, uid *uint64) (*entity.Course, error) {
@@ -68,6 +119,17 @@ func TestCourseCtrl_GetByID_SvcErr(t *testing.T) {
 	r := newTestRouter()
 	r.GET("/courses/:id", crsCtrl(svc).GetByID)
 	assert.Equal(t, 404, doRequest(r, "GET", "/courses/1", "").Code)
+}
+
+func TestCourseCtrl_GetByID_ForbiddenStillReturned(t *testing.T) {
+	svc := &testutil.MockCourseService{
+		GetByIDFn: func(_ context.Context, id uint64, uid *uint64) (*entity.Course, error) {
+			return nil, apperrors.NewForbidden("no access", nil)
+		},
+	}
+	r := newTestRouter()
+	r.GET("/courses/:id", crsCtrl(svc).GetByID)
+	assert.Equal(t, 403, doRequest(r, "GET", "/courses/1", "").Code)
 }
 
 func TestCourseCtrl_AdminList_OK(t *testing.T) {

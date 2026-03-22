@@ -2,6 +2,7 @@ package controller
 
 import (
 	"context"
+	"encoding/json"
 	"net/http"
 	"testing"
 
@@ -42,6 +43,56 @@ func TestArticleCtrl_List_SvcErr(t *testing.T) {
 	assert.Equal(t, 500, doRequest(r, "GET", "/articles", "").Code)
 }
 
+func TestArticleCtrl_List_NoModuleFilter_BypassesModulePermissionCheck(t *testing.T) {
+	svc := &testutil.MockArticleService{
+		ListFn: func(_ context.Context, p, ps int, kw string, mid *uint, sort string, uid *uint64) ([]*entity.Article, int64, error) {
+			return []*entity.Article{{ID: 1, ModuleID: 99}}, 1, nil
+		},
+	}
+	contentPermRepo := &testutil.MockContentPermissionRepository{
+		GetByContentFn: func(_ context.Context, contentType int8, contentID uint64) ([]*entity.ContentPermission, error) {
+			return nil, apperrors.NewInternal("should not check module permission", nil)
+		},
+	}
+	r := newTestRouter()
+	r.GET("/articles", NewArticleController(svc, logrus.New(), contentPermRepo).List)
+	w := doRequest(r, "GET", "/articles", "")
+	assert.Equal(t, 200, w.Code)
+
+	var resp map[string]interface{}
+	assert.NoError(t, json.Unmarshal(w.Body.Bytes(), &resp))
+	data, ok := resp["data"].(map[string]interface{})
+	assert.True(t, ok)
+	list, ok := data["list"].([]interface{})
+	assert.True(t, ok)
+	assert.Len(t, list, 1)
+}
+
+func TestArticleCtrl_List_WithModuleFilter_StillChecksModulePermission(t *testing.T) {
+	svc := &testutil.MockArticleService{
+		ListFn: func(_ context.Context, p, ps int, kw string, mid *uint, sort string, uid *uint64) ([]*entity.Article, int64, error) {
+			return []*entity.Article{{ID: 1, ModuleID: 99}}, 1, nil
+		},
+	}
+	contentPermRepo := &testutil.MockContentPermissionRepository{
+		GetByContentFn: func(_ context.Context, contentType int8, contentID uint64) ([]*entity.ContentPermission, error) {
+			return []*entity.ContentPermission{{ContentType: contentType, ContentID: contentID, RoleID: func() *uint { v := uint(2); return &v }()}}, nil
+		},
+	}
+	r := newTestRouter()
+	r.GET("/articles", NewArticleController(svc, logrus.New(), contentPermRepo).List)
+	w := doRequest(r, "GET", "/articles?module_id=99", "")
+	assert.Equal(t, 200, w.Code)
+
+	var resp map[string]interface{}
+	assert.NoError(t, json.Unmarshal(w.Body.Bytes(), &resp))
+	data, ok := resp["data"].(map[string]interface{})
+	assert.True(t, ok)
+	list, ok := data["list"].([]interface{})
+	assert.True(t, ok)
+	assert.Len(t, list, 0)
+}
+
 func TestArticleCtrl_GetByID_OK(t *testing.T) {
 	svc := &testutil.MockArticleService{
 		GetByIDFn: func(_ context.Context, id uint64, uid *uint64) (*entity.Article, error) {
@@ -68,6 +119,17 @@ func TestArticleCtrl_GetByID_SvcErr(t *testing.T) {
 	r := newTestRouter()
 	r.GET("/articles/:id", artCtrl(svc).GetByID)
 	assert.Equal(t, 404, doRequest(r, "GET", "/articles/1", "").Code)
+}
+
+func TestArticleCtrl_GetByID_ForbiddenStillReturned(t *testing.T) {
+	svc := &testutil.MockArticleService{
+		GetByIDFn: func(_ context.Context, id uint64, uid *uint64) (*entity.Article, error) {
+			return nil, apperrors.NewForbidden("no access", nil)
+		},
+	}
+	r := newTestRouter()
+	r.GET("/articles/:id", artCtrl(svc).GetByID)
+	assert.Equal(t, 403, doRequest(r, "GET", "/articles/1", "").Code)
 }
 
 func TestArticleCtrl_AdminList_OK(t *testing.T) {

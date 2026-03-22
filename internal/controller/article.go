@@ -81,6 +81,10 @@ func (c *ArticleController) List(ctx *gin.Context) {
 	}
 	filtered := make([]*entity.Article, 0, len(articles))
 	for _, item := range articles {
+		if moduleID == nil {
+			filtered = append(filtered, item)
+			continue
+		}
 		allowed, accessErr := c.accessChecker.canAccess(ctx, 3, uint64(item.ModuleID), uid, nil)
 		if accessErr != nil {
 			ctx.Error(accessErr)
