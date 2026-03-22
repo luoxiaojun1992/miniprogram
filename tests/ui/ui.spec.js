@@ -475,11 +475,11 @@ test.describe('Admin Portal', () => {
       const courseID = Number(courseCreateBody.data?.id || 0);
       expect(courseID).toBeGreaterThan(0);
       const courseListAfterCreate = await request.get(
-        `${APP_BASE_URL}/v1/admin/courses?page=1&page_size=100&keyword=${encodeURIComponent(courseTitle)}`,
+        `${APP_BASE_URL}/v1/admin/courses/${courseID}`,
         { headers },
       );
       const courseListAfterCreateBody = await courseListAfterCreate.json();
-      expect((courseListAfterCreateBody.data?.list || []).some((item) => item.id === courseID)).toBeTruthy();
+      expect(Number(courseListAfterCreateBody.data?.id || 0)).toBe(courseID);
       await page.getByText('课程管理').click();
       await page.locator('.search-input').first().fill(courseTitle);
       await page.keyboard.press('Enter');
@@ -491,11 +491,11 @@ test.describe('Admin Portal', () => {
       });
       expect(courseUpdateRes.ok()).toBeTruthy();
       const courseListAfterUpdate = await request.get(
-        `${APP_BASE_URL}/v1/admin/courses?page=1&page_size=100&keyword=${encodeURIComponent(courseUpdatedTitle)}`,
+        `${APP_BASE_URL}/v1/admin/courses/${courseID}`,
         { headers },
       );
       const courseListAfterUpdateBody = await courseListAfterUpdate.json();
-      expect((courseListAfterUpdateBody.data?.list || []).some((item) => item.id === courseID)).toBeTruthy();
+      expect(courseListAfterUpdateBody.data?.title).toBe(courseUpdatedTitle);
 
       const unitCreateRes = await request.post(`${APP_BASE_URL}/v1/admin/courses/${courseID}/units`, {
         headers,
@@ -525,11 +525,10 @@ test.describe('Admin Portal', () => {
       const courseDeleteRes = await request.delete(`${APP_BASE_URL}/v1/admin/courses/${courseID}`, { headers });
       expect(courseDeleteRes.ok()).toBeTruthy();
       const courseListAfterDelete = await request.get(
-        `${APP_BASE_URL}/v1/admin/courses?page=1&page_size=100&keyword=${encodeURIComponent(courseUpdatedTitle)}`,
+        `${APP_BASE_URL}/v1/admin/courses/${courseID}`,
         { headers },
       );
-      const courseListAfterDeleteBody = await courseListAfterDelete.json();
-      expect((courseListAfterDeleteBody.data?.list || []).some((item) => item.id === courseID)).toBeFalsy();
+      expect(courseListAfterDelete.ok()).toBeFalsy();
 
       // 8) banner CRUD
       const uploadName = `ui-crud-banner-${unique}.png`;
