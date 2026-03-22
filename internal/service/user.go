@@ -2,7 +2,9 @@ package service
 
 import (
 	"context"
+	"fmt"
 
+	"github.com/google/uuid"
 	"github.com/sirupsen/logrus"
 	"golang.org/x/crypto/bcrypt"
 
@@ -235,6 +237,7 @@ func (s *userService) CreateAdminUser(ctx context.Context, req *dto.CreateAdminU
 	user := &entity.User{
 		Nickname: req.Nickname,
 		UserType: req.UserType,
+		OpenID:   fmt.Sprintf("admin_%s", uuid.NewString()),
 	}
 	if err = s.userRepo.Create(ctx, user); err != nil {
 		return 0, err

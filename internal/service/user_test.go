@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"strings"
 	"testing"
 
 	"github.com/sirupsen/logrus"
@@ -294,6 +295,8 @@ func TestUserService_CreateAdminUser_Success(t *testing.T) {
 	}
 	userRepo := &testutil.MockUserRepository{
 		CreateFn: func(_ context.Context, u *entity.User) error {
+			require.True(t, strings.HasPrefix(u.OpenID, "admin_"))
+			require.NotEmpty(t, u.OpenID)
 			u.ID = 10
 			return nil
 		},

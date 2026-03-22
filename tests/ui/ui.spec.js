@@ -183,7 +183,7 @@ test.describe('Admin Portal', () => {
 
       await test.step('创建后的内容列表：接口与页面可见', async () => {
         const listRes = await request.get(
-          `${APP_BASE_URL}/v1/admin/articles?page=1&page_size=20&keyword=${encodeURIComponent(uniqueTitle)}`,
+          `${APP_BASE_URL}/v1/admin/articles?page=1&page_size=20&keyword=${encodeURIComponent(uniqueTitle)}&module_id=${moduleID}`,
           { headers: { Authorization: `Bearer ${adminToken}` } },
         );
         expect(listRes.ok()).toBeTruthy();
@@ -413,7 +413,7 @@ test.describe('Admin Portal', () => {
       const articleID = Number(articleCreateBody.data?.id || 0);
       expect(articleID).toBeGreaterThan(0);
       const articleListAfterCreate = await request.get(
-        `${APP_BASE_URL}/v1/admin/articles?page=1&page_size=100&keyword=${encodeURIComponent(articleTitle)}`,
+        `${APP_BASE_URL}/v1/admin/articles?page=1&page_size=100&keyword=${encodeURIComponent(articleTitle)}&module_id=${moduleID}`,
         { headers },
       );
       const articleListAfterCreateBody = await articleListAfterCreate.json();
@@ -429,7 +429,7 @@ test.describe('Admin Portal', () => {
       });
       expect(articleUpdateRes.ok()).toBeTruthy();
       const articleListAfterUpdate = await request.get(
-        `${APP_BASE_URL}/v1/admin/articles?page=1&page_size=100&keyword=${encodeURIComponent(articleUpdatedTitle)}`,
+        `${APP_BASE_URL}/v1/admin/articles?page=1&page_size=100&keyword=${encodeURIComponent(articleUpdatedTitle)}&module_id=${moduleID}`,
         { headers },
       );
       const articleListAfterUpdateBody = await articleListAfterUpdate.json();
@@ -581,7 +581,7 @@ test.describe('Admin Portal', () => {
       const articleDeleteRes = await request.delete(`${APP_BASE_URL}/v1/admin/articles/${articleID}`, { headers });
       expect(articleDeleteRes.ok()).toBeTruthy();
       const articleListAfterDelete = await request.get(
-        `${APP_BASE_URL}/v1/admin/articles?page=1&page_size=100&keyword=${encodeURIComponent(articleUpdatedTitle)}`,
+        `${APP_BASE_URL}/v1/admin/articles?page=1&page_size=100&keyword=${encodeURIComponent(articleUpdatedTitle)}&module_id=${moduleID}`,
         { headers },
       );
       const articleListAfterDeleteBody = await articleListAfterDelete.json();
@@ -814,7 +814,7 @@ test.describe('Miniprogram Simulator', () => {
         data: { status: 1 },
       });
       expect(articlePublishRes.ok()).toBeTruthy();
-      const publicArticleQuery = await request.get(`${APP_BASE_URL}/v1/articles?page=1&page_size=20&keyword=${encodeURIComponent(articleTitle)}`, {
+      const publicArticleQuery = await request.get(`${APP_BASE_URL}/v1/articles?page=1&page_size=20&keyword=${encodeURIComponent(articleTitle)}&module_id=${moduleID}`, {
         headers: { Authorization: `Bearer ${userToken}` },
       });
       const publicArticleQueryBody = await publicArticleQuery.json();
@@ -833,7 +833,7 @@ test.describe('Miniprogram Simulator', () => {
         data: { status: 1 },
       });
       expect(coursePublishRes.ok()).toBeTruthy();
-      const publicCourseQuery = await request.get(`${APP_BASE_URL}/v1/courses?page=1&page_size=20&keyword=${encodeURIComponent(courseTitle)}`, {
+      const publicCourseQuery = await request.get(`${APP_BASE_URL}/v1/courses?page=1&page_size=20&keyword=${encodeURIComponent(courseTitle)}&module_id=${moduleID}`, {
         headers: { Authorization: `Bearer ${userToken}` },
       });
       const publicCourseQueryBody = await publicCourseQuery.json();
