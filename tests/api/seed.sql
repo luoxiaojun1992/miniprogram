@@ -8,6 +8,18 @@
 SET NAMES utf8mb4;
 SET FOREIGN_KEY_CHECKS = 0;
 
+-- Ensure module_id=0 exists for UI tests that use default "全部" scope with module_id=0
+SET @OLD_SQL_MODE = @@SQL_MODE;
+SET SQL_MODE = CONCAT(@@SQL_MODE, ',NO_AUTO_VALUE_ON_ZERO');
+INSERT INTO `modules` (`id`, `title`, `description`, `sort_order`, `status`, `created_at`, `updated_at`)
+VALUES (0, 'UI Default Module', 'Seeded module for UI default scope', 0, 1, NOW(), NOW())
+ON DUPLICATE KEY UPDATE
+  `title` = VALUES(`title`),
+  `description` = VALUES(`description`),
+  `status` = VALUES(`status`),
+  `updated_at` = VALUES(`updated_at`);
+SET SQL_MODE = @OLD_SQL_MODE;
+
 -- Test admin user (user_type=3: system admin)
 INSERT INTO `users` (`id`, `nickname`, `user_type`, `created_at`, `updated_at`)
 VALUES (1, 'Test Admin', 3, NOW(), NOW());
