@@ -14,7 +14,7 @@ import (
 )
 
 var articleColumns = []string{"id", "title", "summary", "content", "content_type", "cover_image", "author_id", "module_id", "status", "view_count", "like_count", "collect_count", "sort_order", "created_at", "updated_at"}
-var articleAuthorColumns = []string{"id", "open_id", "nickname", "user_type", "status", "created_at", "updated_at", "deleted_at"}
+var articleAuthorColumns = []string{"id", "open_id", "nickname", "user_type", "created_at", "updated_at", "deleted_at"}
 
 func nowTime() time.Time { return time.Now() }
 
@@ -30,7 +30,7 @@ func TestArticleRepository_GetByID_Found(t *testing.T) {
 	)
 	mock.ExpectQuery("SELECT").WillReturnRows(
 		sqlmock.NewRows(articleAuthorColumns).
-			AddRow(10, "oid", "Author", 2, 1, now, now, nil),
+			AddRow(10, "oid", "Author", 2, now, now, nil),
 	)
 
 	art, err := repo.GetByID(context.Background(), 1)
@@ -114,7 +114,7 @@ func TestArticleRepository_List_WithoutModuleID_OnlyNullOrZeroModule(t *testing.
 	mock.ExpectQuery("SELECT \\* FROM `users` WHERE `users`.`id` = \\? AND `users`.`deleted_at` IS NULL").
 		WithArgs(10).
 		WillReturnRows(sqlmock.NewRows(articleAuthorColumns).
-			AddRow(10, "oid", "Author", 2, 1, now, now, nil))
+			AddRow(10, "oid", "Author", 2, now, now, nil))
 
 	arts, total, err := repo.List(context.Background(), 1, 10, "", nil, nil, "")
 	require.NoError(t, err)
