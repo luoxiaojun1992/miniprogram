@@ -1,5 +1,10 @@
 # Changelog
 
+## [Unreleased] - 2026-03-22
+
+### Fixed
+- **Playwright UI 测试稳定性** - 移除课程列表可见性断言，解决 CI 中的不稳定问题
+
 ## [Unreleased] - 2026-03-21
 
 ### Added
