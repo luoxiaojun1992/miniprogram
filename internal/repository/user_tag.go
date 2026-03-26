@@ -33,7 +33,7 @@ func (r *userTagRepository) Create(ctx context.Context, tag *entity.UserTag) err
 	return nil
 }
 
-func (r *userTagRepository) Delete(ctx context.Context, id uint) error {
+func (r *userTagRepository) Delete(ctx context.Context, id uint64) error {
 	if err := r.db.WithContext(ctx).Delete(&entity.UserTag{}, id).Error; err != nil {
 		return errors.NewInternal("删除标签失败", err)
 	}

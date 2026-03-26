@@ -108,7 +108,7 @@ func (m *MockAdminUserRepository) UpdateLastLogin(ctx context.Context, id uint64
 type MockUserTagRepository struct {
 	GetByUserIDFn func(ctx context.Context, userID uint64) ([]*entity.UserTag, error)
 	CreateFn      func(ctx context.Context, tag *entity.UserTag) error
-	DeleteFn      func(ctx context.Context, id uint) error
+	DeleteFn      func(ctx context.Context, id uint64) error
 }
 
 func (m *MockUserTagRepository) GetByUserID(ctx context.Context, userID uint64) ([]*entity.UserTag, error) {
@@ -123,7 +123,7 @@ func (m *MockUserTagRepository) Create(ctx context.Context, tag *entity.UserTag)
 	}
 	return nil
 }
-func (m *MockUserTagRepository) Delete(ctx context.Context, id uint) error {
+func (m *MockUserTagRepository) Delete(ctx context.Context, id uint64) error {
 	if m.DeleteFn != nil {
 		return m.DeleteFn(ctx, id)
 	}
@@ -1018,7 +1018,7 @@ type MockUserService struct {
 	DeleteUserFn      func(ctx context.Context, id uint64) error
 	AssignRolesFn     func(ctx context.Context, userID uint64, req *dto.AssignRolesRequest) error
 	AddTagFn          func(ctx context.Context, userID uint64, req *dto.AddTagRequest) (uint, error)
-	DeleteTagFn       func(ctx context.Context, userID uint64, tagID uint) error
+	DeleteTagFn       func(ctx context.Context, userID uint64, tagID uint64) error
 }
 
 func (m *MockUserService) GetProfile(ctx context.Context, userID uint64) (*entity.User, error) {
@@ -1078,7 +1078,7 @@ func (m *MockUserService) AddTag(ctx context.Context, userID uint64, req *dto.Ad
 	}
 	return 0, nil
 }
-func (m *MockUserService) DeleteTag(ctx context.Context, userID uint64, tagID uint) error {
+func (m *MockUserService) DeleteTag(ctx context.Context, userID uint64, tagID uint64) error {
 	if m.DeleteTagFn != nil {
 		return m.DeleteTagFn(ctx, userID, tagID)
 	}

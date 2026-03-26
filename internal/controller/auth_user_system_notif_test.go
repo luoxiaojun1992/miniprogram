@@ -3,8 +3,6 @@ package controller
 import (
 	"bytes"
 	"context"
-	"math/bits"
-	"strconv"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -478,7 +476,7 @@ func TestUserCtrl_AdminAddUserTag_SvcErr(t *testing.T) {
 
 func TestUserCtrl_AdminDeleteUserTag_OK(t *testing.T) {
 	svc := &testutil.MockUserService{
-		DeleteTagFn: func(_ context.Context, userID uint64, tagID uint) error { return nil },
+		DeleteTagFn: func(_ context.Context, userID uint64, tagID uint64) error { return nil },
 	}
 	r := newTestRouterWithAuth(1, 2)
 	r.DELETE("/admin/users/:id/tags", NewUserController(svc, logrus.New()).AdminDeleteUserTag)
@@ -499,25 +497,13 @@ func TestUserCtrl_AdminDeleteUserTag_BadTagID(t *testing.T) {
 
 func TestUserCtrl_AdminDeleteUserTag_SvcErr(t *testing.T) {
 	svc := &testutil.MockUserService{
-		DeleteTagFn: func(_ context.Context, userID uint64, tagID uint) error {
+		DeleteTagFn: func(_ context.Context, userID uint64, tagID uint64) error {
 			return apperrors.NewInternal("db", nil)
 		},
 	}
 	r := newTestRouterWithAuth(1, 2)
 	r.DELETE("/admin/users/:id/tags", NewUserController(svc, logrus.New()).AdminDeleteUserTag)
 	assert.Equal(t, 500, doRequest(r, "DELETE", "/admin/users/1/tags?tag_id=5", "").Code)
-}
-
-func TestUserCtrl_AdminDeleteUserTag_TooLargeTagID(t *testing.T) {
-	if bits.UintSize != 32 {
-		t.Skip("uint upper-bound overflow case is only applicable on 32-bit platforms")
-	}
-	r := newTestRouterWithAuth(1, 2)
-	r.DELETE("/admin/users/:id/tags", NewUserController(&testutil.MockUserService{}, logrus.New()).AdminDeleteUserTag)
-	tooLargeTagID := strconv.FormatUint(uint64(^uint32(0))+1, 10)
-	w := doRequest(r, "DELETE", "/admin/users/1/tags?tag_id="+tooLargeTagID, "")
-	assert.Equal(t, 400, w.Code)
-	assert.Contains(t, w.Body.String(), "无效的标签ID")
 }
 
 // ── SystemController ──────────────────────────────────────────────────────────

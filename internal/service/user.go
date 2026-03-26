@@ -322,7 +322,7 @@ func (s *userService) AddTag(ctx context.Context, userID uint64, req *dto.AddTag
 	return tag.ID, nil
 }
 
-func (s *userService) DeleteTag(ctx context.Context, userID uint64, tagID uint) error {
+func (s *userService) DeleteTag(ctx context.Context, userID uint64, tagID uint64) error {
 	return s.tagRepo.Delete(ctx, tagID)
 }
 
