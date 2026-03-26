@@ -1,6 +1,7 @@
 package controller
 
 import (
+	"math/bits"
 	"net/http"
 	"strconv"
 
@@ -236,11 +237,12 @@ func (c *UserController) AdminDeleteUserTag(ctx *gin.Context) {
 		return
 	}
 	tagIDStr := ctx.Query("tag_id")
-	tagID, err := strconv.ParseUint(tagIDStr, 10, 64)
+	tagID64, err := strconv.ParseUint(tagIDStr, 10, bits.UintSize)
 	if err != nil {
 		ctx.Error(apperrors.NewBadRequest("无效的标签ID", err))
 		return
 	}
+	tagID := uint(tagID64)
 	if svcErr := c.svc.DeleteTag(ctx, userID, tagID); svcErr != nil {
 		ctx.Error(svcErr)
 		return

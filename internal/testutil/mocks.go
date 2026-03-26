@@ -1018,7 +1018,7 @@ type MockUserService struct {
 	DeleteUserFn      func(ctx context.Context, id uint64) error
 	AssignRolesFn     func(ctx context.Context, userID uint64, req *dto.AssignRolesRequest) error
 	AddTagFn          func(ctx context.Context, userID uint64, req *dto.AddTagRequest) (uint, error)
-	DeleteTagFn       func(ctx context.Context, userID, tagID uint64) error
+	DeleteTagFn       func(ctx context.Context, userID uint64, tagID uint) error
 }
 
 func (m *MockUserService) GetProfile(ctx context.Context, userID uint64) (*entity.User, error) {
@@ -1078,7 +1078,7 @@ func (m *MockUserService) AddTag(ctx context.Context, userID uint64, req *dto.Ad
 	}
 	return 0, nil
 }
-func (m *MockUserService) DeleteTag(ctx context.Context, userID, tagID uint64) error {
+func (m *MockUserService) DeleteTag(ctx context.Context, userID uint64, tagID uint) error {
 	if m.DeleteTagFn != nil {
 		return m.DeleteTagFn(ctx, userID, tagID)
 	}
