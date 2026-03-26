@@ -3,6 +3,7 @@ package controller
 import (
 	"bytes"
 	"context"
+	"math/bits"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -509,7 +510,15 @@ func TestUserCtrl_AdminDeleteUserTag_SvcErr(t *testing.T) {
 func TestUserCtrl_AdminDeleteUserTag_TooLargeTagID(t *testing.T) {
 	r := newTestRouterWithAuth(1, 2)
 	r.DELETE("/admin/users/:id/tags", NewUserController(&testutil.MockUserService{}, logrus.New()).AdminDeleteUserTag)
-	assert.Equal(t, 400, doRequest(r, "DELETE", "/admin/users/1/tags?tag_id=18446744073709551616", "").Code)
+	var tooLargeTagID string
+	if bits.UintSize == 32 {
+		tooLargeTagID = "4294967296"
+	} else {
+		tooLargeTagID = "18446744073709551616"
+	}
+	w := doRequest(r, "DELETE", "/admin/users/1/tags?tag_id="+tooLargeTagID, "")
+	assert.Equal(t, 400, w.Code)
+	assert.Contains(t, w.Body.String(), "无效的标签ID")
 }
 
 // ── SystemController ──────────────────────────────────────────────────────────
