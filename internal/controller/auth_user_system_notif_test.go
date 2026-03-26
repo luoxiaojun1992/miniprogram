@@ -476,7 +476,7 @@ func TestUserCtrl_AdminAddUserTag_SvcErr(t *testing.T) {
 
 func TestUserCtrl_AdminDeleteUserTag_OK(t *testing.T) {
 	svc := &testutil.MockUserService{
-		DeleteTagFn: func(_ context.Context, userID, tagID uint64) error { return nil },
+		DeleteTagFn: func(_ context.Context, userID uint64, tagID uint64) error { return nil },
 	}
 	r := newTestRouterWithAuth(1, 2)
 	r.DELETE("/admin/users/:id/tags", NewUserController(svc, logrus.New()).AdminDeleteUserTag)
@@ -497,7 +497,7 @@ func TestUserCtrl_AdminDeleteUserTag_BadTagID(t *testing.T) {
 
 func TestUserCtrl_AdminDeleteUserTag_SvcErr(t *testing.T) {
 	svc := &testutil.MockUserService{
-		DeleteTagFn: func(_ context.Context, userID, tagID uint64) error {
+		DeleteTagFn: func(_ context.Context, userID uint64, tagID uint64) error {
 			return apperrors.NewInternal("db", nil)
 		},
 	}

@@ -26,7 +26,7 @@ type UserService interface {
 	DeleteUser(ctx context.Context, id uint64) error
 	AssignRoles(ctx context.Context, userID uint64, req *dto.AssignRolesRequest) error
 	AddTag(ctx context.Context, userID uint64, req *dto.AddTagRequest) (uint, error)
-	DeleteTag(ctx context.Context, userID, tagID uint64) error
+	DeleteTag(ctx context.Context, userID uint64, tagID uint64) error
 }
 
 // RoleService handles role operations.

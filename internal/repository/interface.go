@@ -30,7 +30,7 @@ type AdminUserRepository interface {
 type UserTagRepository interface {
 	GetByUserID(ctx context.Context, userID uint64) ([]*entity.UserTag, error)
 	Create(ctx context.Context, tag *entity.UserTag) error
-	Delete(ctx context.Context, id uint) error
+	Delete(ctx context.Context, id uint64) error
 }
 
 // RoleRepository defines the interface for role data access.

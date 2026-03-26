@@ -555,7 +555,7 @@ func TestUserService_AddTag_GetTagsError(t *testing.T) {
 
 func TestUserService_DeleteTag_Success(t *testing.T) {
 	tagRepo := &testutil.MockUserTagRepository{
-		DeleteFn: func(_ context.Context, id uint) error {
+		DeleteFn: func(_ context.Context, id uint64) error {
 			return nil
 		},
 	}
