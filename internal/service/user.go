@@ -323,6 +323,9 @@ func (s *userService) AddTag(ctx context.Context, userID uint64, req *dto.AddTag
 }
 
 func (s *userService) DeleteTag(ctx context.Context, userID, tagID uint64) error {
+	if tagID > uint64(^uint(0)) {
+		return errors.NewBadRequest("标签ID超出范围", nil)
+	}
 	return s.tagRepo.Delete(ctx, uint(tagID))
 }
 
