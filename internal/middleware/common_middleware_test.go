@@ -138,4 +138,3 @@ func TestLoggerMiddleware_LogsRequestFields(t *testing.T) {
 	assert.Equal(t, float64(http.StatusCreated), entry["status"])
 	assert.Equal(t, "rid-logger", entry["request_id"])
 }
-
