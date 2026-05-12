@@ -1,9 +1,14 @@
 # AI Instruction（Harness 协作指南）
 
 > 本文档为本仓库 AI instruction 唯一真源（SSOT）。
-> 入口与索引文件：`.github/copilot-instructions.md`、`.workbuddy/AI_AGENT_INSTRUCTIONS.md`、`docs/agent-instruction.md`
+> 入口与索引文件：`.github/copilot-instructions.md`、`.workbuddy/AI_AGENT_INSTRUCTIONS.md`
 
 本文件用于指导 AI/开发者在本仓库内以“可控输入—标准流程—可验证输出”的方式完成改动。
+
+## 0. 入口指引
+
+1. 先阅读本公共文档：`AI_AGENT_COMMON_INSTRUCTIONS.md`
+2. 入口与索引文件仅保留指引，不重复维护规范正文。
 
 ## 1. 目标与范围
 
