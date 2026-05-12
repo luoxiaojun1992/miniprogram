@@ -150,7 +150,7 @@ internal/
 api/docs/swagger.yaml
 migrations/
 tests/{api,ui}
-docs/agent-instruction.md
+ .agent/AI_AGENT_COMMON_INSTRUCTIONS.md
 ```
 
 ## 配置与安全建议
@@ -169,4 +169,3 @@ GitHub Actions 工作流（`.github/workflows/ci.yml`）包含：
 1. Unit Tests（含覆盖率阈值）
 2. API Tests（k6）
 3. UI Tests（Playwright，依赖 API Tests 成功后执行）
-

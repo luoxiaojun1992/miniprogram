@@ -1,0 +1,29 @@
+@startuml
+title GET /admin/permissions
+actor Client
+participant "Gin Router" as Router
+participant "JWT Auth" as JWTAuth
+participant "Admin Guard" as AdminGuard
+participant "Audit Log" as AuditLog
+participant "Controller" as Controller
+participant "Service" as Service
+participant "Repository" as Repo
+database "MySQL" as DB
+
+Client -> Router: HTTP GET /admin/permissions
+Router -> JWTAuth: Validate JWT
+JWTAuth --> Router: User context
+Router -> AdminGuard: Require admin role
+AdminGuard --> Router: Authorized
+Router -> AuditLog: Start audit record
+AuditLog --> Router: Trace ID
+Router -> Controller: Handle request
+Controller -> Service: Execute use-case
+Service -> Repo: Read/Write data
+Repo -> DB: SQL query
+DB --> Repo: Result
+Repo --> Service: Aggregate result
+Service --> Controller: DTO/result
+Controller --> Router: Response
+Router --> Client: JSON response
+@enduml

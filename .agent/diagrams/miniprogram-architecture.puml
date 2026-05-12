@@ -1,0 +1,36 @@
+@startuml
+skinparam linetype ortho
+skinparam componentStyle rectangle
+hide stereotype
+
+actor "MiniProgram Client" as mini
+actor "Admin Portal" as admin
+
+cloud "WeChat API" as wechat
+cloud "COS (Object Storage)" as cos
+
+database "MySQL" as mysql
+database "Redis" as redis
+
+package "Gin API Server" {
+  [Router]
+  [Middleware]
+  [Controller]
+  [Service]
+  [Repository]
+  [Model (GORM)]
+}
+
+mini --> [Router] : REST /v1
+admin --> [Router] : REST /v1/admin
+[Router] --> [Middleware]
+[Middleware] --> [Controller]
+[Controller] --> [Service]
+[Service] --> [Repository]
+[Repository] --> [Model (GORM)]
+[Model (GORM)] --> mysql
+[Service] --> redis
+[Service] --> wechat
+[Service] --> cos
+
+@enduml

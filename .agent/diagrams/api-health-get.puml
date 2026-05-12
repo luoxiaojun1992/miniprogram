@@ -1,0 +1,11 @@
+@startuml
+title GET /health
+actor Client
+participant "Gin Router" as Router
+participant "Health Handler" as Handler
+
+Client -> Router: HTTP GET /health
+Router -> Handler: Return status
+Handler --> Router: {"status":"ok"}
+Router --> Client: 200 OK
+@enduml
