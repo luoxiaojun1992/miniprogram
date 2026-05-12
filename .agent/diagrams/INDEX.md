@@ -10,6 +10,10 @@
 
 ## 当前流程图
 
+### 系统架构图
+
+- `miniprogram-architecture.puml`
+
 ### 数据库 ER 图
 
 - `miniprogram-db-er.puml`

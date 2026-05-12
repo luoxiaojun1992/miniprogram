@@ -197,3 +197,9 @@ task ui-test-down
 - [ ] 更新 `internal/app/config.go` 默认值与映射
 - [ ] 更新 `configs/config.yaml.sample`
 - [ ] 更新 `README.md` 配置说明
+
+---
+
+## 12. 经验文档索引
+
+- `.agent/memory/INDEX.md` - 架构、配置、测试与约定的拆分文档
