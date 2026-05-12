@@ -1,0 +1,367 @@
+@startuml
+!define table(x) entity x << (T,#EAEAEA) >>
+skinparam linetype ortho
+hide circle
+
+' Core tables
+entity "users" as users {
+  *id : bigint
+  --
+  open_id
+  union_id
+  nickname
+  avatar_url
+  user_type
+  created_at
+}
+
+entity "admin_users" as admin_users {
+  *id : bigint
+  --
+  user_id : bigint
+  email
+  password_hash
+  last_login_at
+}
+
+entity "roles" as roles {
+  *id : int
+  --
+  name
+  parent_id
+  level
+  is_builtin
+  created_at
+}
+
+entity "permissions" as permissions {
+  *id : int
+  --
+  name
+  code
+  parent_id
+  type
+  level
+  is_builtin
+  created_at
+}
+
+entity "user_roles" as user_roles {
+  *user_id : bigint
+  *role_id : int
+  created_at
+}
+
+entity "role_permissions" as role_permissions {
+  *role_id : int
+  *permission_id : int
+  created_at
+}
+
+entity "user_tags" as user_tags {
+  *id : int
+  --
+  user_id : bigint
+  tag_name
+  created_at
+}
+
+entity "attributes" as attributes {
+  *id : int
+  --
+  name
+  type
+  created_at
+}
+
+entity "user_attributes" as user_attributes {
+  *id : bigint
+  --
+  user_id : bigint
+  attribute_id : int
+  value_string
+  value_bigint
+  created_at
+}
+
+entity "modules" as modules {
+  *id : int
+  --
+  title
+  status
+  sort_order
+  created_at
+}
+
+entity "module_pages" as module_pages {
+  *id : int
+  --
+  module_id : int
+  title
+  content_type
+  sort_order
+  status
+  created_at
+}
+
+entity "banners" as banners {
+  *id : bigint
+  --
+  image_file_id : bigint
+  title
+  link_url
+  status
+  sort_order
+  created_at
+}
+
+entity "articles" as articles {
+  *id : bigint
+  --
+  author_id : bigint
+  module_id : int
+  cover_file_id : bigint
+  title
+  status
+  publish_time
+  created_at
+}
+
+entity "courses" as courses {
+  *id : bigint
+  --
+  author_id : bigint
+  module_id : int
+  cover_file_id : bigint
+  title
+  status
+  publish_time
+  created_at
+}
+
+entity "course_units" as course_units {
+  *id : bigint
+  --
+  course_id : bigint
+  video_file_id : bigint
+  title
+  duration
+  sort_order
+}
+
+entity "files" as files {
+  *id : bigint
+  --
+  key
+  filename
+  usage
+  category
+  created_by : bigint
+  created_at
+}
+
+entity "article_attachments" as article_attachments {
+  *id : bigint
+  --
+  article_id : bigint
+  file_id : bigint
+  permission_id : int
+  sort_order
+  created_at
+}
+
+entity "course_attachments" as course_attachments {
+  *id : bigint
+  --
+  course_id : bigint
+  file_id : bigint
+  permission_id : int
+  sort_order
+  created_at
+}
+
+entity "course_unit_attachments" as course_unit_attachments {
+  *id : bigint
+  --
+  unit_id : bigint
+  file_id : bigint
+  permission_id : int
+  sort_order
+  created_at
+}
+
+entity "article_attributes" as article_attributes {
+  *id : bigint
+  --
+  article_id : bigint
+  attribute_id : int
+  value_string
+  value_bigint
+}
+
+entity "course_attributes" as course_attributes {
+  *id : bigint
+  --
+  course_id : bigint
+  attribute_id : int
+  value_string
+  value_bigint
+}
+
+entity "content_permissions" as content_permissions {
+  *id : int
+  --
+  content_type
+  content_id : bigint
+  role_id : int
+  permission_type
+  created_at
+}
+
+entity "user_study_records" as user_study_records {
+  *id : bigint
+  --
+  user_id : bigint
+  course_id : bigint
+  unit_id : bigint
+  progress
+  status
+  last_study_at
+}
+
+entity "collections" as collections {
+  *id : bigint
+  --
+  user_id : bigint
+  content_type
+  content_id : bigint
+  created_at
+}
+
+entity "likes" as likes {
+  *id : bigint
+  --
+  user_id : bigint
+  content_type
+  content_id : bigint
+  created_at
+}
+
+entity "follows" as follows {
+  *id : bigint
+  --
+  follower_id : bigint
+  followed_id : bigint
+  created_at
+}
+
+entity "comments" as comments {
+  *id : bigint
+  --
+  user_id : bigint
+  content_type
+  content_id : bigint
+  parent_id : bigint
+  status
+  created_at
+}
+
+entity "notifications" as notifications {
+  *id : bigint
+  --
+  user_id : bigint
+  type
+  is_read
+  created_at
+}
+
+entity "audit_logs" as audit_logs {
+  *id : bigint
+  --
+  user_id : bigint
+  module
+  action
+  created_at
+}
+
+entity "wechat_configs" as wechat_configs {
+  *id : int
+  --
+  app_id
+  status
+  updated_at
+}
+
+entity "log_configs" as log_configs {
+  *id : int
+  --
+  retention_days
+  updated_at
+}
+
+entity "sensitive_words" as sensitive_words {
+  *id : bigint
+  --
+  word
+  status
+  created_at
+}
+
+' Relations
+users ||--o{ admin_users : user_id
+users ||--o{ user_roles : user_id
+roles ||--o{ user_roles : role_id
+roles ||--o{ role_permissions : role_id
+permissions ||--o{ role_permissions : permission_id
+
+users ||--o{ user_tags : user_id
+users ||--o{ user_attributes : user_id
+attributes ||--o{ user_attributes : attribute_id
+
+modules ||--o{ module_pages : module_id
+modules ||--o{ articles : module_id
+modules ||--o{ courses : module_id
+users ||--o{ articles : author_id
+users ||--o{ courses : author_id
+
+courses ||--o{ course_units : course_id
+files ||--o{ course_units : video_file_id
+files ||--o{ banners : image_file_id
+users ||--o{ files : created_by
+
+articles ||--o{ article_attachments : article_id
+files ||--o{ article_attachments : file_id
+courses ||--o{ course_attachments : course_id
+files ||--o{ course_attachments : file_id
+course_units ||--o{ course_unit_attachments : unit_id
+files ||--o{ course_unit_attachments : file_id
+
+articles ||--o{ article_attributes : article_id
+attributes ||--o{ article_attributes : attribute_id
+courses ||--o{ course_attributes : course_id
+attributes ||--o{ course_attributes : attribute_id
+
+users ||--o{ user_study_records : user_id
+courses ||--o{ user_study_records : course_id
+course_units ||--o{ user_study_records : unit_id
+
+users ||--o{ collections : user_id
+users ||--o{ likes : user_id
+users ||--o{ comments : user_id
+users ||--o{ notifications : user_id
+users ||--o{ audit_logs : user_id
+
+users ||--o{ follows : follower_id
+users ||--o{ follows : followed_id
+
+roles ||..o{ content_permissions : role_id (optional)
+articles ||..o{ content_permissions : content_id (type=1)
+courses ||..o{ content_permissions : content_id (type=2)
+
+articles ||..o{ collections : content_id (type=1)
+courses ||..o{ collections : content_id (type=2)
+articles ||..o{ likes : content_id (type=1)
+courses ||..o{ likes : content_id (type=2)
+articles ||..o{ comments : content_id (type=1)
+courses ||..o{ comments : content_id (type=2)
+@enduml
